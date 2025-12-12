@@ -1,0 +1,402 @@
+# extractor.py
+
+import re
+from playwright.async_api import Page, TimeoutError, ElementHandle
+import re
+from typing import Dict, Any, List
+from Neo.intelligence import get_selector_auto, get_selector
+from Helpers.DB_Helpers.db_helpers import save_schedule_entry
+
+async def extract_h2h_data(page: Page, home_team_main: str, away_team_main: str, context: str = "h2h_tab") -> Dict[str, Any]:
+    """
+    Extracts H2H data from the page using AI-generated selectors from knowledge base.
+    Eliminates hardcoded CSS classes for robust scraping.
+    """
+    print("      [Extractor] Extracting H2H tab...")
+
+    # Get ALL selectors from knowledge base matching exact keys from fs_h2h_tab.txt
+    selectors = {
+        "h2h_section_home_last_5": await get_selector_auto(page, context, "h2h_section_home_last_5") or ".h2h__section:nth-of-type(1)",
+        "h2h_section_away_last_5": await get_selector_auto(page, context, "h2h_section_away_last_5") or ".h2h__section:nth-of-type(2)",
+        "h2h_section_mutual": await get_selector_auto(page, context, "h2h_section_mutual") or ".h2h__section:nth-of-type(3)",
+        "h2h_section_title": await get_selector_auto(page, context, "h2h_section_title") or ".h2h__sectionHeader",
+        "h2h_row_general": await get_selector_auto(page, context, "h2h_row_general") or ".h2h__row",
+        "h2h_row_link": await get_selector_auto(page, context, "h2h_row_link"), 
+        "h2h_row_date": await get_selector_auto(page, context, "h2h_row_date") or ".h2h__date",
+        "h2h_row_league_icon": await get_selector_auto(page, context, "h2h_row_league_icon") or ".h2h__eventIcon",
+        "h2h_row_participant_home": await get_selector_auto(page, context, "h2h_row_participant_home") or ".h2h__homeParticipant",
+        "h2h_row_participant_away": await get_selector_auto(page, context, "h2h_row_participant_away") or ".h2h__awayParticipant",
+        "h2h_row_score_home": await get_selector_auto(page, context, "h2h_row_score_home") or ".h2h__result span:nth-child(1)",
+        "h2h_row_score_away": await get_selector_auto(page, context, "h2h_row_score_away") or ".h2h__result span:nth-child(2)",
+        "h2h_row_win_marker": await get_selector_auto(page, context, "h2h_row_win_marker") or ".fontBold",
+        "h2h_badge_win": await get_selector_auto(page, context, "h2h_badge_win") or ".h2h__icon--win",
+        "h2h_badge_draw": await get_selector_auto(page, context, "h2h_badge_draw") or ".h2h__icon--draw",
+        "h2h_badge_loss": await get_selector_auto(page, context, "h2h_badge_loss") or ".h2h__icon--lost",
+        "meta_breadcrumb_country": await get_selector_auto(page, context, "meta_breadcrumb_country") or ".tournamentHeader__country",
+        "meta_breadcrumb_league": await get_selector_auto(page, context, "meta_breadcrumb_league") or ".tournamentHeader__league a",
+    }
+
+    try:
+        await page.wait_for_selector(selectors['h2h_row_general'], timeout=10000)
+    except TimeoutError:
+        print(f"      [Extractor] Warning: No H2H rows ('{selectors['h2h_row_general']}') found. Extraction will be empty.")
+        return {"home_last_10_matches": [], "away_last_10_matches": [], "head_to_head": [], "parsing_errors": ["H2H rows not found on page."], "home_team": home_team_main, "away_team": away_team_main, "region_league": "Unknown"}
+
+    js_code = r"""(data) => {
+        const { selectors, home_team_main, away_team_main } = data;
+        const getText = (el, sel) => el ? el.querySelector(sel)?.innerText.trim() || '' : '';
+        const getAttribute = (el, sel, attr) => el?.querySelector(sel)?.[attr] || null;
+
+        const results = {
+            home_last_10_matches: [],
+            away_last_10_matches: [],
+            head_to_head: [],
+            parsing_errors: []
+        };
+        let region_league = 'Unknown';
+
+        // Process each specific section defined in fs_h2h_tab.txt
+        const sections_map = [
+            { selector: 'h2h_section_home_last_5', target: 'home_last_10_matches' },
+            { selector: 'h2h_section_away_last_5', target: 'away_last_10_matches' },
+            { selector: 'h2h_section_mutual', target: 'head_to_head' }
+        ];
+
+        sections_map.forEach(sectionMap => {
+            const sectionSelector = selectors[sectionMap.selector];
+            if (!sectionSelector) return; // Skip if selector not available
+
+            const section = document.querySelector(sectionSelector);
+            if (!section) return; // Skip if section not found
+
+            const rows = section.querySelectorAll(selectors.h2h_row_general);
+            rows.forEach(row => {
+                
+                let linkEl = row.querySelector(selectors.h2h_row_link);
+                try {
+
+                    // Check if row itself is clickable
+                    if (!linkEl && row.tagName === 'A') {
+                        linkEl = row;
+                    }
+
+                    // Check for parent link elements
+                    if (!linkEl) {
+                        let parent = row.parentElement;
+                        while (parent && !linkEl && parent !== document.body) {
+                            if (parent.tagName === 'A') {
+                                linkEl = parent;
+                                break;
+                            }
+                            parent = parent.parentElement;
+                        }
+                    }
+
+                    // Check for data attributes that might indicate clickability
+                    if (!linkEl) {
+                        const dataHref = row.getAttribute('data-href') || row.getAttribute('data-url') || row.getAttribute('data-link');
+                        if (dataHref) {
+                            // Create a pseudo link element for consistency
+                            linkEl = { getAttribute: () => dataHref };
+                        }
+                    }
+
+                    // If still no link found, check if row has click handlers or is within a clickable container
+                    if (!linkEl && (row.getAttribute('onclick') || row.getAttribute('data-match-id'))) {
+                        // Try to construct URL from available data
+                        const matchId = row.getAttribute('data-match-id') || row.getAttribute('data-id');
+                        if (matchId) {
+                            linkEl = { getAttribute: () => `/match/${matchId}` };
+                        }
+                    }
+
+                    const scoreHomeStr = getText(row, selectors.h2h_row_score_home);
+                    const scoreAwayStr = getText(row, selectors.h2h_row_score_away);
+                    const scoreHome = parseInt(scoreHomeStr, 10);
+                    const scoreAway = parseInt(scoreAwayStr, 10);
+
+                    if (isNaN(scoreHome) || isNaN(scoreAway)) { return; }
+
+                    let winner = 'Draw';
+                    if (scoreHome > scoreAway) winner = 'Home';
+                    else if (scoreAway > scoreHome) winner = 'Away';
+
+                    // Check for win/loss badges with specific selectors
+                    let perspectiveResult = 'N/A';
+                    if (row.querySelector(selectors.h2h_badge_win)) perspectiveResult = 'W';
+                    else if (row.querySelector(selectors.h2h_badge_draw)) perspectiveResult = 'D';
+                    else if (row.querySelector(selectors.h2h_badge_loss)) perspectiveResult = 'L';
+
+                    const matchLink = linkEl ? linkEl.getAttribute('href') : null;
+
+                    let homeTeamId = null;
+                    let awayTeamId = null;
+                    let homeTeamUrl = null;
+                    let awayTeamUrl = null;
+                    let cleanId = null;
+
+                    if (matchLink) {
+                        // 1. Clean the link to handle both relative and absolute URLs
+                        // This regex removes everything up to and including "/match/football/"
+                        const cleanPath = matchLink.replace(/^(.*\/match\/football\/)/, '');
+
+                        // 2. Now split only the remaining parts (Teams and IDs)
+                        // cleanPath is now "gardnersville-ENOwpmY9/heaven-eleven-rZt0bocF/?mid=dzjg0ibm"
+                        const parts = cleanPath.split('/').filter(p => p);
+
+                        if (parts.length >= 2) {
+                            const homeSegment = parts[0]; // Now this is correctly "gardnersville-ENOwpmY9"
+                            const awaySegment = parts[1]; // Now this is correctly "heaven-eleven-rZt0bocF"
+
+                            // Your extraction logic remains the same and is correct:
+                            const homeSlug = homeSegment.substring(0, homeSegment.lastIndexOf('-'));
+                            homeTeamId = homeSegment.substring(homeSegment.lastIndexOf('-') + 1);
+
+                            const awaySlug = awaySegment.substring(0, awaySegment.lastIndexOf('-'));
+                            awayTeamId = awaySegment.substring(awaySegment.lastIndexOf('-') + 1);
+
+                            homeTeamUrl = `https://www.flashscore.com/team/${homeSlug}/${homeTeamId}/`;
+                            awayTeamUrl = `https://www.flashscore.com/team/${awaySlug}/${awayTeamId}/`;
+
+                            // Extract fixture ID from query params
+                            const urlParts = matchLink.split('?');
+                            if (urlParts.length > 1) {
+                                const queryParams = urlParts[1].split('&');
+                                for (const param of queryParams) {
+                                    if (param.startsWith('mid=')) {
+                                        cleanId = param.substring(4);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    const home = getText(row, selectors.h2h_row_participant_home);
+                    const away = getText(row, selectors.h2h_row_participant_away);
+
+                    const matchData = {
+                        date: getText(row, selectors.h2h_row_date),
+                        home: home,
+                        away: away,
+                        score: `${scoreHome}-${scoreAway}`,
+                        winner: winner,
+                        perspective_result: perspectiveResult,
+                        match_link: matchLink,
+                        match_url: matchLink,
+                        home_team_url: homeTeamUrl,
+                        away_team_url: awayTeamUrl,
+                        fixture_id: cleanId,
+                        league_name: getText(row, selectors.h2h_row_league_icon),
+                        home_team_id: homeTeamId,
+                        away_team_id: awayTeamId
+                    };
+
+                    results[sectionMap.target].push(matchData);
+                } catch (e) {
+                    results.parsing_errors.push({
+                        error: `Row parsing failed: ${e.message}`,
+                        html: row.outerHTML.substring(0, 200) + '...'
+                    });
+                }
+            });
+        });
+
+        const countryEl = document.querySelector(selectors.meta_breadcrumb_country);
+        const leagueEl = document.querySelector(selectors.meta_breadcrumb_league);
+        const region = countryEl ? countryEl.innerText.trim().toUpperCase() : '';
+        const league = leagueEl ? leagueEl.innerText.trim() : '';
+        region_league = (region && league) ? `${region} - ${league}` : 'Unknown';
+
+        results.home_team = home_team_main;
+        results.away_team = away_team_main;
+        results.region_league = region_league;
+
+        return results;
+    }"""
+
+    # Pass all parameters as a single object to respect Playwright's API
+    data_object = {
+        "selectors": selectors,
+        "home_team_main": home_team_main,
+        "away_team_main": away_team_main
+    }
+    evaluation_result = await page.evaluate(js_code, data_object)
+
+    if (evaluation_result.get("parsing_errors")):
+        print(f"      [Extractor Warning] Encountered {len(evaluation_result['parsing_errors'])} parsing errors.")
+
+    print(f"      [Extractor] Found {len(evaluation_result.get('home_last_10_matches',[]))} home, {len(evaluation_result.get('away_last_10_matches',[]))} away, {len(evaluation_result.get('head_to_head',[]))} H2H matches.")
+    return evaluation_result
+
+
+async def extract_standings_data(page: Page, context: str = "standings_tab") -> Dict[str, Any]:
+    """
+    Extracts essential standings data: position, team, stats, and league info.
+    """
+    print("      [Extractor] Extracting Standings tab...")
+
+    selectors = {
+        "standings_row": get_selector(context, "standings_row") or ".ui-table__row",
+        "standings_col_rank": get_selector(context, "standings_col_rank") or ".tableCellRank",
+        "standings_col_team_name": get_selector(context, "standings_col_team_name") or ".tableCellParticipant__name",
+        "standings_col_team_link": get_selector(context, "standings_col_team_link") or ".tableCellParticipant__name a",
+        "standings_col_matches_played": get_selector(context, "standings_col_matches_played") or "td:nth-child(3)",
+        "standings_col_wins": get_selector(context, "standings_col_wins") or "td:nth-child(4)",
+        "standings_col_draws": get_selector(context, "standings_col_draws") or "td:nth-child(5)",
+        "standings_col_losses": get_selector(context, "standings_col_losses") or "td:nth-child(6)",
+        "standings_col_goals": get_selector(context, "standings_col_goals") or "td:nth-child(7)",
+        "standings_col_points": get_selector(context, "standings_col_points") or ".tableCellPoints",
+        "standings_col_form": get_selector(context, "standings_col_form") or ".tableCellForm",
+        "meta_breadcrumb_country": get_selector(context, "meta_breadcrumb_country") or ".tournamentHeader__country",
+        "meta_breadcrumb_league": get_selector(context, "meta_breadcrumb_league") or ".tournamentHeader__league a",
+    }
+
+    try:
+        await page.wait_for_selector(selectors['standings_row'], timeout=10000)
+    except TimeoutError:
+        print("      [Extractor] Warning: No standings table rows found.")
+        return {"standings": [], "region_league": "Unknown", "parsing_errors": ["Standings table not found."]}
+
+    js_code = r"""(selectors) => {
+        const getText = (el, sel) => {
+            const elem = el?.querySelector(sel);
+            return elem ? elem.innerText?.trim() : null;
+        };
+        const getInt = (text) => {
+            if (text === null) return null;
+            const parsed = parseInt(text.replace(/[()]/g, ''), 10);
+            return isNaN(parsed) ? null : parsed;
+        };
+        const getHref = (el, sel) => {
+            const elem = el?.querySelector(sel);
+            return elem ? elem.href : null;
+        };
+
+        const table = [];
+
+        const rows = document.querySelectorAll(selectors.standings_row);
+        if (rows.length === 0) {
+            return { standings: [], region_league: 'Unknown', parsing_errors: ['No table rows found'] };
+        }
+
+        rows.forEach((row, index) => {
+            const teamLink = getHref(row, selectors.standings_col_team_link);
+            let teamId = null;
+            if (teamLink) {
+                const parts = teamLink.split('/').filter(p => p);
+                const teamIndex = parts.indexOf('team');
+                if (teamIndex !== -1 && parts.length > teamIndex + 2) {
+                    teamId = parts[teamIndex + 2];
+                }
+            }
+
+            let gf = null, ga = null;
+            const goals = getText(row, selectors.standings_col_goals);
+            if (goals && goals.includes(':')) {
+                [gf, ga] = goals.split(':').map(p => {
+                    const parsed = parseInt(p.trim());
+                    return isNaN(parsed) ? null : parsed;
+                });
+            }
+
+            const positionText = getText(row, selectors.standings_col_rank);
+            const position = getInt(positionText) || (index + 1);
+
+            const teamName = getText(row, selectors.standings_col_team_name);
+            const team = teamName || `Team ${index + 1}`;
+
+            table.push({
+                position: position,
+                team_name: team,
+                team_id: teamId,
+                played: getInt(getText(row, selectors.standings_col_matches_played)),
+                wins: getInt(getText(row, selectors.standings_col_wins)),
+                draws: getInt(getText(row, selectors.standings_col_draws)),
+                losses: getInt(getText(row, selectors.standings_col_losses)),
+                goals_for: gf,
+                goals_against: ga,
+                goal_difference: (gf !== null && ga !== null) ? (gf - ga) : null,
+                points: getInt(getText(row, selectors.standings_col_points)),
+                form: getText(row, selectors.standings_col_form),
+            });
+        });
+
+        const country = document.querySelector(selectors.meta_breadcrumb_country)?.innerText?.trim()?.toUpperCase();
+        const leagueEl = document.querySelector(selectors.meta_breadcrumb_league);
+        const league = leagueEl?.innerText?.trim();
+        const league_url = leagueEl?.href || null;
+        const region_league = (country && league) ? `${country} - ${league}` : 'Unknown';
+
+        return {
+            standings: table,
+            region_league: region_league,
+            league_url: league_url,
+            parsing_errors: []
+        };
+    }"""
+
+    evaluation_result = await page.evaluate(js_code, selectors)
+
+    team_count = len(evaluation_result.get('standings', []))
+    league_name = evaluation_result.get('region_league', 'Unknown League')
+    print(f"      [Extractor] Found {team_count} teams in standings for '{league_name}'.")
+
+    return evaluation_result
+
+
+async def save_extracted_h2h_to_schedules(h2h_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Saves historical matches found during extraction to the schedules.csv file.
+    Returns a list of the newly saved match dictionaries for further processing.
+    """
+    from Helpers.DB_Helpers.db_helpers import save_team_entry
+
+    all_past_matches = (
+        h2h_data.get("home_last_10_matches", []) +
+        h2h_data.get("away_last_10_matches", []) +
+        h2h_data.get("head_to_head", [])
+    )
+
+    saved_matches = []
+    for match in all_past_matches:
+        if not match or not match.get('date') or not match.get('score'):
+            continue
+
+        home_team = match.get('home')
+        away_team = match.get('away')
+        score_parts = match.get('score', 'N/A').split('-')
+
+        match_link = match.get('match_url') or match.get('match_link')
+        home_team_id = match.get('home_team_id')
+        away_team_id = match.get('away_team_id')
+        fixture_id = match.get('fixture_id')
+
+        entry_to_save = {
+            'fixture_id': fixture_id,
+            'date': match.get('date'),
+            'match_time': 'N/A',  # Will be updated by enrichment
+            'region_league': h2h_data.get("region_league", "Unknown"),
+            'home_team': home_team,
+            'away_team': away_team,
+            'home_team_id': home_team_id,
+            'away_team_id': away_team_id,
+            'home_score': score_parts[0].strip() if len(score_parts) > 1 else 'N/A',
+            'away_score': score_parts[1].strip() if len(score_parts) > 1 else 'N/A',
+            'match_status': 'finished',
+            'match_link': match_link
+        }
+
+        save_schedule_entry(entry_to_save)
+
+        # Save team entries
+        if home_team_id:
+            home_team_url = f"https://www.flashscore.com/team/{home_team.lower().replace(' ', '-')}/{home_team_id}/"
+            save_team_entry({'team_id': home_team_id, 'team_name': home_team, 'region_league': h2h_data.get("region_league", "Unknown"), 'team_url': home_team_url})
+        if away_team_id:
+            away_team_url = f"https://www.flashscore.com/team/{away_team.lower().replace(' ', '-')}/{away_team_id}/"
+            save_team_entry({'team_id': away_team_id, 'team_name': away_team, 'region_league': h2h_data.get("region_league", "Unknown"), 'team_url': away_team_url})
+
+        saved_matches.append(entry_to_save)
+
+    return saved_matches

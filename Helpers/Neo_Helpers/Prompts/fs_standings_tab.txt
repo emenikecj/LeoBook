@@ -1,0 +1,56 @@
+Map UI elements for Flashscore Standings tab. Focus on league table structure, team rows, and statistical columns.
+
+TABLE STRUCTURE:
+"standings_table": Main standings table container
+"standings_table_body": Table body with team rows
+"standings_header_row": Table header row with column titles
+"standings_row": Individual team row (repeatable)
+
+COLUMN HEADERS:
+"standings_header_cell_rank": Position/rank column header
+"standings_header_cell_team": Team name column header
+"standings_header_cell_played": Matches played column header
+"standings_header_cell_points": Points column header
+
+ROW CONTENTS:
+"standings_col_rank": Team's position number
+"standings_col_team_name": Team name (clickable)
+"standings_col_team_link": Link to team page
+"standings_col_team_logo": Team logo image
+"standings_col_matches_played": MP/GP column value
+"standings_col_wins": Wins (W) column
+"standings_col_draws": Draws (D) column
+"standings_col_losses": Losses (L) column
+"standings_col_goals": Goals column (could be GF:GA or combined)
+"standings_col_goal_diff": Goal difference (±GD) column
+"standings_col_points": Total points
+
+FORM GUIDE:
+"standings_col_form": Last 5 matches visual results
+"standings_form_badge_1": Most recent match result
+"standings_form_badge_2": 2nd most recent match
+"standings_form_badge_3": 3rd most recent match
+"standings_form_badge_4": 4th most recent match
+"standings_form_badge_5": 5th most recent match (oldest)
+
+FORM BADGES:
+"standings_form_icon_win": Win indicator (usually green W)
+"standings_form_icon_draw": Draw indicator (orange D)
+"standings_form_icon_loss": Loss indicator (red L)
+
+FILTERS/TABS:
+"standings_filter_overall": Overall standings filter
+"standings_filter_home": Home form standings filter
+"standings_filter_away": Away form standings filter
+
+LEGEND ELEMENTS:
+"standings_legend_container": Legend explaining colors/symbols
+"standings_qualification_row": Row styled for qualification
+"standings_relegation_row": Row styled for relegation
+
+Selectors should use table structure hierarchy: [table_container] [table_body] [table_row] [column_specific_class].
+Use data-* attributes where available, otherwise rely on semantic class names.
+
+Return JSON: {{"key": "css_selector"}}
+
+Prioritize table-specific selectors and avoid generic ".cell" or ".value" classes.

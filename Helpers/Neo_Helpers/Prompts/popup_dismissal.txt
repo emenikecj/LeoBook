@@ -1,0 +1,17 @@
+Analyze this screenshot for any blocking elements like pop-ups, ads, modals, onboarding overlays, or GDPR banners.
+
+If a blocking element exists, identify the VALID CSS selector for the button to dismiss or close it.
+
+IMPORTANT:
+1. Return STANDARD CSS selectors only (e.g., div.close, button[aria-label='Close']).
+2. Include button text in JSON if available.
+3. No jQuery extensions like :contains() or :has-text().
+
+Return pure JSON: {{
+"blocker_detected": true/false,
+"description": "Short description of the popup",
+"action_selector": "css_selector",
+"button_text": "Text inside the button"
+}}
+
+If no popup: {{"blocker_detected": false}}

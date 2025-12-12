@@ -1,0 +1,30 @@
+Map UI elements for Flashscore match detail page. Focus on navigation tabs and core match information display.
+
+CRITICAL SELECTORS:
+"nav_tab_summary": Summary tab
+"nav_tab_h2h": H2H tab
+"nav_tab_standings": Standings tab
+"nav_tab_odds": Odds tab
+"nav_tab_news": News tab
+"nav_tab_photos": Photos tab
+
+Match Header Elements:
+"header_home_participant": Home team container
+"header_away_participant": Away team container
+"header_home_name": Home team name
+"header_away_name": Away team name
+"header_home_image": Home team logo
+"header_away_image": Away team logo
+"header_score_home": Home score
+"header_score_away": Away score
+"header_score_wrapper": Score display container
+
+Status Elements:
+"meta_match_status": Match status (Live, Finished, etc.)
+"meta_match_time": Match kickoff time
+"meta_breadcrumb_country": Country name breadcrumb
+"meta_breadcrumb_league": League name breadcrumb
+
+Other important elements should follow naming convention: match_{element}_{type}_{purpose}
+
+Return JSON: {{"key": "best_css_selector"}}

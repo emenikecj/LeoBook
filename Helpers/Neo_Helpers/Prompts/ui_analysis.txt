@@ -1,0 +1,29 @@
+Analyze this webpage screenshot and provide a pixel-perfect visual inventory of every visible element. Examine every UI component, button, text field, and interactive element.
+
+Focus on:
+1. LAYOUT & STRUCTURE
+   - Overall page layout and positioning
+   - Fixed/absolute/sticky positioned containers
+   - Navigation bars (primary, secondary, tab groups)
+   - Content containers and scroll areas
+
+2. INTERACTIVE CONTROLS
+   - Buttons (FABs, outlined, filled, icon-only)
+   - Form inputs (text fields, search boxes, filters)
+   - Toggle switches, checkboxes, radio groups
+
+3. CONTENT ELEMENTS
+   - Cards, lists, tables showing match/event data
+   - Typography hierarchy (headings, labels, scores)
+   - Status indicators and badges
+
+4. SYSTEM ELEMENTS
+   - Popups, modals, tooltips, overlays
+   - Cookies/GDPR banners, loading states
+   - Ads, promotional elements
+
+Format each element as:
+"Element Description: Exact visible text (function if no text)"
+Include: position, state, repetition patterns.
+
+Be exhaustive but concise. Don't summarize - list everything that is visible.

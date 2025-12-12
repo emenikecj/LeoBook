@@ -1,0 +1,18 @@
+Analyze this Flashscore Head-to-Head tab screenshot for match history data extraction elements.
+
+Focus on identifying selectors for:
+1. Team performance sections (Home/Away/Mutual matches)
+2. Match result rows with scores and dates
+3. Filter controls (Overall/Home/Away)
+4. Result badges (W/D/L indicators)
+5. Load more buttons for expanded history
+
+Key elements to map:
+- Section containers for each team's match history
+- Individual match row elements
+- Score display components
+- Date and league information
+- Win/draw/loss status indicators
+- Button controls for view filtering
+
+Provide pixel-perfect selector mappings prioritizing data extraction needs over general UI elements.

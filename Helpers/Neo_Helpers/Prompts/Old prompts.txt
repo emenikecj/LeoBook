@@ -1,0 +1,348 @@
+    prompt = f"""
+    You are an elite front-end reverse-engineer tasked with mapping every visible UI element from a screenshot to a precise, working CSS selector using the provided HTML.
+    You have two responsibilities:
+    1. Map critical Flashscore/Football.com elements using EXACT predefined keys
+    2. Map all other visible elements using a rigid, predictable naming convention
+    CRITICAL RULES — FOLLOW EXACTLY:
+    ### 1. MANDATORY CORE ELEMENTS (Use These Exact Keys If Present)
+    Important: {Focus}
+    Use these keys EXACTLY as written if the element exists on the page:
+    {{
+    "sport_container": "Main container holding all football matches and leagues",
+    "league_header": "Header row containing country and league name",
+    "match_rows": "Selector that matches ALL individual match rows",
+    "match_row_home_team_name": "Element inside a match row containing the home team name",
+    "match_row_away_team_name": "Element inside a match row containing the away team name",
+    "match_row_time": "Element inside a match row showing kick-off time",
+    "next_day_button": "Button or icon that navigates to tomorrow's fixtures",
+    "prev_day_button": "Button or icon that navigates to previous day",
+    "league_category": "Country name (e.g., ENGLAND) in league header",
+    "league_title_link": "Clickable league name link in header",
+    "event_row_link": "Anchor tag inside match row linking to match detail page",
+    "cookie_accept_button": "Primary accept button in cookie/privacy banner",
+    "tab_live": "Live matches tab",
+    "tab_finished": "Finished matches tab",
+    "tab_scheduled": "Scheduled/upcoming matches tab",
+    # =========================================================================
+    # MATCH HEADER (METADATA)
+    # =========================================================================
+    "meta_breadcrumb_country": "Country name in breadcrumb (e.g. Armenia), found with class '.tournamentHeader__country'",
+    "meta_breadcrumb_league": "League name in breadcrumb (e.g. Premier League), found with class '.tournamentHeader__league a'",
+    "meta_match_time": "Exact match start time/date, found with class '.duelParticipant__startTime'",
+    "meta_match_status": "Status text (e.g., Finished, 1st Half), found with class '.fixedHeaderDuel__detailStatus'",
+    
+    # --- Home Team Header ---
+    "header_home_participant": "Container for home team info, found with class '.duelParticipant__home'",
+    "header_home_image": "Home team logo image, found with class '.duelParticipant__home .participant__image'",
+    "header_home_name": "Home team text name, found with class '.duelParticipant__home .participant__participantName'",
+    
+    # --- Away Team Header ---
+    "header_away_participant": "Container for away team info, found with class '.duelParticipant__away'",
+    "header_away_image": "Away team logo image, found with class '.duelParticipant__away .participant__image'",
+    "header_away_name": "Away team text name, found with class '.duelParticipant__away .participant__participantName'",
+    
+    # --- Score Board ---
+    "header_score_wrapper": "Container for the big score display, found with class '.detailScore__wrapper'",
+    "header_score_home": "Home team score, found with class '.detailScore__wrapper span:nth-child(1)'",
+    "header_score_divider": "The hyphen or 'vs' between scores, found with class '.detailScore__divider'",
+    "header_score_away": "Away team score, found with class '.detailScore__wrapper span:nth-child(3)'",
+
+    # =========================================================================
+    # NAVIGATION TABS
+    # =========================================================================
+    "nav_tab_summary": "Summary tab link, found via 'a[href=\"#match-summary\"]'",
+    "nav_tab_news": "News tab link, found via 'a[href=\"#news\"]'",
+    "nav_tab_odds": "Odds tab link, found via 'a[href=\"#odds-comparison\"]'",
+    "nav_tab_h2h": "Head-to-Head tab link, found via 'a[href=\"#h2h\"]'",
+    "nav_tab_standings": "Standings tab link, found via 'a[href=\"#standings\"]'",
+    "nav_tab_photos": "Photos/Media tab link, found via 'a[href=\"#match-photos\"]'",
+
+    # =========================================================================
+    # H2H TAB CONTENT (Deep Dive)
+    # =========================================================================
+    # --- Filters ---
+    "h2h_filter_container": "Container for Overall/Home/Away buttons, found with class '.h2h__filter'",
+    "h2h_btn_overall": "Filter button 'Overall', found via '.h2h__filter div:nth-of-type(1)'",
+    "h2h_btn_home": "Filter button 'Home', found via '.h2h__filter div:nth-of-type(2)'",
+    "h2h_btn_away": "Filter button 'Away', found via '.h2h__filter div:nth-of-type(3)'",
+
+    # --- Sections ---
+    "h2h_section_home_last_5": "Container for Home Team's last matches, found with class '.h2h__section:nth-of-type(1)'",
+    "h2h_section_away_last_5": "Container for Away Team's last matches, found with class '.h2h__section:nth-of-type(2)'",
+    "h2h_section_mutual": "Container for Head-to-Head mutual matches, found with class '.h2h__section:nth-of-type(3)'",
+    "h2h_section_title": "The title text (e.g., 'LAST MATCHES: PYUNIK YEREVAN'), found with class '.h2h__sectionHeader'",
+
+    # --- Rows (Iterate these) ---
+    "h2h_row_general": "Common selector for ANY match row in H2H, found with class '.h2h__row'",
+    "h2h_row_date": "Date of past match, found with class '.h2h__date'",
+    "h2h_row_league_icon": "Competition icon/tooltip, found with class '.h2h__eventIcon'",
+    "h2h_row_participant_home": "Home team name in history row, found with class '.h2h__homeParticipant'",
+    "h2h_row_participant_away": "Away team name in history row, found with class '.h2h__awayParticipant'",
+    "h2h_row_score_home": "Home score in history row, found via '.h2h__result span:nth-child(1)'",
+    "h2h_row_score_away": "Away score in history row, found via '.h2h__result span:nth-child(2)'",
+    "h2h_row_win_marker": "Highlighted bold text indicating the winner, found with class '.fontBold'",
+    
+    # --- Badges ---
+    "h2h_badge_win": "Green 'W' icon, found with class '.h2h__icon--win' or title='Win'",
+    "h2h_badge_draw": "Orange 'D' icon, found with class '.h2h__icon--draw' or title='Draw'",
+    "h2h_badge_loss": "Red 'L' icon, found with class '.h2h__icon--lost' or title='Loss'",
+
+    # --- Interaction ---
+    "h2h_show_more_home": "Button to load more home history, found via '.h2h__section:nth-of-type(1) .showMore'",
+    "h2h_show_more_away": "Button to load more away history, found via '.h2h__section:nth-of-type(2) .showMore'",
+    "h2h_show_more_mutual": "Button to load more mutual history, found via '.h2h__section:nth-of-type(3) .showMore'",
+
+# =========================================================================
+    # STANDINGS TAB - NAVIGATION & FILTERS
+    # =========================================================================
+    "standings_filter_overall": "Button to show Overall table, found via '.subFilter__group a:contains(\"Overall\")'",
+    "standings_filter_home": "Button to show Home table, found via '.subFilter__group a:contains(\"Home\")'",
+    "standings_filter_away": "Button to show Away table, found via '.subFilter__group a:contains(\"Away\")'",
+    "standings_filter_form": "Button to show Form table (last 5, 10, etc.), found via '.subFilter__group a:contains(\"Form\")'",
+    "standings_filter_over_under": "Button to show Over/Under stats table, found via '.subFilter__group a:contains(\"Over/Under\")'",
+
+    # =========================================================================
+    # STANDINGS TAB - TABLE STRUCTURE
+    # =========================================================================
+    "standings_table": "The main standings table container, found with class '.ui-table'",
+    "standings_table_body": "The body containing all team rows, found with class '.ui-table__body'",
+    
+    # --- The Header Row ---
+    "standings_header_row": "The top row containing column titles (Pos, Team, Pl, W...), found with class '.ui-table__header'",
+    "standings_header_cell_rank": "Header cell 'Pos' or '#', found via '.ui-table__header .tableCellRank'",
+    "standings_header_cell_team": "Header cell 'Team', found via '.ui-table__header .tableCellParticipant'",
+    "standings_header_cell_played": "Header cell 'Pl' or 'MP', found via '.ui-table__header .tableCellValue:nth-child(3)'",
+    
+    # --- The Data Rows (Iterate these) ---
+    "standings_row": "Selector for an individual team row, found with class '.ui-table__row'",
+    
+    # --- Specific Columns within a Row ---
+    "standings_col_rank": "The rank/position number (e.g., 1, 2), found with class '.tableCellRank'",
+    "standings_col_team_name": "The clickable team name text, found with class '.tableCellParticipant__name'",
+    "standings_col_team_link": "The URL to the team page, found in the 'href' of '.tableCellParticipant__name'",
+    "standings_col_team_logo": "The team logo image, found with class '.participant__image'",
+    
+    # Matches Played (MP) is usually the 1st numerical value after the team name
+    "standings_col_matches_played": "Matches played count, found via '.tableCellValue:nth-of-type(1)'",
+    
+    # Wins (W)
+    "standings_col_wins": "Win count, found via '.tableCellValue:nth-of-type(2)'",
+    
+    # Draws (D)
+    "standings_col_draws": "Draw count, found via '.tableCellValue:nth-of-type(3)'",
+    
+    # Losses (L)
+    "standings_col_losses": "Loss count, found via '.tableCellValue:nth-of-type(4)'",
+    
+    # Goals (G) - often displayed as '23:12'
+    "standings_col_goals": "Goals For:Against string (e.g., '23:12'), found via '.tableCellValue:nth-of-type(5)'",
+    # Note: Some layouts split Goals For/Against. If split, use:
+    # "standings_col_goals_for": "Goals scored, found via '.tableCellValue:nth-of-type(5)'",
+    # "standings_col_goals_against": "Goals conceded, found via '.tableCellValue:nth-of-type(6)'",
+    
+    # Goal Difference (often hidden on mobile, visible on desktop)
+    "standings_col_goal_diff": "Goal difference value, found via '.tableCellValue:nth-of-type(6)' (check index based on view)",
+    
+    # Points (PTS) - usually bolded
+    "standings_col_points": "Total points, found with class '.tableCellPoints' or '.tableCellValue--bold'",
+    
+    # --- Form Guide (The 5 colored squares) ---
+    "standings_col_form": "Container for the last 5 match badges, found with class '.tableCellForm'",
+    "standings_form_badge_1": "Most recent match result (rightmost or leftmost depending on locale), found via '.tableCellForm .formIcon:nth-child(1)'",
+    "standings_form_badge_2": "2nd match result, found via '.tableCellForm .formIcon:nth-child(2)'",
+    "standings_form_badge_3": "3rd match result, found via '.tableCellForm .formIcon:nth-child(3)'",
+    "standings_form_badge_4": "4th match result, found via '.tableCellForm .formIcon:nth-child(4)'",
+    "standings_form_badge_5": "5th match result, found via '.tableCellForm .formIcon:nth-child(5)'",
+    
+    # Badges definition (Check class or title attribute)
+    "standings_form_icon_win": "Green 'W' badge, found with class '.formIcon--win'",
+    "standings_form_icon_draw": "Orange 'D' badge, found with class '.formIcon--draw'",
+    "standings_form_icon_loss": "Red 'L' badge, found with class '.formIcon--lost'",
+
+    # =========================================================================
+    # STANDINGS TAB - LEGEND (Qualification/Relegation)
+    # =========================================================================
+    "standings_legend_container": "The legend below the table explaining colors, found with class '.legend__wrapper'",
+    "standings_qualification_row": "A row in the table marked for qualification (e.g. Champions League), found via '.ui-table__row--promotion'",
+    "standings_relegation_row": "A row in the table marked for relegation, found via '.ui-table__row--relegation'",
+    "standings_promotion_label": "Text description of the color (e.g., 'Promotion - Champions League'), found via '.legend__row .legend__text'",
+    "standings_promotion_color": "The color box in the legend, found via '.legend__row .legend__icon'",
+    # =========================================================================
+    # ODDS SECTION
+    # =========================================================================
+    "odds_filter_1x2": "Tab for 1x2 odds, found via '.filter__group a:contains(\"1X2\")'",
+    "odds_filter_ou": "Tab for Over/Under odds, found via '.filter__group a:contains(\"O/U\")'",
+    "odds_filter_ah": "Tab for Asian Handicap, found via '.filter__group a:contains(\"AH\")'",
+    "odds_row": "Row for a specific bookmaker, found with class '.ui-table__row'",
+    "odds_bookmaker_logo": "Bookmaker logo img, found with class '.bookmaker__logo'",
+    "odds_val_1": "Home win odd value, found via '.odds__cell:nth-child(2) span'",
+    "odds_val_x": "Draw odd value, found via '.odds__cell:nth-child(3) span'",
+    "odds_val_2": "Away win odd value, found via '.odds__cell:nth-child(4) span'",
+    "odds_movement_up": "Green arrow indicating odds drift up, found with class '.oddsCell__trend--up'",
+    "odds_movement_down": "Red arrow indicating odds drift down, found with class '.oddsCell__trend--down'",
+
+    # =========================================================================
+    # ADVERTISEMENTS (For blocking/ignoring)
+    # =========================================================================
+    "ad_header_banner": "Top banner ad, found with class '.box-over-content'",
+    "ad_sidebar_right": "Right side skyscraper ad, found with class '.box-skyscraper'",
+    "ad_native_content": "Ads disguised as content rows, found with class '.box-native-news'",
+    "ad_popup_overlay": "Any full screen overlay ad, usually found with class '.fc-dialog-overlay'",
+
+    # =========================================================================
+    # FOOTER & MISC
+    # =========================================================================
+    "footer_seo_text": "SEO description text at bottom, found with class '.seo-text'",
+    "footer_app_links": "Container for App Store/Google Play buttons, found with class '.box-app-store'",
+    "footer_copyright": "Copyright text, found with class '.copyright'",
+    
+    # --- Tooltips/Popups ---
+    "tooltip_container": "General container for popups, found with class '[data-testid=\"wcl-tooltip\"]'",
+    "tooltip_close_btn": "Close/Understand button, found via '[data-testid=\"wcl-tooltip-actionButton\"]'"
+
+    # fb_login_page keys
+    "top_right_login": "official logical method",
+    "center_text_mobile_number_placeholder": "Input field placeholder for entering mobile number",
+    "center_text_password_placeholder": "Input field placeholder for entering password",
+    "bottom_button_text_login": "Primary login button text at the bottom",
+    "center_link_forgot_password": "Link to recover forgotten password",
+    "center_text_mobile_country_code": "Text displaying the mobile country code",
+    "top_container_nav_bar": "Top navigation bar container",
+    "top_icon_back": "Back icon in the top navigation bar",
+    "top_icon_close": "Close icon for popup. the close icon is usually at the top right corner.",
+    "top_tab_register": "Register tab in the navigation menu",
+    "top_tab_login": "Login tab in the navigation menu",
+    # fb_main_page keys
+    "navbar_balance": "Element showing user balance in the navbar",
+    "currency": "Element showing currency class in the navbar_balance",
+    "search_button": "Search button/icon in the main page",
+    "search_input": "Search input field",
+    "bet_slip_fab_icon_button": "Floating action button (FAB) icon/button to open the bet slip section from anywhere on the match page",
+    # fb_schedule_page keys
+    "pre_match_list_league_container": "Main container holding all pre_match football leagues and matches",
+    "league_title_wrapper": "Header row containing country, league name and number of matches in pre_match list",
+    "league_title_link": "Clickable league name link in league_title_wrapper",
+    "league_wrapper_collapsed": "Same as just 'league_wrapper'(when league_title_wrapper is clicked). Contains the matches for the given league",
+    "league_row": "Contains the league_title_wrapper and the league_wrapper_collapsed, which is make up a league. So the league_row is one league",
+    "match_card": "Selector with each match details (home team, away team, date, time, league name(and url), and the match page url) in pre_match list",
+    "match_card_link": "Anchor tag inside match_card linking to match detail page",
+    "match_region_league_name": "Selector with the match region and league name (e.g England - Premier League)",
+    "match_card_home_team": "Element inside a match_card containing the home team name",
+    "match_card_away_team": "Element inside a match_card containing the away team name",
+    "match_card_date": "Element inside a match_card showing match date",
+    "match_card_time": "Element inside a match_card showing kick_off time",
+    "match_card_league_link": "Clickable href of region-league name in match_card(e.g International Clubs - UEFA Champions League)",
+    "match_url": "The href link of the match_card to the match detail page ",
+    "bet_slip_fab_icon_button": "Floating action button (FAB) icon/button to open the bet slip section from anywhere on the match page",
+    # fb_match_page keys
+    "tooltip_icon_close": "tooltip in the top right side of the match page",
+    "dialog_container": "popup dialog in the match page",
+    "dialog_container_wrapper": "dialog_container that prevents inactive in on the page when the dialog_container appears",
+    "intro_dialog": "body of the dialog_container in the match page",
+    "intro_dialog_btn": "intro_dialog button for 'Next' and 'Got it'",
+    "match_smart_picks_container": "Container for match football.com AI smart picks section",
+    "match_smart_picks_dropdown": "Dropdown to reveal different smart pick analysis options",
+    "smart_pick_item": "Selector for each individual smart pick item in the smart picks section",
+    "match_market_category_tab": "container for market category tabs (e.g., 'All', 'Main', 'Early wins', 'Corners', 'Goals', etc.)",
+    "match_market_search_icon_button": "Search icon/button to search for specific betting markets available for the match",
+    "match_market_search_input": "Input field to type in betting market search terms available for the match",
+    "match_market_details_container": "Container that holds a betting market details for the match. This is the main wrapper for a market group (e.g., 1X2, Over/Under). Clicking on a market header expands it to show all available betting options.",
+    "match_market_name": "Element showing the name/title of a specific betting market for the match (e.g Home to win either half, Away to win either half, etc.)",
+    "match_market_info_tooltip": "Tooltip icon/button that shows additional information about a specific betting market when clicked",
+    "match_market_info_tooltip_text": "The text content inside the tooltip that provides additional information about a specific betting market",
+    "match_market_tooltip_ok_button": "OK button inside the betting market tooltip to close it",
+    "match_market_table": "Table inside a betting market that lists all available betting options along with their odds",
+    "match_market_table_header": "Header row of the betting market table that contains column titles (e.g., 'outcome(value)', 'over', 'under')",
+    "match_market_table_row": "Row inside the betting market table representing a single betting option(1.5(in the outcome column), 1.85(in the over column), 1.95(in the under column), etc.)",
+    "match_market_odds_button": "The clickable element representing a single betting outcome (e.g., 'Home', 'Over 2.5') that displays the odds. This element should be unique for each outcome.",
+    "bet_slip_container": "Container for the bet slip section that shows selected bets and allows users to manage their bets",
+    "bet_slip_predicitions_counter": "Text Element inside the bet slip that displays the number of predictions/bets added to the slip. Could be class "real-theme" and "is-zero real-theme(whenthe counter is zero)",
+    "bet_slip_remove_all_button": "Button inside the bet slip that allows users to clear all selected bets from the slip",
+    "bet_slip_single_bet_tab": "Tab inside the bet slip for placing single bets",
+    "bet_slip_multiple_bet_tab": "Tab inside the bet slip for placing multiple bets (accumulators)",
+    "bet_slip_system_bet_tab": "Tab inside the bet slip for placing system bets",
+    "bet_slip_outcome_list": "List inside the bet slip that shows all selected betting outcomes",
+    "bet_slip_outcome_item": "Item inside the bet slip outcome list representing a single selected betting outcome",
+    "bet_slip_outcome_remove_button": "Button inside a bet slip outcome item that allows users to remove that specific outcome from the bet slip",
+    "bet_slip_outcome_details": "Element inside a bet slip outcome item that displays details about the selected betting outcome (e.g., market name, outcome, odds, match teams etc.). clicking on this element usually navigates to the match page.",
+    "match_url": "The URL link to the match detail page from the bet slip outcome details",
+    "navbar_balance": "Element showing user currency and balance in the bet slip section",
+    "real_match_button": "Button that switches from virtual match to real match all with real money for the selected bet_slip_outcome_item in the bet slip section",
+    "stake_input_field_button": "Input field/button to enter stake amount for the selected bet_slip_outcome_item in the bet slip section",
+    "stake_input_keypad_button": "Keypad button inside the stake input field to enter stake amount for the selected bet_slip_outcome_item in the bet slip section",
+    "keypad_1": "Keypad button for digit '1'",
+    "keypad_2": "Keypad button for digit '2'",
+    "keypad_3": "Keypad button for digit '3'",
+    "keypad_4": "Keypad button for digit '4'",
+    "keypad_5": "Keypad button for digit '5'",
+    "keypad_6": "Keypad button for digit '6'",
+    "keypad_7": "Keypad button for digit '7'",
+    "keypad_8": "Keypad button for digit '8'",
+    "keypad_9": "Keypad button for digit '9'",
+    "keypad_0": "Keypad button for digit '0'",
+    "keypad_dot": "Keypad button for decimal point",
+    "keypad_clear": "Keypad button to clear the entered stake amount",
+    "keypad_done": "Keypad button to confirm the entered stake amount",
+    "bet_slip_total_odds": "Element showing total odds for all selected bets in the bet slip",
+    "bet_slip_potential_win": "Element showing potential winnings for the entered stake amount in the bet slip",
+    "bet_slip_early_win_checkbox": "Checkbox in the bet slip to enable or disable early win cash out option",
+    "bet_slip_one_cut_checkbox": "Checkbox in the bet slip to enable or disable one cut option",
+    "bet_slip_cut_one_checkbox": "Checkbox in the bet slip to enable or disable cut one option",
+    "bet_slip_accept_odds_change_button": "Button in the bet slip to accept any odds changes before placing the bet",
+    "bet_slip_book_bet_button": "Button to reveal a bottom sheet/modal get the betslip shareable link, code, and image",
+    "bet_code": "Element showing the unique bet code for sharing or retrieving the bet slip",
+    "bet_link": "Element showing the unique bet link URL for sharing or retrieving the bet slip",
+    "bet_image": "Element showing the bet slip image/graphic for sharing or saving",
+    "place_bet_button": "Button to confirm and place the bet with the entered stake amount",
+    "bet_slip_fab_icon_button": "Floating action button (FAB) icon/button to open the bet slip section from anywhere on the match page",
+    # fb_withdraw_page keys
+    "withdrawable_balance": "Element showing user withdrawable balance on the withdraw page",
+    "withdraw_input_amount_field": "Input field to enter amount to withdraw on the withdraw page",
+    "withdraw_button_submit": "Button to submit the withdrawal request on the withdraw page",
+    "withdrawal_pin_field": "four digits input box for withdrawal pin",
+    "keypad_1": "Keypad button for digit '1'",
+    "keypad_2": "Keypad button for digit '2'",
+    "keypad_3": "Keypad button for digit '3'",
+    "keypad_4": "Keypad button for digit '4'",
+    "keypad_5": "Keypad button for digit '5'",
+    "keypad_6": "Keypad button for digit '6'",
+    "keypad_7": "Keypad button for digit '7'",
+    "keypad_8": "Keypad button for digit '8'",
+    "keypad_9": "Keypad button for digit '9'",
+    "keypad_0": "Keypad button for digit '0'",
+    "keypad_dot": "Keypad button for decimal point",
+    "keypad_clear": "Keypad button to clear the entered withdrawal pin",
+    "keypad_done": "Keypad button to confirm the entered withdrawal pin",
+    }}
+
+    ### 2. ALL OTHER ELEMENTS → Strict Naming Convention
+    Pattern: <location>*<type>*<content_or_purpose>
+    Examples: top_button_login, header_icon_search, center_text_premier_league
+    ### 3. Selector Quality Rules
+    - Return ONLY a valid JSON object: {{"key": "selector"}}
+    - Prefer: IDs > data-* attributes > unique classes > class combinations
+    - FORBIDDEN: Do not use the non-standard `:contains()` pseudo-class. Do not use selectors containing `skeleton` or `ska__`. Use standard CSS. Avoid long chains (>4 levels) and overly specific text.
+    - Must match exactly what is visible in the screenshot
+    - For repeated elements (e.g., match rows), selector must match ALL instances
+    - Lastly, if an element is not present in the html, omit that key from the output. We now have Fooball.com elements as well.
+    
+    Valid Selectors: The majority are standard CSS selectors, utilizing valid syntax such as class names (e.g., .m-input-wrapper), attribute selectors (e.g., [placeholder="Mobile Number"]), pseudo-classes (e.g., :not([style*="display: none"])), combinators (e.g., >, descendant spaces), and structural pseudo-classes (e.g., :nth-child(1)). These are compatible with Playwright and Chromium's querySelectorAll() implementation. Examples include:
+    "div.m-input-wrapper.mobile-number input[placeholder=\\"Mobile Number\\"]"
+    ".m-featured-match-card-container .featured-match-top a.tournament"
+    "div.categories-container > div.active.category"
+
+    Invalid or Non-Standard Selectors: A subset employs the :contains("text") pseudo-class, which is not part of standard CSS (it originated in jQuery/Sizzle but was never adopted in CSS specifications). Playwright does not support :contains as a custom extension; instead, it offers :text="text" or :has-text("text") for text-based matching. Using :contains will likely result in a selector error or failure to locate elements. Affected entries include:
+    "div.categories h1.tournament-name:contains(\\"Championship\\")" (and similar variants for other leagues like "Liga MX, Apertura", "Brasileiro Serie A", etc.).
+    These should be refactored to use Playwright's text selectors (e.g., text="Championship") or combined selectors (e.g., div.categories h1.tournament-name:has-text("Championship") if exact matching is needed).
+
+    Edge Cases with Potential Issues:
+    Selectors using :has() (e.g., "div.categories > div.category:has(img[src*="2e911d8614a00112a34f431c9477795.png"])") are valid in CSS Level 4 and supported in recent Chromium versions (Chrome 105+). Playwright, running on up-to-date Chromium, should handle them without issue.
+    Attribute substring matches (e.g., [src*="hot-encore"]) are standard and supported.
+    No XPath or other non-CSS formats are present, so all are interpreted as CSS by default in Playwright (unless prefixed explicitly).
+    
+    3. **SELECTOR QUALITY**:
+       - Return valid JSON: {{"key": "selector"}}
+       - Prefer IDs > Classes > Attributes.
+       - AVOID :contains() (use :has-text() if needed, or better yet simple CSS).
+       - NO MARKDOWN in response.
+    """

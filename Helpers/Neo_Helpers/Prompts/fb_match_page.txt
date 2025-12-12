@@ -1,0 +1,28 @@
+Map UI elements for Football.com match detail page. Focus on pre-match betting interface and market selection elements.
+
+CRITICAL SELECTORS:
+"match_market_details_container": Main betting market container
+"match_market_category_tab": Market category tabs (e.g., 'All', 'Main', 'Early wins')
+"match_smart_picks_container": AI smart picks section
+"smart_pick_item": Individual smart pick recommendation
+"bet_slip_container": Bet slip sidebar
+"bet_slip_outcome_list": List of selected bets
+"place_bet_button": Final bet placement button
+"stake_input_field_button": Stake amount input
+"keypad_done": Confirm stake amount
+
+Interactive Elements:
+"match_market_table": Betting odds table
+"match_market_table_row": Individual betting option row
+"match_market_odds_button": Clickable odds selection button
+"match_market_name": Market title/name
+
+Navigation Elements:
+"match_smart_picks_dropdown": Smart picks dropdown expand
+"match_market_search_icon_button": Market search toggle
+"match_market_search_input": Search input field
+"bet_slip_single_bet_tab": Single bet mode toggle
+"bet_slip_multiple_bet_tab": Multi bet mode toggle
+"remove_all_button": Clear all bets
+
+Selector priority: Football.com uses class-based selectors with semantic naming. Prefer exact class combinations over generic selectors.

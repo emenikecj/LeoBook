@@ -1,0 +1,19 @@
+Analyze this Flashscore Standings tab screenshot for league table data extraction elements.
+
+Focus on identifying selectors for:
+1. Table structure (header, body, rows)
+2. Column headers and data positioning
+3. Team information (name, logo, position)
+4. Statistics columns (wins, draws, losses, goals, etc.)
+5. Form guide visual indicators
+6. Filter controls (Overall/Home/Away)
+
+Key elements to map:
+- Table container and hierarchical structure
+- Position/rank display elements
+- Team name and logo positions
+- Statistical data cell locations
+- Form badge patterns and colors
+- View filter controls
+
+Provide precise selector mappings optimized for data scraping from the league table display.

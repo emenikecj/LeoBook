@@ -1,0 +1,39 @@
+Map UI elements for Flashscore H2H (Head-to-Head) tab. Focus on match history display and team performance sections.
+
+SECTION ELEMENTS:
+"h2h_section_home_last_5": Home team's last 5 matches section
+"h2h_section_away_last_5": Away team's last 5 matches section
+"h2h_section_mutual": Mutual H2H matches section
+"h2h_section_title": Section title (team names)
+
+FILTER CONTROLS:
+"h2h_filter_container": Overall/Home/Away filter buttons container
+"h2h_btn_overall": Filter button for Overall matches
+"h2h_btn_home": Filter button for Home matches only
+"h2h_btn_away": Filter button for Away matches only
+
+MATCH ROW ELEMENTS:
+"h2h_row_general": Any H2H match row
+"h2h_row_date": Match date
+"h2h_row_league_icon": Competition icon/tooltip
+"h2h_row_participant_home": Home team name in match row
+"h2h_row_participant_away": Away team name in match row
+"h2h_row_score_home": Home score
+"h2h_row_score_away": Away score
+"h2h_row_win_marker": Result indicator (bold text showing winner)
+
+RESULT BADGES:
+"h2h_badge_win": Win badge (green W)
+"h2h_badge_draw": Draw badge (orange D)
+"h2h_badge_loss": Loss badge (red L)
+
+EXPANSION CONTROLS:
+"h2h_show_more_home": More home matches button
+"h2h_show_more_away": More away matches button
+"h2h_show_more_mutual": More mutual matches button
+
+Format results using data attributes and class selectors. Prioritize specific selectors over generic ones.
+
+Return JSON: {{"key": "css_selector"}}
+
+If element not present in this specific tab, omit key entirely.
