@@ -2641,3 +2641,39 @@ Call log:
 Call log:
   - waiting for locator("div.detailScore__wrapper > span:nth-child(3)").first
 
+2025-12-29T19:19:20.259765 [MEDIUM] score_extraction_error: Failed to extract score: Locator.inner_text: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("div.detailScore__wrapper > span:nth-child(3)").first
+
+2025-12-29T19:20:27.106485 [MEDIUM] score_extraction_error: Failed to extract score: Locator.inner_text: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("div.detailScore__wrapper > span:nth-child(3)").first
+
+2025-12-29T19:21:38.794685 [MEDIUM] score_extraction_error: Failed to extract score: Locator.inner_text: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("div.detailScore__wrapper > span:nth-child(3)").first
+
+2025-12-29T19:41:51.349681 [MEDIUM] score_extraction_error: Failed to extract score: Locator.inner_text: Target crashed 
+Call log:
+  - waiting for locator("div.detailScore__wrapper > span:nth-child(1)").first
+
+2025-12-29T19:41:56.360162 [MEDIUM] review_task_error: Review failed for 21leARZG: Page.goto: Page crashed
+Call log:
+  - navigating to "https://www.flashscore.com/match/football/gazelle-joX7cky0/sovotours-fD4c3xYP/?mid=21leARZG", waiting until "domcontentloaded"
+
+2025-12-29T19:42:06.368220 [MEDIUM] review_task_error: Review failed for 21leARZG: Page.goto: Page crashed
+Call log:
+  - navigating to "https://www.flashscore.com/match/football/gazelle-joX7cky0/sovotours-fD4c3xYP/?mid=21leARZG", waiting until "domcontentloaded"
+
+2025-12-29T19:42:13.746509 [MEDIUM] score_extraction_error: Failed to extract score: Locator.inner_text: Target crashed 
+Call log:
+  - waiting for locator("div.detailScore__wrapper > span:nth-child(1)").first
+
+2025-12-29T19:42:18.754973 [MEDIUM] review_task_error: Review failed for COZS7WFG: Page.goto: Page crashed
+Call log:
+  - navigating to "https://www.flashscore.com/match/football/al-fateh-OIDqIbjd/al-khaleej-UanWW9fq/?mid=COZS7WFG", waiting until "domcontentloaded"
+
+2025-12-29T19:42:28.765513 [MEDIUM] review_task_error: Review failed for COZS7WFG: Page.goto: Page crashed
+Call log:
+  - navigating to "https://www.flashscore.com/match/football/al-fateh-OIDqIbjd/al-khaleej-UanWW9fq/?mid=COZS7WFG", waiting until "domcontentloaded"
+

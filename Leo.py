@@ -40,14 +40,14 @@ async def main():
                     print("     Launching new browser instance...")
                     if browser: await browser.close() # Ensure old instance is closed     
                     browser = await p.chromium.launch(
-                        headless=False,
+                        headless=True,
                         args=["--disable-dev-shm-usage", "--no-sandbox"]
                     )
 
                 # --- PHASE 0: REVIEW (Observe past actions) ---
                 print("\n   [Phase 0] Checking for past matches to review...")
                 from Helpers.DB_Helpers.review_outcomes import run_review_process
-                #await run_review_process(browser)
+                await run_review_process(browser)
 
                 # Print prediction accuracy report
                 print("   [Phase 0] Analyzing prediction accuracy across all reviewed matches...")
@@ -57,11 +57,11 @@ async def main():
 
                 # --- PHASE 1: ANALYSIS (Observe and Decide) ---
                 print("\n   [Phase 1] Starting analysis engine (Flashscore)...")
-                #await run_flashscore_analysis(browser)
+                await run_flashscore_analysis(browser)
 
                 # --- PHASE 2: BOOKING (Act) ---
                 print("\n   [Phase 2] Starting booking process (Football.com)...")
-                await run_football_com_booking(browser)
+                #await run_football_com_booking(browser)
 
                 # --- PHASE 3: SLEEP (The wait) ---
                 print("\n   --- LEO: Cycle Complete. ---")
