@@ -215,75 +215,81 @@ class BettingMarkets:
     @staticmethod
     def select_best_market(predictions: Dict[str, Dict], risk_preference: str = "medium") -> Dict[str, Any]:
         """
-        Select the best market based on confidence and logic hierarchy.
+        Select the best market with strict logical consistency between Reason and Prediction.
         """
         if not predictions:
             return {}
 
-        # 1. SPECIAL LOGIC: If Double Chance has high confidence (>0.8) and is boosted by draw logic, PICK IT.
+        # --- LOGICAL OVERRIDES ---
+        # 1. Draw Logic -> Double Chance
+        # If the Double Chance prediction itself mentions "Draw", it's a strong signal.
         dc = predictions.get("double_chance")
-        if dc and dc["confidence_score"] >= 0.85:
-             # This overrides other selections significantly
-             return {
-                 "market_key": "double_chance_priority",
-                 "market_type": dc["market_type"],
-                 "prediction": dc["market_prediction"],
-                 "confidence": dc["confidence_score"],
-                 "reason": dc["reason"]
-             }
+        if dc and ("draw" in dc.get("reason", "").lower() or "close xg" in dc.get("reason", "").lower()):
+            if dc["confidence_score"] > 0.70:
+                return {**dc, "market_key": "logical_override_draw"}
 
-        # 2. Prioritize Very High Confidence
-        very_high_conf = [m for m in predictions.values() if m["confidence_score"] >= 0.8]
-        if very_high_conf:
-             very_high_conf.sort(key=lambda x: x["confidence_score"], reverse=True)
-             
-             # Check if we have safe markets within the top confident ones
-             max_score = very_high_conf[0]["confidence_score"]
-             top_tier = [m for m in very_high_conf if m["confidence_score"] >= max_score - 0.05]
-             
-             safe_types = ["Double Chance", "Over/Under 1.5", "Team Goals", "Draw No Bet"]
-             best_safe_in_tier = next((m for m in top_tier if any(st in m["market_type"] for st in safe_types)), None)
-             
-             selected = best_safe_in_tier if best_safe_in_tier else very_high_conf[0]
-
-             return {
-                 "market_key": "best_safe" if best_safe_in_tier else "best_high_conf",
-                 "market_type": selected["market_type"],
-                 "prediction": selected["market_prediction"],
-                 "confidence": selected["confidence_score"],
-                 "reason": selected["reason"]
-             }
-
-        # 2. Safety First Logic (Conservative default)
-        # Prioritize Double Chance and Over 1.5 if available and > 0.65 confidence
-        safe_markets = ["double_chance", "over_1.5", "home_over_0.5", "away_over_0.5"]
-        safe_candidates = [predictions[k] for k in safe_markets if k in predictions and predictions[k]["confidence_score"] > 0.65]
+        # 2. Goals Logic -> Over / BTTS
+        # Check if any strong reason implies goals
+        goals_reason = False
+        all_reasons = " ".join([p.get("reason", "") for p in predictions.values()]).lower()
         
+        if "scores 2+" in all_reasons or "concedes 2+" in all_reasons:
+             goals_reason = True
+        
+        if goals_reason:
+            # If reasoning says goals, we MUST avoid Under and prioritize Over/BTTS if viable
+            over = predictions.get("over_under") # This is 2.5
+            btts = predictions.get("btts")
+            
+            # Check Over 2.5
+            if over and "Over" in over["market_prediction"] and over["confidence_score"] > 0.6:
+                 return {**over, "market_key": "logical_override_goals"}
+            
+            # Check BTTS Yes
+            if btts and "Yes" in btts["market_prediction"] and btts["confidence_score"] > 0.6:
+                 return {**btts, "market_key": "logical_override_goals"}
+            
+            # Fallback to Over 1.5 (Safe Goals)
+            over15 = predictions.get("over_1.5")
+            if over15 and over15["confidence_score"] > 0.7:
+                 return {**over15, "market_key": "logical_override_goals_safe"}
+
+
+        # --- STANDARD SELECTION ---
+        
+        # 1. Very High Confidence (Non-Volatile)
+        # We exclude volatile markets like Correct Score or high-risk combos unless exceptional
+        candidates = [p for p in predictions.values() if p["confidence_score"] >= 0.8]
+        if candidates:
+            candidates.sort(key=lambda x: x["confidence_score"], reverse=True)
+            # Filter out contradictory "Under" bets if logic suggests goals
+            valid_candidates = []
+            for c in candidates:
+                if goals_reason and "under" in c["market_prediction"].lower():
+                    continue # Skip Under if we expect goals
+                valid_candidates.append(c)
+            
+            if valid_candidates:
+                # Prefer safer types among the elite
+                safe_types = ["Double Chance", "Over 1.5", "Team Goals", "Draw No Bet"]
+                best_safe = next((m for m in valid_candidates if any(st in m["market_prediction"] for st in safe_types)), None)
+                return best_safe if best_safe else valid_candidates[0]
+
+        # 2. Safety First (Conservative)
+        # BTTS is NOT safety first unless very high confidence.
+        # Strict Safe List: DC, Over 1.5, DNB, Team Goals
+        safe_markets_keys = ["double_chance", "over_1.5", "draw_no_bet", "home_over_0.5", "away_over_0.5"]
+        safe_candidates = [predictions[k] for k in safe_markets_keys if k in predictions and predictions[k]["confidence_score"] > 0.65]
+        
+        # Sort by confidence
         if safe_candidates:
             safe_candidates.sort(key=lambda x: x["confidence_score"], reverse=True)
-            return {
-                 "market_key": "safe_bet",
-                 "market_type": safe_candidates[0]["market_type"],
-                 "prediction": safe_candidates[0]["market_prediction"],
-                 "confidence": safe_candidates[0]["confidence_score"],
-                 "reason": safe_candidates[0]["reason"]
-             }
+            # Consistency check again
+            for safe in safe_candidates:
+                 if goals_reason and "under" in safe["market_prediction"].lower():
+                     continue
+                 return safe
 
-        # 3. Fallback to highest confidence
-        sorted_markets = sorted(
-            predictions.values(),
-            key=lambda x: x.get("confidence_score", 0),
-            reverse=True
-        )
-        
-        if sorted_markets:
-            top = sorted_markets[0]
-            return {
-                "market_key": "fallback",
-                "market_type": top.get("market_type"),
-                "prediction": top.get("market_prediction"),
-                "confidence": top.get("confidence_score"),
-                "reason": top.get("reason")
-            }
-
-        return {}
+        # 3. Fallback
+        sorted_markets = sorted(predictions.values(), key=lambda x: x["confidence_score"], reverse=True)
+        return sorted_markets[0] if sorted_markets else {}
