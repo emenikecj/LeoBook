@@ -12,7 +12,7 @@ from typing import Tuple, Optional, cast
 from playwright.async_api import Browser, BrowserContext, Page
 
 from Helpers.Site_Helpers.site_helpers import fb_universal_popup_dismissal
-from Neo.intelligence import get_selector, fb_universal_popup_dismissal as neo_popup_dismissal
+from Neo.intelligence import get_selector, get_selector_auto, fb_universal_popup_dismissal as neo_popup_dismissal
 from Neo.selector_manager import SelectorManager
 from Helpers.constants import NAVIGATION_TIMEOUT, WAIT_FOR_LOAD_STATE_TIMEOUT
 from Helpers.utils import capture_debug_snapshot
@@ -41,7 +41,7 @@ async def load_or_create_session(browser: Browser) -> Tuple[BrowserContext, Page
  
             await asyncio.sleep(5)
             # Validate session by checking for login elements
-            login_sel = get_selector("fb_login_page", "top_right_login")
+            login_sel = await get_selector_auto(page, "fb_login_page", "top_right_login")
             if login_sel and await page.locator(login_sel).count() > 0:
                 print("  [Auth] Session expired. Performing new login...")
                 await perform_login(page)
@@ -71,58 +71,69 @@ async def load_or_create_session(browser: Browser) -> Tuple[BrowserContext, Page
 
 async def perform_login(page: Page):
     print("  [Navigation] Going to Football.com...")
-    await page.goto("https://www.football.com/ng/m/", wait_until='networkidle', timeout=NAVIGATION_TIMEOUT)
-    await asyncio.sleep(15)
-    #await fb_universal_popup_dismissal(page, context="fb_login_page")
+    # Go directly to sports/football if possible, or main mobile page
+    await page.goto("https://www.football.com/ng/m/sport/football/", wait_until='networkidle', timeout=NAVIGATION_TIMEOUT)
+    await asyncio.sleep(5)
+    
     try:
-        Login_selector = get_selector("fb_login_page", "top_right_login")
-        if Login_selector and await page.locator(Login_selector).count() > 0:
-             await page.click(Login_selector)
-             print("  [Login] Login page clicked")
-             await asyncio.sleep(5)
+        # Click Top Login Button (if visible)
+        login_selector = await get_selector_auto(page, "fb_login_page", "top_right_login")
+        if login_selector and await page.locator(login_selector).count() > 0:
+             if await page.locator(login_selector).is_visible():
+                 await page.click(login_selector)
+                 print("  [Login] Login page clicked")
+                 await asyncio.sleep(3)
         
-        mobile_selector = "input[type='tel'], input[placeholder*='Mobile']"
-        password_selector = "input[type='password']"
-        login_btn_selector = "button:has-text('Login')"
+        # Get Selectors via Auto-Heal
+        mobile_selector = await get_selector_auto(page, "fb_login_page", "center_input_mobile_number")
+        password_selector = await get_selector_auto(page, "fb_login_page", "center_input_password")
+        login_btn_selector = await get_selector_auto(page, "fb_login_page", "bottom_button_login")
 
-        # Fallbacks (Check existence before asking AI to save time)
-        if not await page.locator(mobile_selector).count() > 0:
-            mobile_selector = get_selector("fb_login_page", "center_input_mobile_number")
-            # If DB selector is empty or invalid, use auto-healing
-            if not mobile_selector or not await page.locator(mobile_selector).count() > 0:
-                from Neo.intelligence import get_selector_auto
-                mobile_selector = await get_selector_auto(page, "fb_login_page", "center_input_mobile_number")
+        # Fallbacks if Auto-Heal returns nothing valid
+        if not mobile_selector: mobile_selector = "input[type='tel'], input[placeholder*='Mobile']"
+        if not password_selector: password_selector = "input[type='password']"
+        if not login_btn_selector: login_btn_selector = "button:has-text('Login')"
 
-        if not await page.locator(password_selector).count() > 0:
-            password_selector = get_selector("fb_login_page", "center_input_password")
-            # If DB selector is empty or invalid, use auto-healing
-            if not password_selector or not await page.locator(password_selector).count() > 0:
-                from Neo.intelligence import get_selector_auto
-                password_selector = await get_selector_auto(page, "fb_login_page", "center_input_password")
+        # Input Mobile Number
+        print(f"  [Login] Filling mobile number using: {mobile_selector}")
+        try:
+             await page.wait_for_selector(mobile_selector, state="visible", timeout=30000)
+             await page.locator(mobile_selector).scroll_into_view_if_needed()
+             await page.fill(mobile_selector, PHONE)
+        except Exception as e:
+             print(f"  [Login Warning] Primary mobile selector failed: {e}. Trying fallback 'input[type=tel]'...")
+             # Fallback to generic attribute selector
+             mobile_fallback = "input[type='tel']"
+             if await page.locator(mobile_fallback).count() > 0:
+                await page.fill(mobile_fallback, PHONE)
+             else:
+                raise e # Re-raise if fallback also fails
 
-        if not await page.locator(login_btn_selector).count() > 0:
-            login_btn_selector = get_selector("fb_login_page", "bottom_button_login")
-            # If DB selector is empty or invalid, use auto-healing
-            if not login_btn_selector or not await page.locator(login_btn_selector).count() > 0:
-                from Neo.intelligence import get_selector_auto
-                login_btn_selector = await get_selector_auto(page, "fb_login_page", "bottom_button_login")
-
-        # Ensure we have valid selectors before proceeding
-        if not mobile_selector or not password_selector or not login_btn_selector:
-            raise ValueError("Could not find valid selectors for login form elements")
-
-        await page.wait_for_selector(mobile_selector, state="visible", timeout=15000)
-        await page.fill(mobile_selector, PHONE)
         await asyncio.sleep(1)
+
+        # Input Password
+        print(f"  [Login] Filling password using: {password_selector}")
+        await page.wait_for_selector(password_selector, state="visible", timeout=10000)
         await page.fill(password_selector, PASSWORD)
         await asyncio.sleep(1)
+
+        # Click Login
+        print(f"  [Login] Clicking login button using: {login_btn_selector}")
         await page.click(login_btn_selector)
-        print("  [Login] Login button clicked")
+        
         await page.wait_for_load_state('networkidle', timeout=30000)
         await asyncio.sleep(5)
         print("[Login] Football.com Login Successful.")
+        
     except Exception as e:
         print(f"[Login Error] {e}")
+        # One last ditch effort: Keyboard interactions if everything else failed
+        print("  [Login Rescue] Attempting keyboard interaction...")
+        try:
+            await page.keyboard.press("Tab")
+            await page.keyboard.press("Tab") # Navigate around hoping to hit inputs
+        except:
+            pass
         raise
 
 
@@ -131,7 +142,7 @@ async def extract_balance(page: Page) -> float:
     print("  [Money] Retrieving account balance...")
     await asyncio.sleep(2)
     try:
-        balance_sel = get_selector("fb_main_page", "navbar_balance")
+        balance_sel = await get_selector_auto(page, "fb_match_page", "navbar_balance")
         await asyncio.sleep(2)
         if balance_sel and await page.locator(balance_sel).count() > 0:
             balance_text = await page.locator(balance_sel).inner_text(timeout=WAIT_FOR_LOAD_STATE_TIMEOUT)
