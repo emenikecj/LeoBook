@@ -148,7 +148,7 @@ async def main():
                     print("     Launching new browser instance...")
                     if browser: await browser.close() # Ensure old instance is closed     
                     browser = await p.chromium.launch(
-                        headless=True,
+                        headless=False,
                         args=["--disable-dev-shm-usage", "--no-sandbox"]
                     )
 
