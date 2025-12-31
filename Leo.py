@@ -34,22 +34,30 @@ from Helpers.utils import Tee, LOG_DIR
 CYCLE_WAIT_HOURS = 6
 PLAYWRIGHT_DEFAULT_TIMEOUT = 3600000 
 
+# --- CONFIGURATION ---
+CYCLE_WAIT_HOURS = 6
 PLAYWRIGHT_DEFAULT_TIMEOUT = 3600000 
 
-def is_server_running(url="http://127.0.0.1:8080/health"):
+# Global process handle for cleanup
+server_process = None
+
+def is_server_running(base_url="http://127.0.0.1:8080"):
     """Check if the AI server is responsive."""
-    try:
-        # Some servers verify via /health, others via /v1/models
-        # We try a simple GET to root or health with short timeout
-        requests.get(url, timeout=1)
-        return True
-    except:
-        return False
+    for endpoint in ["/health", "/v1/models", "/"]:
+        try:
+            url = f"{base_url}{endpoint}"
+            requests.get(url, timeout=1)
+            return True
+        except:
+            continue
+    return False
 
 def start_ai_server():
     """Attempt to auto-start the local AI server."""
+    global server_process
+    
     if is_server_running():
-        print("    [System] AI Server is already running.")
+        print("    [System] AI Server is already running. Attaching to existing instance.")
         return
 
     print("    [System] AI Server not detected. Attempting to auto-start...")
@@ -69,7 +77,7 @@ def start_ai_server():
                 
             print(f"    [System] Launching {script.name} in new console...")
             # CREATE_NEW_CONSOLE is 0x10. Only works on Windows.
-            subprocess.Popen([str(script.absolute())], cwd=str(mind_dir.absolute()), creationflags=subprocess.CREATE_NEW_CONSOLE)
+            server_process = subprocess.Popen([str(script.absolute())], cwd=str(mind_dir.absolute()), creationflags=subprocess.CREATE_NEW_CONSOLE)
             
         else: # Linux/Mac/Codespaces
             script = mind_dir / "run_split_model.sh"
@@ -82,7 +90,7 @@ def start_ai_server():
             # Make sure it's executable
             os.chmod(script, 0o755)
             # Run in background (nohup equivalent via Popen)
-            subprocess.Popen(["bash", str(script.absolute())], cwd=str(mind_dir.absolute()))
+            server_process = subprocess.Popen(["bash", str(script.absolute())], cwd=str(mind_dir.absolute()))
 
         # Wait for initialization
         print("    [System] Waiting for server to initialize (max 60s)...")
@@ -96,6 +104,26 @@ def start_ai_server():
         
     except Exception as e:
         print(f"    [Error] Failed to start AI server: {e}")
+
+def shutdown_server():
+    """Cleanly shut down the AI server if we started it."""
+    global server_process
+    if server_process:
+        print("\n    [System] Shutting down AI Server...")
+        try:
+            if os.name == 'nt':
+                # Force kill the process tree on Windows to close the separate console window
+                subprocess.run(["taskkill", "/F", "/T", "/PID", str(server_process.pid)], capture_output=True)
+            else:
+                server_process.terminate()
+                server_process.wait(timeout=5)
+        except Exception as e:
+            print(f"    [System] Error shutting down server: {e}")
+            try:
+                server_process.kill()
+            except:
+                pass
+        server_process = None
 
 async def main():
     """
@@ -120,7 +148,7 @@ async def main():
                     print("     Launching new browser instance...")
                     if browser: await browser.close() # Ensure old instance is closed     
                     browser = await p.chromium.launch(
-                        headless=False,
+                        headless=True,
                         args=["--disable-dev-shm-usage", "--no-sandbox"]
                     )
 
@@ -179,6 +207,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n   --- LEO: Shutting down gracefully. ---")
     finally:
+        shutdown_server()
         sys.stdout = original_stdout
         sys.stderr = original_stderr
         log_file.close()
