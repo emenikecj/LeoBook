@@ -409,9 +409,10 @@ async def run_flashscore_analysis(playwright: Playwright):
                     found_index = [i for i, match in enumerate(valid_matches) if match.get('id') == last_id][0]
                     print(f"    [Resume] Match found at index {found_index}. Skipping {found_index + 1} previously processed matches.")
                     valid_matches = valid_matches[found_index + 1:]
-                     print(f"    [Resume] Last processed ID {last_id} not found in current scan. Proceeding with all {len(valid_matches)} valid matches found (already time-filtered).")
-                     # We do not slice here because valid_matches is already filtered by time (> now) for today.
-                     # If we lost the ID (e.g. because of time gap), we simply pick up everything that is currently valid.
+                except IndexError:
+                    print(f"    [Resume] Last processed ID {last_id} not found in current scan. Proceeding with all {len(valid_matches)} valid matches found (already time-filtered).")
+                    # We do not slice here because valid_matches is already filtered by time (> now) for today.
+                    # If we lost the ID (e.g. because of time gap), we simply pick up everything that is currently valid.
                      
 
             # --- Batch Processing ---
