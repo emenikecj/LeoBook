@@ -87,8 +87,8 @@ def start_ai_server():
             server_process = subprocess.Popen(["bash", str(script.absolute())], cwd=str(mind_dir.absolute()))
 
         # Wait for initialization
-        print("    [System] Waiting for server to initialize (max 60s)...")
-        for i in range(60):
+        print("    [System] Waiting for server to initialize (max 120s)...")
+        for i in range(120):
             if is_server_running():
                 print("    [System] AI Server is ONLINE.")
                 return
