@@ -259,13 +259,13 @@ async def match_predictions_with_site(day_predictions: List[Dict], site_matches:
             mapping[pred_id] = site_url
             used_site_urls.add(site_url)
             time_str = pred_utc_dt.strftime('%Y-%m-%d %H:%M') if pred_utc_dt else 'N/A'
-            print(f"  ✓ Matched prediction {pred_id} ({pred_home} vs {pred_away} @ {time_str}) "
-                  f"→ {top['match'].get('home')} vs {top['match'].get('away')} (score {top['total_score']:.3f})")
+            print(f"  [OK] Matched prediction {pred_id} ({pred_home} vs {pred_away} @ {time_str}) "
+                  f"-> {top['match'].get('home')} vs {top['match'].get('away')} (score {top['total_score']:.3f})")
         else:
             if top['total_score'] > 0.5: # Only print if there was a somewhat reasonable candidate
-                print(f"  ✗ No reliable match found for prediction {pred_id} ({pred_home} vs {pred_away}). Top candidate score {top['total_score']:.3f} was rejected or too low.")
+                print(f"  [X] No reliable match found for prediction {pred_id} ({pred_home} vs {pred_away}). Top candidate score {top['total_score']:.3f} was rejected or too low.")
             else:
-                print(f"  ✗ No reliable match found for prediction {pred_id} ({pred_home} vs {pred_away}). All candidates too low.")
+                print(f"  [X] No reliable match found for prediction {pred_id} ({pred_home} vs {pred_away}). All candidates too low.")
 
 
     print(f"  [Matcher] Matching complete: {len(mapping)}/{len(day_predictions)} predictions matched.")

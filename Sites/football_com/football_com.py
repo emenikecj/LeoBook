@@ -83,7 +83,7 @@ async def run_football_com_booking(playwright: Playwright):
     try:
         context = await playwright.chromium.launch_persistent_context(
             user_data_dir=str(user_data_dir),
-            headless=True,
+            headless=False,
             args=[
                 "--disable-dev-shm-usage", 
                 "--no-sandbox", 

@@ -129,6 +129,15 @@ async def process_match_task(match_data: dict, browser: Browser):
         else:
             print(f"      [Warning] H2H tab inaccessible for {match_label}")
 
+        # --- Data Quality Validation ---
+        home_form_count = len(h2h_data.get("home_last_10_matches", []))
+        away_form_count = len(h2h_data.get("away_last_10_matches", []))
+        
+        # Require at least 3 matches of history for BOTH teams to consider prediction valid
+        if home_form_count < 3 or away_form_count < 3:
+            print(f"      [Data Quality] Skipped {match_label}: Insufficient form data (Home: {home_form_count}, Away: {away_form_count})")
+            return False
+
         # --- Standings Tab ---
         standings_tab_selector = SelectorManager.get_selector("match_page", "standings_tab")
         standings_data = []
