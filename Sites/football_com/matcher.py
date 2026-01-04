@@ -162,7 +162,11 @@ async def match_predictions_with_site(day_predictions: List[Dict], site_matches:
     # Remove matches with empty or suspiciously short names (e.g. " vs ")
     valid_site_matches = []
     for m in site_matches:
-        h, a = m.get('home', '').strip(), m.get('away', '').strip()
+            # Handle both DB format (home_team/away_team) and matcher format (home/away)
+            h = m.get('home', '') or m.get('home_team', '')
+            a = m.get('away', '') or m.get('away_team', '')
+            h = h.strip() if h else ''
+            a = a.strip() if a else ''
         if len(h) < 2 or len(a) < 2:
             continue
         valid_site_matches.append(m)
@@ -195,7 +199,11 @@ async def match_predictions_with_site(day_predictions: List[Dict], site_matches:
                 continue
 
             site_region_league = site_match.get('league', '').strip()
-            site_home = site_match.get('home', '').strip()
+            # Handle both DB format (home_team/away_team) and matcher format (home/away)
+            site_home = site_match.get('home', '') or site_match.get('home_team', '')
+            site_away = site_match.get('away', '') or site_match.get('away_team', '')
+            site_home = site_home.strip()
+            site_away = site_away.strip()
             site_away = site_match.get('away', '').strip()
             site_date = site_match.get('date', '').strip()
             site_time = site_match.get('time', '').strip()
