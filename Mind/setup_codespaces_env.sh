@@ -18,10 +18,10 @@ fi
 echo "Fetching latest llama.cpp release info..."
 if ! LATEST_TAG=$(curl -s --connect-timeout 10 https://api.github.com/repos/ggerganov/llama.cpp/releases/latest | grep '"tag_name"' | head -1 | cut -d '"' -f 4); then
     echo "Warning: Could not fetch latest release from GitHub API. Falling back to known working version."
-    LATEST_TAG="b4458"
+    LATEST_TAG="b4485"
 elif [ -z "$LATEST_TAG" ]; then
     echo "Warning: Empty release tag received. Falling back to known working version."
-    LATEST_TAG="b4458"
+    LATEST_TAG="b4485"
 fi
 
 echo "Using llama.cpp release: $LATEST_TAG"
@@ -34,12 +34,12 @@ DOWNLOAD_URL=""
 ARCHIVE_NAME=""
 
 # Check which format exists
-if curl -s --head "https://github.com/ggerganov/llama.cpp/releases/download/$LATEST_TAG/$TAR_NAME" | head -1 | grep -q "200"; then
+if curl -sL --head "https://github.com/ggerganov/llama.cpp/releases/download/$LATEST_TAG/$TAR_NAME" | grep -q "HTTP/.* 200"; then
     DOWNLOAD_URL="https://github.com/ggerganov/llama.cpp/releases/download/$LATEST_TAG/$TAR_NAME"
     ARCHIVE_NAME="$TAR_NAME"
     EXTRACT_CMD="tar -xzf"
     ARCHIVE_FILE="$MIND_DIR/llama-codespaces.tar.gz"
-elif curl -s --head "https://github.com/ggerganov/llama.cpp/releases/download/$LATEST_TAG/$ZIP_NAME" | head -1 | grep -q "200"; then
+elif curl -sL --head "https://github.com/ggerganov/llama.cpp/releases/download/$LATEST_TAG/$ZIP_NAME" | grep -q "HTTP/.* 200"; then
     DOWNLOAD_URL="https://github.com/ggerganov/llama.cpp/releases/download/$LATEST_TAG/$ZIP_NAME"
     ARCHIVE_NAME="$ZIP_NAME"
     EXTRACT_CMD="unzip -o"
