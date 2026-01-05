@@ -104,13 +104,13 @@ def start_ai_server():
 
     # Auto-setup if needed
     if setup_needed and setup_script.exists():
-        print(f"    [System] Running auto-setup: {setup_script}")
+        print(f"    [System] Running auto-setup: {setup_script.name}")
         try:
             if os.name == 'nt':
-                subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", str(setup_script)], cwd=str(mind_dir), check=True)
+                subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", setup_script.name], cwd=str(mind_dir), check=True)
             else:
                 os.chmod(setup_script, 0o755)
-                subprocess.run([str(setup_script)], cwd=str(mind_dir), check=True)
+                subprocess.run([setup_script.name], cwd=str(mind_dir), check=True)
             print("    [System] Auto-setup completed successfully.")
         except Exception as e:
             print(f"    [Error] Auto-setup failed: {e}")
