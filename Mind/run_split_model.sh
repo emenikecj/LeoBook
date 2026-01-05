@@ -27,4 +27,4 @@ chmod +x "$DIR/llama-server"
 
 # Run the server (including local dir in library path for .so files)
 export LD_LIBRARY_PATH="$DIR:$LD_LIBRARY_PATH"
-"$DIR/llama-server" -m "$DIR/model.gguf" --mmproj "$DIR/mmproj.gguf" --host 127.0.0.1 --port 8080 -c 1000000 --n-gpu-layers 99
+"$DIR/llama-server" -m "$DIR/model.gguf" --mmproj "$DIR/mmproj.gguf" --host 127.0.0.1 --port 8080 -c 16384 > "$DIR/server.log" 2>&1 &

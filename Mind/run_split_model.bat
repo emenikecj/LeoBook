@@ -20,6 +20,6 @@ echo Vision: mmproj.gguf
 echo URL: http://localhost:8080
 echo.
 
-"%~dp0llama-server.exe" -m "%~dp0model.gguf" --mmproj "%~dp0mmproj.gguf" --host 127.0.0.1 --port 8080 -c 1000000 --n-gpu-layers 0
+"%~dp0llama-server.exe" -m "%~dp0model.gguf" --mmproj "%~dp0mmproj.gguf" --host 127.0.0.1 --port 8080 -c 32768 --n-gpu-layers 0 --no-warmup
 
 pause

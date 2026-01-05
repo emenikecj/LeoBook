@@ -4,12 +4,75 @@ Analyzes prediction accuracy and generates reports for the LeoBook system.
 """
 
 import csv
+import re
 import os
 from datetime import datetime
 from typing import Dict, List, Tuple
 from pathlib import Path
 
 from Helpers.DB_Helpers.db_helpers import PREDICTIONS_CSV
+
+
+def get_market_option(prediction: str, home_team: str, away_team: str) -> str:
+    """
+    Normalize prediction string into a generic market option.
+    """
+    pred_lower = prediction.lower()
+    home_lower = home_team.lower()
+    away_lower = away_team.lower()
+
+    if pred_lower == 'home win' or pred_lower == home_lower: # Direct team name often means win
+        return "Home Win"
+    if pred_lower == f"{home_lower} to win":
+        return "Home Win"
+        
+    if pred_lower == 'away win' or pred_lower == away_lower:
+        return "Away Win"
+    if pred_lower == f"{away_lower} to win":
+        return "Away Win"
+
+    if 'or draw' in pred_lower:
+        if home_lower in pred_lower:
+            return "Home or Draw"
+        if away_lower in pred_lower:
+            return "Away or Draw"
+        
+    if 'or' in pred_lower and home_lower in pred_lower and away_lower in pred_lower:
+         return "Home or Away"
+
+    if 'btts' in pred_lower or 'both teams to score' in pred_lower:
+        if 'no' in pred_lower:
+            return "BTTS No"
+        return "BTTS Yes"
+    
+    if 'over' in pred_lower and '2.5' in pred_lower:
+        return "Over 2.5"
+    if 'under' in pred_lower and '2.5' in pred_lower:
+        return "Under 2.5"
+        
+    if '2-3 goals' in pred_lower:
+        return "2-3 Goals"
+
+    # Match Over/Under (Starts with Over/Under)
+    # e.g. "Over 2.5", "Under 3.5 Goals"
+    if re.match(r'^(over|under)\s+\d+(\.\d+)?', pred_lower):
+        match = re.search(r'(over|under)\s+(\d+(\.\d+)?)', pred_lower)
+        if match:
+            type_ = match.group(1).title()
+            val = match.group(2)
+            return f"{type_} {val}"
+
+    # Team Over/Under (Ends with or contains " Over/Under value" but didn't start with it)
+    # e.g. "Atletico-Mg U20 Over 0.5", "Team Over 1.5"
+    if re.search(r'\s+(over|under)\s+\d+(\.\d+)?', pred_lower):
+        match = re.search(r'\s+(over|under)\s+(\d+(\.\d+)?)', pred_lower)
+        if match:
+            type_ = match.group(1).title()
+            val = match.group(2)
+            return f"Team {type_} {val}"
+
+    # Return the specific prediction name if no category matched
+    return prediction.title()
 
 
 def calculate_accuracy_by_date(predictions: List[Dict]) -> Dict[str, Dict]:
@@ -23,7 +86,9 @@ def calculate_accuracy_by_date(predictions: List[Dict]) -> Dict[str, Dict]:
                 "total_predictions": int,
                 "correct_predictions": int,
                 "accuracy_percentage": float,
-                "formatted_date": str
+                "formatted_date": str,
+                "confidence_stats": Dict[str, Dict], # { 'Very High': {'total': x, 'correct': y, 'acc': z} }
+                "market_stats": Dict[str, Dict]      # { 'Home Win': {'total': x, 'correct': y, 'acc': z} }
             }
         }
     """
@@ -33,17 +98,53 @@ def calculate_accuracy_by_date(predictions: List[Dict]) -> Dict[str, Dict]:
         outcome = pred.get('outcome_correct')
         if outcome in ['True', 'False']:
             date = pred.get('date', 'Unknown')
+            confidence = pred.get('confidence', 'Low').strip() # Default to Low if missing
+            
+            # Normalize confidence
+            if confidence.lower() in ['very high', 'very_high']:
+                confidence = 'Very High'
+            elif confidence.lower() in ['high']:
+                confidence = 'High'
+            else:
+                confidence = 'Low'
+
+            # Get generic market option
+            home_team = pred.get('home_team', '')
+            away_team = pred.get('away_team', '')
+            prediction_text = pred.get('prediction', '')
+            market_option = get_market_option(prediction_text, home_team, away_team)
+
             if date not in accuracy_by_date:
                 accuracy_by_date[date] = {
                     'total_predictions': 0,
                     'correct_predictions': 0,
                     'accuracy_percentage': 0.0,
-                    'formatted_date': format_date_for_display(date)
+                    'formatted_date': format_date_for_display(date),
+                    'confidence_stats': {
+                        'Very High': {'total': 0, 'correct': 0, 'acc': 0.0},
+                        'High': {'total': 0, 'correct': 0, 'acc': 0.0},
+                        'Low': {'total': 0, 'correct': 0, 'acc': 0.0}
+                    },
+                    'market_stats': {} 
                 }
 
+            # Update Daily Totals
             accuracy_by_date[date]['total_predictions'] += 1
             if outcome == 'True':
                 accuracy_by_date[date]['correct_predictions'] += 1
+
+            # Update Confidence Stats
+            accuracy_by_date[date]['confidence_stats'][confidence]['total'] += 1
+            if outcome == 'True':
+                accuracy_by_date[date]['confidence_stats'][confidence]['correct'] += 1
+            
+            # Update Market Stats
+            if market_option not in accuracy_by_date[date]['market_stats']:
+                accuracy_by_date[date]['market_stats'][market_option] = {'total': 0, 'correct': 0, 'acc': 0.0}
+            
+            accuracy_by_date[date]['market_stats'][market_option]['total'] += 1
+            if outcome == 'True':
+                accuracy_by_date[date]['market_stats'][market_option]['correct'] += 1
 
     # Calculate percentages
     for date, data in accuracy_by_date.items():
@@ -51,6 +152,16 @@ def calculate_accuracy_by_date(predictions: List[Dict]) -> Dict[str, Dict]:
             data['accuracy_percentage'] = round(
                 (data['correct_predictions'] / data['total_predictions']) * 100, 1
             )
+        
+        # Calculate Confidence Percentages
+        for conf, c_data in data['confidence_stats'].items():
+             if c_data['total'] > 0:
+                 c_data['acc'] = round((c_data['correct'] / c_data['total']) * 100, 1)
+
+        # Calculate Market Percentages
+        for mkt, m_data in data['market_stats'].items():
+            if m_data['total'] > 0:
+                m_data['acc'] = round((m_data['correct'] / m_data['total']) * 100, 1)
 
     return accuracy_by_date
 
@@ -248,6 +359,30 @@ def print_accuracy_report():
         data = accuracy_by_date[date]
         if data['total_predictions'] > 0:
             print(f"  {data['formatted_date']}: {data['accuracy_percentage']}% Accurate - {data['total_predictions']} Predictions")
+            
+            # Print Daily Confidence Breakdown
+            c_stats = data['confidence_stats']
+            conf_parts = []
+            for conf in ['Very High', 'High', 'Low']:
+                if c_stats[conf]['total'] > 0:
+                     conf_parts.append(f"{conf}: {c_stats[conf]['acc']}% ({c_stats[conf]['total']})")
+            
+            if conf_parts:
+                print(f"    Confidence: {' | '.join(conf_parts)}")
+
+            # Print Top 3 Market Options
+            m_stats = data['market_stats']
+            # Sort by total count (popularity), then accuracy
+            sorted_markets = sorted(m_stats.items(), key=lambda x: (x[1]['total'], x[1]['acc']), reverse=True)
+            top_3 = sorted_markets[:3]
+            
+            if top_3:
+                market_parts = []
+                for mkt, m_data in top_3:
+                    market_parts.append(f"{mkt}: {m_data['acc']}% ({m_data['total']})")
+                print(f"    Top Markets: {' | '.join(market_parts)}")
+            
+            print("  " + "-"*30) # Separator for readability
 
     # Calculate accuracy by confidence level
     accuracy_by_confidence = calculate_accuracy_by_confidence(reviewed_predictions)
