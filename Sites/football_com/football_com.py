@@ -18,7 +18,6 @@ from Helpers.constants import WAIT_FOR_LOAD_STATE_TIMEOUT
 from .navigator import load_or_create_session, navigate_to_schedule, select_target_date, extract_balance, log_page_title
 from .extractor import extract_league_matches
 from .matcher import match_predictions_with_site, filter_pending_predictions
-from .booker import finalize_accumulator, clear_bet_slip
 from .booker.booking_code import book_single_match
 from .booker.placement import place_multi_bet_from_codes
 from .booker.slip import force_clear_slip

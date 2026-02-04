@@ -13,7 +13,7 @@ from Neo.selector_manager import SelectorManager
 from Neo.intelligence import fb_universal_popup_dismissal as neo_popup_dismissal
 from .ui import robust_click, wait_for_condition
 from .mapping import find_market_and_outcome
-from .slip import get_bet_slip_count, clear_bet_slip
+from .slip import get_bet_slip_count, force_clear_slip
 
 async def ensure_bet_insights_collapsed(page: Page):
     """Ensure the bet insights widget is collapsed."""
