@@ -227,7 +227,7 @@ async def main():
                 # --- PHASE 0: REVIEW (Observe past actions) ---
                 log_state(phase="Phase 0", action="Reviewing Outcomes", next_step="Accuracy Report")
                 from Helpers.DB_Helpers.review_outcomes import run_review_process
-                await run_review_process(p)
+                #await run_review_process(p)
 
                 # Print prediction accuracy report
                 log_state(phase="Phase 0", action="Generating Accuracy Report", next_step="Phase 1: Analysis")
