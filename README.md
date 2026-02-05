@@ -1,6 +1,6 @@
 # Leo
 **Manufacturer**: Emenike Chinenye James  
-**Powered by**: Grok 4, Qwen3-VL & Custom Llama Server
+**Powered by**: Grok 4 & Gemini 2.5 Flash
 
 """
 Leo v3.2: Elite Autonomous Betting Agent (Manufacturer: Emenike Chinenye James)
@@ -10,7 +10,7 @@ A comprehensive AI-powered system that observes, analyzes, predicts, and execute
 The prime objective of this Agent is to handle all sports analysis and betting accurately, enabling passive income from sports betting without constant manual interaction.
 
 OVERVIEW:
-Leo combines advanced data analysis, machine learning, and automated execution. The system features a hybrid AI architecture using local Qwen3-VL for routine vision tasks and xAI's Grok 4 for high-precision selector discovery and complex UI mapping.
+Leo combines advanced data analysis, machine learning, and automated execution. The system features a hybrid AI architecture using xAI's Grok 4 and Google's Gemini for high-precision selector discovery, multimodal analysis, and complex UI mapping.
 
 LATEST UPDATES (v3.2.0):
 - **Unified Execution Workflow**: Single-pass "Search & Place" strategy for maximum reliability and speed.
