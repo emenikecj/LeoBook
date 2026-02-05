@@ -1,7 +1,9 @@
 flowchart TD
     %% Global Entry Point
-    START["<b>START: Leo.py</b><br/>Main Orchestrator Loop"] --> INIT["<b>Initialization</b><br/>System.lifecycle.setup<br/>Data.Access.db_helpers.init_csvs"]
-    
+    START["<b>START: Leo.py</b><br/>Main Orchestrator Loop"] --> LOCK{"Singleton Lock Check<br/>(leo.lock)"}
+    LOCK -->|Fail| EXIT["Exit System"]
+    LOCK -->|Pass| INIT["<b>Initialization</b><br/>System.lifecycle.setup<br/>Data.Access.db_helpers.init_csvs"]
+
     %% Phase 0: Review
     INIT --> PHASE0["<b>PHASE 0: REVIEW</b><br/>Process Past Results"]
     subgraph Review_Process [Phase 0 Detail]
@@ -61,7 +63,7 @@ flowchart TD
     PHASE2["<b>PHASE 2: BOOKING</b><br/>Football.com Execution"]
     subgraph Booking_Process [Phase 2 Detail]
         PHASE2 --> FB_START["Init Phase 2 Orchestration<br/>Modules.FootballCom.fb_manager"]
-        FB_START --> FB_LOAD_PRED["Load 'pending' predictions<br/>(Group by Date)"]
+        FB_START --> FB_LOAD_PRED["Load 'pending' & 'failed_harvest' predictions<br/>(Group by Date)"]
         
         FB_LOAD_PRED --> FB_LOGIN["<b>Session Validation</b><br/>Modules.FootballCom.navigator<br/>(Facebook Auth / Cookie Reuse)"]
         FB_LOGIN --> FB_BAL["Extract Balance<br/>(Store in global state)"]
@@ -78,15 +80,13 @@ flowchart TD
             FB_TIME -->|Yes| FB_SEARCH_M["<b>Market Search</b><br/>Search Market/Outcome<br/>(Dynamic Selectors)"]
             
             FB_SEARCH_M --> FB_CLICK["Select Outcome (Click)"]
-            FB_CLICK --> FB_CHECK_SLIP{"Slip Full?<br/>(>=50 bets)"}
-            
-            FB_CHECK_SLIP -->|Yes| FB_FINALIZE["<b>Finalize Accumulator</b><br/>Enter Stake -> Place Bet<br/>Extract Code"]
-            FB_CHECK_SLIP -->|No| FB_H_LOOP
-            
-            FB_FINALIZE --> FB_H_LOOP
+            FB_CLICK --> FB_BOOK["<b>Book Single</b><br/>Open modal → Extract Code → Save"]
+            FB_BOOK --> FB_CLEAR["Force Clear Slip"]
+            FB_CLEAR --> FB_H_LOOP
         end
         
-        Harvest_Sub --> FB_LOG["Update Audit Log"]
+        Harvest_Sub --> FB_EXECUTE["<b>Phase 2b: Execute Multi</b><br/>Load harvested codes → Inject → Place"]
+        FB_EXECUTE --> FB_LOG["Update Audit Log"]
     end
     Booking_Process --> PHASE3
 
@@ -103,10 +103,13 @@ flowchart TD
         
         subgraph AIRotation ["AI Rotation Layer"]
             P2A_BATCH --> P2A_GROK["Grok/Gemini/OpenRouter"]
-            P2A_GROK -- Success --> P2A_UPDATE_ST["update_site_match_status"]
+            P2A_GROK -- Success --> P2A_UPDATE_ST["update_site_match_status<br/>(pending)"]
+            P2A_GROK -- "No Match Found" --> P2A_NO_MATCH["Update Prediction Status:<br/>no_site_match"]
             P2A_UPDATE_ST --> P2A_URL
+            P2A_NO_MATCH --> P2A_URL
         end
     end
+
     %% Phase 3: Completion
     PHASE3["<b>PHASE 3: COMPLETION</b>"]
     subgraph Completion_Process [Phase 3 Detail]
@@ -136,11 +139,12 @@ flowchart TD
         V_ANALYZER --> AI_DISC["AI Discovery Prompt<br/>(Grok / Gemini)"]
         AI_DISC --> DB_UPSERT["Update knowledge.json<br/>(UPSERT logic)"]
         
-        P_HANDLER["<b>Popup Handler</b><br/>Continuous Overlay Monitoring<br/>(Phase 2 Guided Tour dismissal)"]
-        RECOVERY["<b>Visual Recovery</b><br/>Escape stuck states<br/>(Core.Intelligence.recovery)"]
+        P_HANDLER["<b>Popup Handler</b><br/>Pre-emptive Dismissal & Continuous Monitoring<br/>(Phase 2 Guided Tour dismissal)"]
+        RECOVERY["<b>Visual Recovery</b><br/>Mandatory Scroll-Before-Click & Forced Actions<br/>(Core.Intelligence.recovery)"]
     end
     
     %% Connections to Intelligence
     WEB_SCRAPE -.-> S_MANAGER
     FB_SEARCH_M -.-> S_MANAGER
     FB_NAV_U -.-> P_HANDLER
+    ALL_PHASES[All Browser Phases] -.-> RECOVERY

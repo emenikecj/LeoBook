@@ -57,12 +57,13 @@ class UnifiedBatchMatcher:
                 try:
                     # print(f"    [AI Chunk] {model_name} Attempt {attempt}...")
                     result = await call_func(prompt)
-                    if result:
+                    if result is not None:
+                        # Allow {} as a valid result
                         parsed = self._parse_response(result)
-                        if parsed:
+                        if isinstance(parsed, dict):
                             return parsed
                         else:
-                            print(f"    [AI Error] {model_name} returned unparseable JSON. Raw start: {result[:50]}...")
+                            print(f"    [AI Error] {model_name} returned unparseable content. Raw start: {result[:50]}...")
                     else:
                         print(f"    [AI Error] {model_name} returned None (API Error).")
                 except Exception as e:
@@ -208,14 +209,29 @@ Response:"""
                  print(f"    [OpenRouter Exception] {e}")
                  return None
 
-    def _parse_response(self, text: str) -> Dict[str, str]:
+    def _parse_response(self, text: str) -> Optional[Dict[str, str]]:
+        """Extracts JSON from response, handling markdown blocks and extra text."""
         try:
-            # Clean possible markdown code blocks
+            # 1. Try direct parse
+            text = text.strip()
+            if text.startswith("{") and text.endswith("}"):
+                return json.loads(text)
+            
+            # 2. Extract from markdown code blocks
             if "```json" in text:
                 text = text.split("```json")[1].split("```")[0]
             elif "```" in text:
                 text = text.split("```")[1].split("```")[0]
+            
+            # 3. Last ditch search for first '{' and last '}'
+            start = text.find('{')
+            end = text.rfind('}')
+            if start != -1 and end != -1:
+                text = text[start:end+1]
+                
             return json.loads(text.strip())
         except Exception as e:
-            print(f"  [AI Matcher Parse Error] {e} | Content Snippet: {text[:100]}...")
-            return {}
+            # Only print error if it's truly broken. 
+            if '{' in text:
+                print(f"  [AI Matcher Parse Error] {e} | Content Snippet: {text[:100]}...")
+            return None

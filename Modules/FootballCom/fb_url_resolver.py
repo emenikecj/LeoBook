@@ -45,7 +45,8 @@ async def resolve_urls(page: Page, target_date: str, day_preds: list) -> dict:
                 matched_urls[fid] = url
                 site_match = next((m for m in cached_site_matches if m.get('url') == url), None)
                 if site_match:
-                    update_site_match_status(site_match['site_match_id'], 'pending', fixture_id=fid)
+                    fs_fixture_name = f"{pred.get('home_team')} vs {pred.get('away_team')}"
+                    update_site_match_status(site_match['site_match_id'], 'pending', fixture_id=fid, matched=fs_fixture_name)
             else:
                 still_unmatched.append(pred)
         unmatched_predictions = still_unmatched
@@ -65,6 +66,19 @@ async def resolve_urls(page: Page, target_date: str, day_preds: list) -> dict:
                     matched_urls[fid] = url
                     site_match = next((m for m in new_cached_matches if m.get('url') == url), None)
                     if site_match:
-                        update_site_match_status(site_match['site_match_id'], 'pending', fixture_id=fid)
+                        # Find the prediction for this fixture_id to get its FS name
+                        pred = next((p for p in unmatched_predictions if str(p.get('fixture_id')) == fid), {})
+                        fs_fixture_name = f"{pred.get('home_team')} vs {pred.get('away_team')}"
+                        update_site_match_status(site_match['site_match_id'], 'pending', fixture_id=fid, matched=fs_fixture_name)
 
     return matched_urls
+
+async def get_harvested_matches_for_date(target_date: str) -> list:
+    """
+    Retrieves matches for the date that have valid booking codes (harvested in Phase 2a).
+    Used for Phase 2b multi-bet placement.
+    """
+    site_matches = load_site_matches(target_date)
+    harvested = [m for m in site_matches if m.get('booking_code') and m.get('booking_code') != 'N/A']
+    print(f"  [Registry] Found {len(harvested)} harvested codes for {target_date}.")
+    return harvested

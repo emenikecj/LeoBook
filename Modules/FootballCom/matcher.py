@@ -39,7 +39,9 @@ async def filter_pending_predictions() -> List[Dict]:
     if csv_path.exists():
         with open(csv_path, 'r', newline='', encoding='utf-8') as f:
             reader = csv.DictReader(f)
-            pending_predictions = [row for row in reader if row.get('status') == 'pending']
+            # v2.8: Pick 'pending' and 'failed_harvest' (to allow retries).
+            # Statuses like 'no_site_match', 'added_to_slip', 'booked' are skipped.
+            pending_predictions = [row for row in reader if row.get('status') in ['pending', 'failed_harvest']]
     print(f"  [Matcher] Found {len(pending_predictions)} pending predictions.")
     return pending_predictions
 
@@ -186,17 +188,21 @@ async def match_predictions_with_site(day_predictions: List[Dict], site_matches:
         if new_mapping:
             mapping.update(new_mapping)
         
+        # PERSISTENCE: Identify predictions that AI could NOT match
+        # We only do this if we actually had site candidates.
+        if site_matches:
+            for pred in unmatched_predictions:
+                fid = str(pred.get('fixture_id'))
+                if fid not in new_mapping:
+                    # Mark as 'no_site_match' so we don't bother AI again for this date
+                    print(f"    [Matcher] Fixture {fid} ({pred.get('home_team')} vs {pred.get('away_team')}) -> no_site_match")
+                    update_prediction_status(fid, target_date, 'no_site_match')
+        
         # Verify and log results
         matched_count = len(mapping)
         print(f"  [Matcher] Batch matching complete: {matched_count}/{len(day_predictions)} matches resolved.")
         
-        # Log individual matches for visibility (Commented out for cleaner logs)
-        # for fid, url in mapping.items():
-        #     pred = next((p for p in day_predictions if str(p.get('fixture_id')) == fid), None)
-        #     if pred:
-        #         print(f"    [OK] AI Matched: {pred.get('home_team')} vs {pred.get('away_team')} -> {url}")
-
         return mapping
     except Exception as e:
         print(f"  [Matcher Error] Unified batch matching failed: {e}")
-        return {}
+        return mapping # Return partial results if we had cache hits

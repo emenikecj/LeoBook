@@ -12,13 +12,10 @@ The prime objective of this Agent is to handle all sports analysis and betting a
 OVERVIEW:
 Leo combines advanced data analysis, machine learning, and automated execution. The system features a hybrid AI architecture using xAI's Grok 4 and Google's Gemini for high-precision selector discovery, multimodal analysis, and complex UI mapping.
 
-LATEST UPDATES (v3.2.0):
-- **Unified Execution Workflow**: Single-pass "Search & Place" strategy for maximum reliability and speed.
-- **Fractional Kelly Staking**: Precise risk-aware staking (0.25 * Kelly) clamped for bankroll safety.
-- **Centralized Audit Logging**: All financial movements and cycle statuses are logged to `DB/audit_log.csv`.
-- **Live Telegram Integration**: Semi-automated withdrawal flow and interactive monitoring.
-    - Commands: `/balance`, `/status`, `/summary`, `/help`.
-    - Approval: Reply **YES**/**NO** to withdrawal proposals.
+- **Phase 2 Navigation Robustness**: 
+  - Implemented mandatory **Scroll-Before-Click** strategy to ensure elements are viewable before interaction.
+  - Enhanced **Overlay Dismissal** with expanded selectors for tooltips and lazy-loaded headers.
+  - Added **failed_harvest Retry Logic** to recover and re-process matched fixtures that previously failed due to UI blockers.
 - **Outcome Synchronization**: Phase 0 reviews now cross-sync results between prediction and match registries.
 
 CORE ARCHITECTURE:
@@ -53,6 +50,7 @@ SYSTEM COMPONENTS:
 - **Core/**: The Brain (Intelligence, Visual Analyzer, System primitives, Browser helpers).
 - **Data/**: Central data layer (Persistence, Access, DB helpers).
 - **Modules/**: Site-specific integrations (Flashscore, Football.com).
+- **Match Registry**: `Data/Store/fb_matches.csv` (Mapped URLs and booking codes).
 - **Scripts/**: Utility tools for reporting and DB maintenance.
 
 MAINTENANCE:

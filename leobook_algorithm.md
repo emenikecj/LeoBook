@@ -10,12 +10,14 @@ The system operates in a continuous `while True` loop inside [Leo.py](file:///c:
 
 For a high-level visual representation, see: [leobook_algorithm.mmd](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/leobook_algorithm.mmd)
 
-### **Phase 0: Initialization & Outcome Review**
+### Phase 0: Initialization & Outcome Review
 **Objective**: Observe past performance, update financial records, and adjust AI learning weights.
 
-1.  **System Initialization**:
+1.  **Singleton Protection**: [Leo.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Leo.py) uses a `leo.lock` file to prevent multiple instances from running simultaneously. This protects the Telegram Bot communication from `getUpdates` conflicts and ensures data integrity.
+2.  **System Initialization**:
     - [Leo.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Leo.py): `main()` calls `init_csvs()`.
     - [db_helpers.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Data/Access/db_helpers.py): `init_csvs()` ensures all storage files and headers exist.
+    - [Leo.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Leo.py): Starts the non-blocking Telegram listener task via [telegram_bridge.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Core/System/telegram_bridge.py).
     - [lifecycle.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Core/System/lifecycle.py): `setup_terminal_logging()` initializes process logs.
     - [telegram_bridge.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Core/System/telegram_bridge.py): `start_telegram_listener()` launches the interactive bot.
 
@@ -57,31 +59,37 @@ For a high-level visual representation, see: [leobook_algorithm.mmd](file:///c:/
 ---
 
 ### **Phase 2: Booking (Act)**
-**Objective**: Mirror predictions on Football.com, generate booking codes, and place bets.
+**Objective**: Harvest booking codes for single matches and then execute them as a multi-bet accumulator.
 
 1.  **Session & Preparation**:
     - [fb_manager.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Modules/FootballCom/fb_manager.py): `run_football_com_booking()` orchestrates the acting phase.
     - [fb_session.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Modules/FootballCom/fb_session.py): `launch_browser_with_retry()` initializes the anti-detect session.
     - [navigator.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Modules/FootballCom/navigator.py): `load_or_create_session()` and `extract_balance()` validate the account state.
+    - **Navigation Robustness**: Implements a mandatory **Scroll-Before-Click** strategy and pre-emptive popup dismissal before critical page transitions.
 
-2. ### **Phase 2a: Harvest (Match Discovery)**
-**Objective**: Connect prediction data to live bookmaker URLs using high-intelligence AI.
+2. ### **Phase 2a: Harvest (Code Discovery)**
+**Objective**: Connect prediction data to bookmaker URLs and extract individual booking codes.
 
 - **Orchestrator**: [fb_url_resolver.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Modules/FootballCom/fb_url_resolver.py)
 - **Logic**:
-  - **Registry Check**: Checks `football_com_matches.csv` for the target date before crawling.
+  - **Registry Check**: Checks `fb_matches.csv` for the target date before crawling.
   - **Match Matching (Direct)**: Re-uses URLs for already-mapped `fixture_id`s in the registry.
-  - **Match Matching (AI Batch)**: If unmatched predictions exist but registry is populated, runs **AI Batch Prompt** against cached matches.
-  - **Crawl Fallback**: ONLY triggers `extract_league_matches` (Expand & Harvest) if the registry for the date is empty.
-  - **Rotation Layer**: [unified_matcher.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Core/Intelligence/unified_matcher.py) (Rotates through Grok, Gemini, and OpenRouter for AI Matching).
-  - **Action**: Extracts sharing booking codes for each matched fixture via [booking_code.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Modules/FootballCom/booker/booking_code.py).
-    - [booking_code.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Modules/FootballCom/booker/booking_code.py): `place_bets_for_matches()` orchestrator:
-        - **Time Check**: Skips matches <10 mins to start using `check_match_start_time()`.
-        - **Navigation**: Visits match URL, ensures "Bet Insights" widget is collapsed.
-        - **Market Search**: Unifies search for market/outcome using dynamic selectors.
-        - **Selection**: Clicks outcome button.
-        - **Accumulation**: Adds to slip until limit, then finalizes via `finalize_accumulator()`.
-    - [slip.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Modules/FootballCom/booker/slip.py): `get_bet_slip_count()` tracks capacity.
+  - **Match Matching (AI Batch)**: Runs **AI Batch Prompt** against cached matches if registry is populated.
+  - **Retry Logic**: Predictions with `status: failed_harvest` are automatically picked up for retry.
+  - **Action**: Extracts sharing booking codes via [booking_code.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Modules/FootballCom/booker/booking_code.py).
+    - [booking_code.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Modules/FootballCom/booker/booking_code.py): `place_bets_for_matches()` (renamed/repurposed to `harvest_booking_codes()`):
+        - **Navigation**: Visits match URL, scrolls to outcome.
+        - **Extraction**: Clicks outcome -> Opens slip -> Extracts code -> Saves to `fb_matches.csv`.
+        - **Clearing**: Calls `force_clear_slip()` after *each* extraction to keep the UI clean.
+
+3. ### **Phase 2b: Execution (Multi-Bet Placement)**
+**Objective**: Inject all harvested codes and place a single combined accumulator bet.
+- **Action**: [placement.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Modules/FootballCom/booker/placement.py): `place_multi_bet_from_codes()`:
+    - **Injection**: Loops through harvested codes for the date and injects them via the bookmaker's "m-m" URL.
+    - **Verification**: Confirms slip count matches.
+    - **Staking**: Calculates **Fractional Kelly Stake** based on total balance.
+    - **Placement**: Place & Confirm.
+    - **Logging**: Updates `predictions.csv` to `status: booked`.
 
 ---
 

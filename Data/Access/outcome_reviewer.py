@@ -35,7 +35,7 @@ VERSION = "2.6.0"
 COMPATIBLE_MODELS = ["2.5", "2.6"]  # Compatible with these model versions
 
 # --- IMPORTS ---
-from .db_helpers import PREDICTIONS_CSV, SCHEDULES_CSV, save_schedule_entry, REGION_LEAGUE_CSV, FOOTBALL_COM_MATCHES_CSV, files_and_headers
+from .db_helpers import PREDICTIONS_CSV, SCHEDULES_CSV, save_schedule_entry, REGION_LEAGUE_CSV, FB_MATCHES_CSV, files_and_headers
 from .csv_operations import upsert_entry, _read_csv, _write_csv
 from Core.Intelligence.intelligence import get_selector_auto, get_selector
 
@@ -184,8 +184,8 @@ def save_single_outcome(match_data: Dict, new_status: str):
 
 
 def _sync_outcome_to_site_registry(fixture_id: str, match_data: Dict):
-    """v2.7 Sync: Updates football_com_matches.csv when a prediction is reviewed."""
-    if not os.path.exists(FOOTBALL_COM_MATCHES_CSV):
+    """v2.7 Sync: Updates fb_matches.csv when a prediction is reviewed."""
+    if not os.path.exists(FB_MATCHES_CSV):
         return
 
     try:
@@ -201,7 +201,7 @@ def _sync_outcome_to_site_registry(fixture_id: str, match_data: Dict):
         outcome_status = "WON" if is_correct else "LOST"
         
         # 2. Update site registry
-        rows = _read_csv(FOOTBALL_COM_MATCHES_CSV)
+        rows = _read_csv(FB_MATCHES_CSV)
         sync_count = 0
         for row in rows:
             if str(row.get('fixture_id')) == str(fixture_id):
@@ -209,8 +209,8 @@ def _sync_outcome_to_site_registry(fixture_id: str, match_data: Dict):
                 sync_count += 1
         
         if sync_count > 0:
-            _write_csv(FOOTBALL_COM_MATCHES_CSV, rows, files_and_headers[FOOTBALL_COM_MATCHES_CSV])
-            print(f"    [Sync] Updated {sync_count} records in football_com_matches.csv to {outcome_status}")
+            _write_csv(FB_MATCHES_CSV, rows, files_and_headers[FB_MATCHES_CSV])
+            print(f"    [Sync] Updated {sync_count} records in fb_matches.csv to {outcome_status}")
             
     except Exception as e:
         print(f"    [Sync Error] Failed to sync outcome: {e}")

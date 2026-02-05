@@ -238,7 +238,8 @@ async def place_multi_bet_from_codes(page: Page, harvested_matches: List[Dict], 
         slip_trigger = SelectorManager.get_selector_strict("fb_match_page", "slip_trigger_button")
         btn = page.locator(slip_trigger).first
         if await btn.count() > 0:
-            await btn.click()
+            await btn.scroll_into_view_if_needed()
+            await btn.click(force=True)
             # Wait for slip container
             slip_sel = SelectorManager.get_selector_strict("fb_match_page", "slip_drawer_container")
             await page.wait_for_selector(slip_sel, state="visible", timeout=15000)
@@ -248,13 +249,20 @@ async def place_multi_bet_from_codes(page: Page, harvested_matches: List[Dict], 
             return False
 
         amount_input = SelectorManager.get_selector_strict("fb_match_page", "betslip_stake_input")
-        await page.locator(amount_input).fill(str(final_stake))
+        if amount_input:
+            await page.locator(amount_input).first.scroll_into_view_if_needed()
+            await page.locator(amount_input).first.click(force=True)
+            await page.locator(amount_input).first.fill(str(final_stake))
+        else:
+            print("    [Execute Error] Stake input selector missing.")
+            return False
         await asyncio.sleep(1)
 
         place_btn = SelectorManager.get_selector_strict("fb_match_page", "betslip_place_bet_button")
         btn = page.locator(place_btn).first
         if await btn.count() > 0 and await btn.is_enabled():
-            await btn.click()
+            await btn.scroll_into_view_if_needed()
+            await btn.click(force=True)
             
             # --- CONFIRMATION ---
             await asyncio.sleep(2)

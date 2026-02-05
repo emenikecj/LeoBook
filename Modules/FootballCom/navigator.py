@@ -118,7 +118,8 @@ async def perform_login(page: Page):
         if login_sel:
             try:
                 if await page.locator(login_sel).count() > 0 and await page.locator(login_sel).is_visible():
-                    await page.locator(login_sel).click()
+                    await page.locator(login_sel).first.scroll_into_view_if_needed()
+                    await page.locator(login_sel).first.click(force=True)
                     print(f"  [Login] Login button clicked using selector: {login_sel}")
                     login_clicked = True
                     await asyncio.sleep(3)
@@ -142,7 +143,8 @@ async def perform_login(page: Page):
                 for selector in login_element_selectors:
                     try:
                         if await page.locator(selector).count() > 0 and await page.locator(selector).is_visible():
-                            await page.locator(selector).first.click()
+                            await page.locator(selector).first.scroll_into_view_if_needed()
+                            await page.locator(selector).first.click(force=True)
                             print(f"  [Login] Found and clicked login element using predefined selector: {selector}")
                             login_clicked = True
                             await asyncio.sleep(3)
@@ -187,7 +189,8 @@ async def perform_login(page: Page):
 
         # Click Login
         print(f"  [Login] Clicking login button using: {login_btn_selector}")
-        await page.click(login_btn_selector)
+        await page.locator(login_btn_selector).first.scroll_into_view_if_needed()
+        await page.locator(login_btn_selector).first.click(force=True)
         
         await page.wait_for_load_state('networkidle', timeout=30000)
         await asyncio.sleep(5)
@@ -298,6 +301,9 @@ async def hide_overlays(page: Page):
 
 async def navigate_to_schedule(page: Page):
     """Navigate to the full schedule page using dynamic selectors."""
+    
+    # Pre-emptive dismissal of overlays/tooltips
+    await fb_universal_popup_dismissal(page)
 
     # 1. Check if we are ALREADY there (Smart Resume)
     current_url = page.url
@@ -312,7 +318,7 @@ async def navigate_to_schedule(page: Page):
                  return
 
     # Try dynamic selector first
-    schedule_sel = SelectorManager.get_selector_strict("fb_main_page", "full_schedule_button")
+    schedule_sel = SelectorManager.get_selector_strict("fb_global", "full_schedule_button")
 
     
     if schedule_sel:
@@ -321,7 +327,7 @@ async def navigate_to_schedule(page: Page):
             if await page.locator(schedule_sel).count() > 0:
                 print(f"  [Navigation] Clicked schedule button: {schedule_sel}")
                 await page.locator(schedule_sel).first.scroll_into_view_if_needed()
-                await page.locator(schedule_sel).first.click(timeout=15000)
+                await page.locator(schedule_sel).first.click(timeout=15000, force=True)
                 await page.wait_for_load_state('domcontentloaded', timeout=WAIT_FOR_LOAD_STATE_TIMEOUT)
                 await log_page_title(page, "Schedule Page")
                 print("  [Navigation] Schedule page loaded via dynamic selector.")
@@ -354,7 +360,8 @@ async def select_target_date(page: Page, target_date: str) -> bool:
     if dropdown_sel:
         try:
             if await page.locator(dropdown_sel).count() > 0:
-                await page.locator(dropdown_sel).first.click()
+                await page.locator(dropdown_sel).first.scroll_into_view_if_needed()
+                await page.locator(dropdown_sel).first.click(force=True)
                 print(f"  [Filter] Clicked date dropdown with selector: {dropdown_sel}")
                 dropdown_found = True
                 await asyncio.sleep(1)
@@ -389,7 +396,8 @@ async def select_target_date(page: Page, target_date: str) -> bool:
             day_item_sel = day_item_tmpl.replace("{day}", day)
 
             if await page.locator(day_item_sel).count() > 0:
-                await page.locator(day_item_sel).click()
+                await page.locator(day_item_sel).first.scroll_into_view_if_needed()
+                await page.locator(day_item_sel).first.click(force=True)
                 print(f"  [Filter] Successfully selected: {day}")
                 day_found = True
             else:
@@ -407,7 +415,8 @@ async def select_target_date(page: Page, target_date: str) -> bool:
             print(f"  [Debug] sort_sel: {sort_sel}")
             if sort_sel:
                 if await page.locator(sort_sel).count() > 0:
-                    await page.locator(sort_sel).first.click()
+                    await page.locator(sort_sel).first.scroll_into_view_if_needed()
+                    await page.locator(sort_sel).first.click(force=True)
                     await asyncio.sleep(1)
 
                     # Try to select "League" from dropdown options (Content filter)
@@ -417,7 +426,8 @@ async def select_target_date(page: Page, target_date: str) -> bool:
                     item_sel = item_tmpl.replace("{sort}", target_sort)
 
                     await page.locator(f'{sort_sel} >> {list_sel}').wait_for(state="visible")
-                    await page.locator(f'{sort_sel} >> {item_sel}').click()
+                    await page.locator(f'{sort_sel} >> {item_sel}').first.scroll_into_view_if_needed()
+                    await page.locator(f'{sort_sel} >> {item_sel}').first.click(force=True)
                     print("  [Filter] Successfully sorted by League")
                     league_sorted = True
                     await asyncio.sleep(1)

@@ -366,7 +366,7 @@
         "balance_reload_button": ".reload-button svg",
         "balance_loading_overlay": ".v-custom-loading-container",
         "balance_loading_spinner_visible": ".v-custom-loading-container[style*=\"display: block\"]",
-        "full_schedule_button": "a[href*=\"/sport/football/today\"]"
+        "full_schedule_button": "button:has-text('Full Schedule')"
     },
     "fb_generic": {
         "top_icon_close": ".close-icon"
@@ -428,7 +428,7 @@
         "mobile_input_fallback": "input[type='tel']"
     },
     "fb_global": {
-        "full_schedule_button": "a[href*=\"/sport/football/today\"]",
+        "full_schedule_button": "button:has-text('Full Schedule')",
         "navbar_balance": ".navbar-balance > span:not(.currency)",
         "currency": ".navbar-balance .currency",
         "search_button": ".m-icon-search",
@@ -446,7 +446,8 @@
         "not_logged_in_indicator": ".m-login-not",
         "logged_in_indicator": ".navbar-balance, .user-avatar, .mini-me-page-dialog-container",
         "clickable_elements_generic": "button, a, div[role='button'], span[role='button']",
-        "overlay_elements": ".m-bottom-nav, .place-bet, .app-download-bar, .promotion-popup-wrapper, .download-app-bar, .cookie-banner"
+        "overlay_elements": ".m-bottom-nav, .place-bet, .app-download-bar, .promotion-popup-wrapper, .download-app-bar, .cookie-banner, .mobile-navbar-logo-encore, [data-cms-key='convert_tooltips'], section.widget-wrapper",
+        "convert_tooltips_close": ".m-popOver-wrapper:has([data-cms-key='convert_tooltips']) svg"
     },
     "fb_booking_share_page": {
         "booking_code_container": ".booking-code-share-code",
@@ -463,5 +464,9 @@
         "share_link_save": "section span[data-cms-key=\"save\"]",
         "share_icon_container": ".link-icon",
         "scoped_attribute": "[data-v-5bf8593c]"
+    },
+    "generic": {
+        "popup_close_1770291386": ".close",
+        "popup_close_1770292638": ".close"
     }
 }

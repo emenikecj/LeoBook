@@ -54,15 +54,30 @@ async def run_football_com_booking(playwright: Playwright):
             for target_date, day_preds in sorted(predictions_by_date.items()):
                 print(f"\n--- Date: {target_date} ({len(day_preds)} matches) ---")
                 
-                # 1. URL Resolution
+                # 1. URL Resolution (Registry Check + Harvest Fallback)
                 matched_urls = await resolve_urls(page, target_date, day_preds)
                 if not matched_urls:
                     continue
 
-                # 2. Betting Phase (Unified)
-                from Modules.FootballCom.booker.booking_code import place_bets_for_matches
-                await place_bets_for_matches(page, matched_urls, day_preds, target_date)
+                # 2. Phase 2a: Harvest (Code Discovery)
+                # Visits each match, extracts code, and clears slip.
+                print(f"  [Phase 2a] Starting code harvesting for {target_date}...")
+                from Modules.FootballCom.booker.booking_code import harvest_booking_codes
+                await harvest_booking_codes(page, matched_urls, day_preds, target_date)
                 
+                # 3. Phase 2b: Execution (Multi-Bet Placement)
+                # Injects codes and places final accumulator.
+                print(f"  [Phase 2b] Finalizing multi-bet for {target_date}...")
+                from Modules.FootballCom.booker.placement import place_multi_bet_from_codes
+                # Fetch all harvested matches for this date from registry/csv
+                from Modules.FootballCom.fb_url_resolver import get_harvested_matches_for_date
+                harvested = await get_harvested_matches_for_date(target_date)
+                
+                if harvested:
+                    await place_multi_bet_from_codes(page, harvested, current_balance)
+                else:
+                    print(f"  [Warning] No harvested codes found for {target_date}. Skipping multi-bet.")
+
                 log_state("Phase 2", "Cycle Complete", f"Processed {target_date}")
 
             break  # Success exit

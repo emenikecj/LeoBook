@@ -24,7 +24,7 @@ SCHEDULES_CSV = os.path.join(DB_DIR, "schedules.csv")
 STANDINGS_CSV = os.path.join(DB_DIR, "standings.csv")
 TEAMS_CSV = os.path.join(DB_DIR, "teams.csv")
 REGION_LEAGUE_CSV = os.path.join(DB_DIR, "region_league.csv")
-FOOTBALL_COM_MATCHES_CSV = os.path.join(DB_DIR, "football_com_matches.csv")
+FB_MATCHES_CSV = os.path.join(DB_DIR, "fb_matches.csv")
 AUDIT_LOG_CSV = os.path.join(DB_DIR, "audit_log.csv")
 
 
@@ -52,9 +52,9 @@ def init_csvs():
         ],
         TEAMS_CSV: ['team_id', 'team_name', 'region_league', 'team_url'],
     REGION_LEAGUE_CSV: ['region_league_id', 'region', 'league_name', 'url'],
-        FOOTBALL_COM_MATCHES_CSV: [
-            'site_match_id', 'date', 'home_team', 'away_team', 'league', 'url', 
-            'last_extracted', 'fixture_id', 'booking_status', 'booking_details',
+        FB_MATCHES_CSV: [
+            'site_match_id', 'date', 'time', 'home_team', 'away_team', 'league', 'url', 
+            'last_extracted', 'fixture_id', 'matched', 'booking_status', 'booking_details',
             'booking_code', 'booking_url', 'status'
         ],
         AUDIT_LOG_CSV: [
@@ -209,7 +209,7 @@ def save_site_matches(matches: List[Dict[str, Any]]):
     """UPSERTs a list of matches extracted from Football.com into the registry."""
     if not matches: return
     
-    headers = files_and_headers[FOOTBALL_COM_MATCHES_CSV]
+    headers = files_and_headers[FB_MATCHES_CSV]
     last_extracted = dt.now().isoformat()
     
     for match in matches:
@@ -217,45 +217,47 @@ def save_site_matches(matches: List[Dict[str, Any]]):
         row = {
             'site_match_id': site_id,
             'date': match.get('date'),
+            'time': match.get('time', 'N/A'),
             'home_team': match.get('home'),
             'away_team': match.get('away'),
             'league': match.get('league'),
             'url': match.get('url'),
             'last_extracted': last_extracted,
             'fixture_id': match.get('fixture_id', ''),
+            'matched': match.get('matched', 'No_fs_match_found'),
             'booking_status': match.get('booking_status', 'pending'),
             'booking_details': match.get('booking_details', ''),
             'booking_code': match.get('booking_code', ''),
             'booking_url': match.get('booking_url', ''),
             'status': match.get('status', '')
         }
-        upsert_entry(FOOTBALL_COM_MATCHES_CSV, row, headers, 'site_match_id')
+        upsert_entry(FB_MATCHES_CSV, row, headers, 'site_match_id')
 
 def load_site_matches(target_date: str) -> List[Dict[str, Any]]:
     """Loads all extracted site matches for a specific date."""
-    if not os.path.exists(FOOTBALL_COM_MATCHES_CSV):
+    if not os.path.exists(FB_MATCHES_CSV):
         return []
     
-    all_matches = _read_csv(FOOTBALL_COM_MATCHES_CSV)
+    all_matches = _read_csv(FB_MATCHES_CSV)
     return [m for m in all_matches if m.get('date') == target_date]
 
 def load_harvested_site_matches(target_date: str) -> List[Dict[str, Any]]:
     """Loads all harvested site matches for a specific date (v2.7)."""
-    if not os.path.exists(FOOTBALL_COM_MATCHES_CSV):
+    if not os.path.exists(FB_MATCHES_CSV):
         return []
     
-    all_matches = _read_csv(FOOTBALL_COM_MATCHES_CSV)
+    all_matches = _read_csv(FB_MATCHES_CSV)
     return [m for m in all_matches if m.get('date') == target_date and m.get('booking_status') == 'harvested']
 
-def update_site_match_status(site_match_id: str, status: str, fixture_id: Optional[str] = None, details: Optional[str] = None, booking_code: Optional[str] = None, booking_url: Optional[str] = None):
+def update_site_match_status(site_match_id: str, status: str, fixture_id: Optional[str] = None, details: Optional[str] = None, booking_code: Optional[str] = None, booking_url: Optional[str] = None, matched: Optional[str] = None):
     """Updates the booking status, fixture_id, or booking details for a site match."""
-    if not os.path.exists(FOOTBALL_COM_MATCHES_CSV):
+    if not os.path.exists(FB_MATCHES_CSV):
         return
 
     rows = []
     updated = False
     try:
-        with open(FOOTBALL_COM_MATCHES_CSV, 'r', newline='', encoding='utf-8') as f:
+        with open(FB_MATCHES_CSV, 'r', newline='', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             fieldnames = reader.fieldnames
             for row in reader:
@@ -266,11 +268,12 @@ def update_site_match_status(site_match_id: str, status: str, fixture_id: Option
                     if booking_code: row['booking_code'] = booking_code
                     if booking_url: row['booking_url'] = booking_url
                     if status: row['status'] = status
+                    if matched: row['matched'] = matched
                     updated = True
                 rows.append(row)
 
         if updated and fieldnames is not None:
-            _write_csv(FOOTBALL_COM_MATCHES_CSV, rows, list(fieldnames))
+            _write_csv(FB_MATCHES_CSV, rows, list(fieldnames))
     except Exception as e:
         print(f"    [DB Error] Failed to update site match status: {e}")
 
@@ -323,9 +326,9 @@ files_and_headers = {
     ],
     TEAMS_CSV: ['team_id', 'team_name', 'region_league', 'team_url'],
     REGION_LEAGUE_CSV: ['region_league_id', 'region', 'league_name', 'url'],
-    FOOTBALL_COM_MATCHES_CSV: [
-        'site_match_id', 'date', 'home_team', 'away_team', 'league', 'url', 
-        'last_extracted', 'fixture_id', 'booking_status', 'booking_details',
+    FB_MATCHES_CSV: [
+        'site_match_id', 'date', 'time', 'home_team', 'away_team', 'league', 'url', 
+        'last_extracted', 'fixture_id', 'matched', 'booking_status', 'booking_details',
         'booking_code', 'booking_url', 'status'
     ],
     AUDIT_LOG_CSV: [
