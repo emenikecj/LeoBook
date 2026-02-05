@@ -162,11 +162,11 @@ async def match_predictions_with_site(day_predictions: List[Dict], site_matches:
         matched_count = len(mapping)
         print(f"  [Matcher] Batch matching complete: {matched_count}/{len(day_predictions)} matches resolved.")
         
-        # Log individual matches for visibility
-        for fid, url in mapping.items():
-            pred = next((p for p in day_predictions if str(p.get('fixture_id')) == fid), None)
-            if pred:
-                print(f"    [OK] AI Matched: {pred.get('home_team')} vs {pred.get('away_team')} -> {url}")
+        # Log individual matches for visibility (Commented out for cleaner logs)
+        # for fid, url in mapping.items():
+        #     pred = next((p for p in day_predictions if str(p.get('fixture_id')) == fid), None)
+        #     if pred:
+        #         print(f"    [OK] AI Matched: {pred.get('home_team')} vs {pred.get('away_team')} -> {url}")
 
         return mapping
     except Exception as e:

@@ -111,47 +111,50 @@ async def extract_league_matches(page: Page, target_date: str) -> List[Dict]:
                             title_el = header_locator.locator(league_title_sel).first
                             if await title_el.is_visible():
                                 await title_el.click(timeout=3000, force=True)
-                                await asyncio.sleep(2) # Wait for expansion
-                                
-                                # Re-evaluate matches
-                                matches_in_section_retry = await matches_container.evaluate("""(container, args) => {
-                                    const { selectors, leagueText } = args;
-                                    const results = [];
-                                    const cards = container.querySelectorAll(selectors.match_card_sel);
-                                    cards.forEach(card => {
-                                        const homeEl = card.querySelector(selectors.home_team_sel);
-                                        const awayEl = card.querySelector(selectors.away_team_sel);
-                                        const timeEl = card.querySelector(selectors.time_sel);
-                                        const linkEl = card.querySelector(selectors.match_url_sel) || card.closest('a');
-                                        const home = homeEl ? homeEl.innerText.trim() : "";
-                                        const away = awayEl ? awayEl.innerText.trim() : "";
-                                        if (home && away) {
-                                            results.push({ 
-                                                home: home, away: away, 
-                                                time: timeEl ? timeEl.innerText.trim() : "N/A", 
-                                                league: leagueText, 
-                                                url: linkEl ? linkEl.href : "", 
-                                                date: args.targetDate 
-                                            });
-                                        }
-                                    });
-                                    return results;
-                                }""", {
-                                    "selectors": {
-                                        "match_card_sel": match_card_sel, "match_url_sel": match_url_sel,
-                                        "home_team_sel": home_team_sel, "away_team_sel": away_team_sel,
-                                        "time_sel": time_sel
-                                    }, 
-                                    "leagueText": league_text, "targetDate": target_date
-                                })
-                                
-                                if matches_in_section_retry:
-                                    all_matches.extend(matches_in_section_retry)
-                                    print(f"    -> {league_text}: Extracted {len(matches_in_section_retry)} matches (Retry Success).")
-                                else:
-                                    print(f"    -> {league_text}: Still no matches found after retry.")
                             else:
-                                print(f"    -> {league_text}: Title element not visible for retry.")
+                                # User requested specific fallback:
+                                print(f"    -> {league_text}: Title selector failed, trying text match...")
+                                await header_locator.get_by_text(league_text, exact=True).first.click(timeout=3000, force=True)
+
+                            await asyncio.sleep(2) # Wait for expansion
+                            
+                            # Re-evaluate matches
+                            matches_in_section_retry = await matches_container.evaluate("""(container, args) => {
+                                const { selectors, leagueText } = args;
+                                const results = [];
+                                const cards = container.querySelectorAll(selectors.match_card_sel);
+                                cards.forEach(card => {
+                                    const homeEl = card.querySelector(selectors.home_team_sel);
+                                    const awayEl = card.querySelector(selectors.away_team_sel);
+                                    const timeEl = card.querySelector(selectors.time_sel);
+                                    const linkEl = card.querySelector(selectors.match_url_sel) || card.closest('a');
+                                    const home = homeEl ? homeEl.innerText.trim() : "";
+                                    const away = awayEl ? awayEl.innerText.trim() : "";
+                                    if (home && away) {
+                                        results.push({ 
+                                            home: home, away: away, 
+                                            time: timeEl ? timeEl.innerText.trim() : "N/A", 
+                                            league: leagueText, 
+                                            url: linkEl ? linkEl.href : "", 
+                                            date: args.targetDate 
+                                        });
+                                    }
+                                });
+                                return results;
+                            }""", {
+                                "selectors": {
+                                    "match_card_sel": match_card_sel, "match_url_sel": match_url_sel,
+                                    "home_team_sel": home_team_sel, "away_team_sel": away_team_sel,
+                                    "time_sel": time_sel
+                                }, 
+                                "leagueText": league_text, "targetDate": target_date
+                            })
+                            
+                            if matches_in_section_retry:
+                                all_matches.extend(matches_in_section_retry)
+                                print(f"    -> {league_text}: Extracted {len(matches_in_section_retry)} matches (Retry Success).")
+                            else:
+                                print(f"    -> {league_text}: Still no matches found after retry.")
                         except Exception as retry_e:
                             print(f"    -> {league_text}: Retry failed: {retry_e}")
 
