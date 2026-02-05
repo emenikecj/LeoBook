@@ -8,7 +8,7 @@ This document serves as the **Source of Truth** for the LeoBook Autonomous Betti
 
 The system operates in a continuous `while True` loop inside [Leo.py](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Leo.py), executing four distinct phases sequentially every 6 hours.
 
-For a high-level visual representation, see: [leobook_algorithm.mermaid](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/leobook_algorithm.mermaid)
+For a high-level visual representation, see: [leobook_algorithm.mmd](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/leobook_algorithm.mmd)
 
 ### **Phase 0: Initialization & Outcome Review**
 **Objective**: Observe past performance, update financial records, and adjust AI learning weights.

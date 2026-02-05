@@ -52,7 +52,7 @@ async def harvest_single_match_code(page: Page, match: Dict, prediction: Dict) -
 
             # Click search icon
             search_icon = SelectorManager.get_selector_strict("fb_match_page", "search_icon")
-            await robust_click(page, search_icon, timeout=15000)
+            await robust_click(page.locator(search_icon).first, page, timeout=15000)
             await asyncio.sleep(3)  # Critical animation delay
 
             # Wait for input with fallbacks
@@ -75,7 +75,10 @@ async def harvest_single_match_code(page: Page, match: Dict, prediction: Dict) -
             if not search_input:
                 raise TimeoutError("Search input not visible after fallbacks")
 
-            market_name = get_market_name(outcome)  # your existing function
+            from .mapping import find_market_and_outcome
+            market_name, _ = await find_market_and_outcome(prediction)
+            if not market_name: market_name = outcome
+
             await search_input.fill(market_name)
             await search_input.press("Enter")
             await asyncio.sleep(2)
@@ -87,7 +90,7 @@ async def harvest_single_match_code(page: Page, match: Dict, prediction: Dict) -
             # Expand market if collapsed
             header_sel = SelectorManager.get_selector_strict("fb_match_page", "market_header")
             if await page.locator(header_sel).is_visible(timeout=5000):
-                await robust_click(page, header_sel)
+                await robust_click(page.locator(header_sel).first, page)
                 await asyncio.sleep(2)
 
             # Select outcome with fallbacks
@@ -122,7 +125,8 @@ async def harvest_single_match_code(page: Page, match: Dict, prediction: Dict) -
             await page.wait_for_selector("fb_match_page.bet_slip_container", timeout=15000)
 
             # Book Bet & Extract
-            await robust_click(page, SelectorManager.get_selector_strict("fb_match_page", "book_bet_button"))
+            book_btn_sel = SelectorManager.get_selector_strict("fb_match_page", "book_bet_button")
+            await robust_click(page.locator(book_btn_sel).first, page)
             await page.wait_for_selector("fb_match_page.booking_modal", timeout=20000)
             code = await page.inner_text("fb_booking_share_page.booking_code_text", timeout=10000)
             booking_url = await page.get_attribute("fb_booking_share_page.booking_share_link", "href") or f"https://www.football.com/ng/m?shareCode={code}"
@@ -136,7 +140,8 @@ async def harvest_single_match_code(page: Page, match: Dict, prediction: Dict) -
             })
 
             # Dismiss & post-clear
-            await robust_click(page, "fb_match_page.modal_dismiss")
+            dismiss_sel = SelectorManager.get_selector("fb_match_page", "modal_dismiss") or "fb_match_page.modal_dismiss"
+            await robust_click(page.locator(dismiss_sel).first, page)
             await force_clear_slip(page)
 
             print(f"    [Harvest Success] Code: {code}")
