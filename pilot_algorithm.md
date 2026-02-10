@@ -26,11 +26,11 @@ The system is split into two main components:
 
 ### Flutter App Architecture (Clean Architecture / MVVM)
 - **Data Layer**:
-    - `DataRepository`: Downloads and queries `predictions.db` (SQLite database, 7.77 MB) from GitHub for fast, indexed access to predictions data.
-    - `PredictionsDatabase`: Helper class managing database download, caching, and SQL queries with indexes on fixture_id, date, and league.
-    - **Performance**: SQLite eliminates CSV parsing overhead, provides instant query results, and supports complex filters.
-    - **Offline Support**: Database persists locally in app documents directory for instant offline access.
-    - **Caching**: Implements `shared_preferences` based cache-aside pattern for recommendations data.
+    - `DataRepository`: **Platform-aware** - uses SQLite database (7.77 MB) for mobile/desktop, CSV for web.
+    - `PredictionsDatabase`: Helper class managing database download, caching, and SQL queries with indexes on fixture_id, date, and league (mobile/desktop only).
+    - **Performance**: SQLite on native platforms eliminates CSV parsing overhead. Web uses CSV with extended timeout (180s) and SharedPreferences caching.
+    - **Offline Support**: Database persists locally in app documents directory (mobile/desktop). Web uses SharedPreferences cache.
+    - **Caching**: Implements `shared_preferences` based cache-aside pattern for all platforms.
     - `NewsRepository`: Fetches latest sports news from configured sources.
 
 - **Logic Layer**:

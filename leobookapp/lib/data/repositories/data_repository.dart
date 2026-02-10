@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:csv/csv.dart';
 import '../../core/constants/api_urls.dart';
 import '../models/match_model.dart';
 import '../models/recommendation_model.dart';
@@ -9,10 +10,21 @@ import 'dart:convert';
 
 class DataRepository {
   static const String _keyRecommended = 'cached_recommended';
+  static const String _keyPredictions = 'cached_predictions';
 
   final PredictionsDatabase _predictionsDb = PredictionsDatabase();
 
   Future<List<MatchModel>> fetchMatches() async {
+    // Use SQLite for mobile/desktop, CSV for web
+    if (kIsWeb) {
+      return _fetchMatchesFromCsv();
+    } else {
+      return _fetchMatchesFromDatabase();
+    }
+  }
+
+  /// SQLite approach for mobile/desktop platforms
+  Future<List<MatchModel>> _fetchMatchesFromDatabase() async {
     try {
       // 1. Get database (downloads if not cached)
       await _predictionsDb.getDatabase(ApiUrls.predictionsDb);
@@ -45,6 +57,88 @@ class DataRepository {
               .toList();
         } catch (cacheError) {
           debugPrint("Failed to load from cached database: $cacheError");
+        }
+      }
+
+      return [];
+    }
+  }
+
+  /// CSV approach for web platform
+  Future<List<MatchModel>> _fetchMatchesFromCsv() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    try {
+      debugPrint('Web platform detected - using CSV approach');
+
+      // 1. Fetch predictions.csv with extended timeout
+      final predictionsResponse = await http
+          .get(Uri.parse(ApiUrls.predictions))
+          .timeout(const Duration(seconds: 180));
+
+      String? predictionsBody;
+
+      if (predictionsResponse.statusCode == 200) {
+        predictionsBody = predictionsResponse.body;
+        await prefs.setString(_keyPredictions, predictionsBody);
+        debugPrint('CSV downloaded and cached successfully');
+      } else {
+        // Fallback to cache if fetch failed
+        predictionsBody = prefs.getString(_keyPredictions);
+        debugPrint('Using cached CSV data');
+      }
+
+      if (predictionsBody == null) return [];
+
+      // 2. Process Predictions CSV
+      List<List<dynamic>> pRows = const CsvToListConverter().convert(
+        predictionsBody,
+        eol: '\n',
+      );
+
+      if (pRows.isEmpty) return [];
+
+      final pHeaders = pRows.first.map((e) => e.toString()).toList();
+      final pData = pRows.skip(1).toList();
+
+      final matches = pData
+          .where((row) => row.length >= pHeaders.length)
+          .map((row) {
+            final map = Map<String, dynamic>.fromIterables(pHeaders, row);
+            return MatchModel.fromCsv(map, map);
+          })
+          .where((m) => m.prediction != null && m.prediction!.isNotEmpty)
+          .toList();
+
+      debugPrint('Loaded ${matches.length} predictions from CSV');
+      return matches;
+    } catch (e) {
+      debugPrint("DataRepository Error (CSV): $e");
+
+      // Final fallback to cache
+      final cachedPredictions = prefs.getString(_keyPredictions);
+      if (cachedPredictions != null) {
+        try {
+          List<List<dynamic>> pRows = const CsvToListConverter().convert(
+            cachedPredictions,
+            eol: '\n',
+          );
+
+          if (pRows.isNotEmpty) {
+            final pHeaders = pRows.first.map((e) => e.toString()).toList();
+            final pData = pRows.skip(1).toList();
+
+            return pData
+                .where((row) => row.length >= pHeaders.length)
+                .map((row) {
+                  final map = Map<String, dynamic>.fromIterables(pHeaders, row);
+                  return MatchModel.fromCsv(map, map);
+                })
+                .where((m) => m.prediction != null && m.prediction!.isNotEmpty)
+                .toList();
+          }
+        } catch (cacheError) {
+          debugPrint("Failed to load from cached CSV: $cacheError");
         }
       }
 
