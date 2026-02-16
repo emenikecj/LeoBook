@@ -316,8 +316,8 @@ CREATE TABLE IF NOT EXISTS public.audit_log (
     last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 -- We use a composite key or just allow duplicates for audit logs if needed, 
--- but sync_manager expects a unique key. We'll use timestamp + event_type as a hint 
--- or just timestamp if granular enough.
+-- but sync_manager expects a unique key. We determined timestamp is sufficient.
+ALTER TABLE public.audit_log ADD CONSTRAINT audit_log_timestamp_unique UNIQUE (timestamp);
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public Read Access AuditLog" ON public.audit_log;
 CREATE POLICY "Public Read Access AuditLog" ON public.audit_log FOR SELECT USING (true);
