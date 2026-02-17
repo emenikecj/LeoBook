@@ -2,21 +2,23 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'search_state.dart';
 import 'package:leobookapp/data/models/match_model.dart';
 import 'package:leobookapp/data/models/recommendation_model.dart';
+import 'package:leobookapp/data/services/search_service.dart';
 
 class SearchCubit extends Cubit<SearchState> {
   final List<MatchModel> allMatches;
   final List<RecommendationModel> allRecommendations;
+  final SearchService _searchService = SearchService();
   List<String> _recentSearches = [];
 
   SearchCubit({required this.allMatches, required this.allRecommendations})
-    : super(
-        SearchInitial(
-          recentSearches: [],
-          popularTeams: _getPopularTeams(allMatches),
-        ),
-      );
+      : super(
+          SearchInitial(
+            recentSearches: [],
+            popularTeams: _getPopularTeams(allMatches),
+          ),
+        );
 
-  void search(String query) {
+  Future<void> search(String query) async {
     if (query.isEmpty) {
       emit(
         SearchInitial(
@@ -29,26 +31,47 @@ class SearchCubit extends Cubit<SearchState> {
 
     emit(SearchLoading());
 
+    // 1. Get Fuzzy Results from pre-computed Supabase dictionary
+    final fuzzyResults = await _searchService.fuzzySearch(query);
+
+    // 2. Map fuzzy results back to local models if possible
+    // We filter allMatches based on name matches from the dictionary
     final matchedMatches = allMatches.where((m) {
       final q = query.toLowerCase();
-      return m.homeTeam.toLowerCase().contains(q) ||
+      // Direct contain check as fallback
+      bool matches = m.homeTeam.toLowerCase().contains(q) ||
           m.awayTeam.toLowerCase().contains(q) ||
           (m.league?.toLowerCase().contains(q) ?? false);
+
+      // Check if team ID or name is in fuzzy results
+      for (var result in fuzzyResults) {
+        if (result['type'] == 'team') {
+          if (m.homeTeamId == result['id'] || m.awayTeamId == result['id']) {
+            matches = true;
+          }
+        }
+      }
+      return matches;
     }).toList();
 
-    final matchedLeagues = allMatches
-        .where(
-          (m) => m.league?.toLowerCase().contains(query.toLowerCase()) ?? false,
-        )
-        .map((m) => m.league!)
-        .toSet()
-        .toList();
+    // 3. Extract Leagues from fuzzy results + matches
+    final matchedLeagues = <String>{};
+    for (var result in fuzzyResults) {
+      if (result['type'] == 'league') {
+        matchedLeagues.add(result['name'] as String);
+      }
+    }
+    // Add leagues from matched matches
+    for (var m in matchedMatches) {
+      if (m.league != null) matchedLeagues.add(m.league!);
+    }
 
     emit(
       SearchResults(
         query: query,
         matchedMatches: matchedMatches,
-        matchedLeagues: matchedLeagues,
+        matchedLeagues: matchedLeagues.toList(),
+        searchResults: fuzzyResults,
         recentSearches: _recentSearches,
       ),
     );
@@ -80,6 +103,7 @@ class SearchCubit extends Cubit<SearchState> {
           query: s.query,
           matchedMatches: s.matchedMatches,
           matchedLeagues: s.matchedLeagues,
+          searchResults: s.searchResults,
           recentSearches: [],
         ),
       );
@@ -102,6 +126,7 @@ class SearchCubit extends Cubit<SearchState> {
           query: s.query,
           matchedMatches: s.matchedMatches,
           matchedLeagues: s.matchedLeagues,
+          searchResults: s.searchResults,
           recentSearches: List.from(_recentSearches),
         ),
       );

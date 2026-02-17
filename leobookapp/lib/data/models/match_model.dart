@@ -27,12 +27,17 @@ class MatchModel {
   final int? homeFormN;
   final int? awayFormN;
 
+  final String? homeTeamId;
+  final String? awayTeamId;
+
   MatchModel({
     required this.fixtureId,
     required this.date,
     required this.time,
     required this.homeTeam,
     required this.awayTeam,
+    this.homeTeamId,
+    this.awayTeamId,
     this.homeScore,
     this.awayScore,
     required this.status,
@@ -260,6 +265,8 @@ class MatchModel {
       time: row['match_time'] ?? '',
       homeTeam: row['home_team'] ?? '',
       awayTeam: row['away_team'] ?? '',
+      homeTeamId: row['home_team_id']?.toString(),
+      awayTeamId: row['away_team_id']?.toString(),
       homeScore: hScore,
       awayScore: aScore,
       status: (row['status'] ?? row['match_status'] ?? 'Scheduled').toString(),

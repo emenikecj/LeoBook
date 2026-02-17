@@ -10,7 +10,7 @@ google-genai
 aiohttp
 nest-asyncio
 fuzzywuzzy
-python-Levenshtein
+python-Levenshtein>=0.12.2
 pytz
 
 # Supabase sync dependencies

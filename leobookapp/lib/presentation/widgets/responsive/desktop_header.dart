@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../logic/cubit/home_cubit.dart';
+import '../../../logic/cubit/search_cubit.dart';
+import '../../screens/search_screen.dart';
 import 'leo_date_picker.dart';
 
 class DesktopHeader extends StatelessWidget {
@@ -23,32 +25,48 @@ class DesktopHeader extends StatelessWidget {
             flex: 2,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 500),
-              child: TextField(
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-                decoration: InputDecoration(
-                  hintText: "SEARCH MATCHES, TEAMS OR LEAGUES...",
-                  hintStyle: const TextStyle(
-                    color: Colors.white24,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.2,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BlocProvider.value(
+                        value: context.read<SearchCubit>(),
+                        child: const SearchScreen(),
+                      ),
+                    ),
+                  );
+                },
+                child: AbsorbPointer(
+                  child: TextField(
+                    readOnly: true,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: "SEARCH MATCHES, TEAMS OR LEAGUES...",
+                      hintStyle: const TextStyle(
+                        color: Colors.white24,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.2,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: Colors.white38,
+                        size: 22,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.desktopSearchFill,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                    ),
                   ),
-                  prefixIcon: const Icon(
-                    Icons.search_rounded,
-                    color: Colors.white38,
-                    size: 22,
-                  ),
-                  filled: true,
-                  fillColor: AppColors.desktopSearchFill,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 ),
               ),
             ),

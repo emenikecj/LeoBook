@@ -138,7 +138,7 @@ class MatchCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
               // Teams Comparison / Result
               if (isFinished)
@@ -146,23 +146,25 @@ class MatchCard extends StatelessWidget {
               else
                 _buildActiveLayout(context, isDark),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
 
               // Prediction Section
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: match.isLive
-                      ? AppColors.liveRed.withValues(alpha: 0.06)
+                      ? AppColors.liveRed.withValues(alpha: 0.08)
                       : (isDark
-                          ? Colors.white.withValues(alpha: 0.04)
-                          : Colors.black.withValues(alpha: 0.03)),
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.black.withValues(alpha: 0.04)),
                   borderRadius: BorderRadius.circular(14),
-                  border: match.isLive
-                      ? Border.all(
-                          color: AppColors.liveRed.withValues(alpha: 0.12),
-                        )
-                      : null,
+                  border: Border.all(
+                    color: match.isLive
+                        ? AppColors.liveRed.withValues(alpha: 0.2)
+                        : (isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.06)),
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

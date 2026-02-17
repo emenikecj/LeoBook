@@ -15,12 +15,14 @@ class SearchResults extends SearchState {
   final String query;
   final List<MatchModel> matchedMatches;
   final List<String> matchedLeagues;
+  final List<Map<String, dynamic>> searchResults; // Raw dictionary results
   final List<String> recentSearches;
 
   SearchResults({
     required this.query,
     required this.matchedMatches,
     required this.matchedLeagues,
+    required this.searchResults,
     this.recentSearches = const [],
   });
 }

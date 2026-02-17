@@ -780,6 +780,15 @@ async def enrich_all_schedules(limit: Optional[int] = None, dry_run: bool = Fals
                 await run_full_sync()
                 print(f"   [SUCCESS] Final global prologue sync complete.")
 
+                # --- STEP 7: BUILD SEARCH DICTIONARY ---
+                print(f"\n   [PROLOGUE] Rebuilding Search Dictionary...")
+                try:
+                    from Scripts.build_search_dict import main as build_search
+                    build_search()
+                    print(f"   [SUCCESS] Search dictionary rebuilt and synced.")
+                except Exception as e:
+                    print(f"   [Error] Failed to rebuild search dictionary: {e}")
+
     # Summary
     print("\n" + "=" * 80)
     print("  ENRICHMENT COMPLETE")

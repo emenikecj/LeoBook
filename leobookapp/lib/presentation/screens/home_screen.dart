@@ -4,11 +4,14 @@ import 'package:leobookapp/logic/cubit/home_cubit.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';
 import 'package:leobookapp/core/utils/match_sorter.dart';
 import '../widgets/match_card.dart';
-import '../widgets/header_section.dart';
 import '../widgets/featured_carousel.dart';
 import '../widgets/news_feed.dart';
 import '../widgets/footnote_section.dart';
 import '../widgets/responsive/desktop_home_content.dart';
+import '../widgets/responsive/category_bar.dart';
+import '../widgets/responsive/top_predictions_grid.dart';
+import '../../logic/cubit/search_cubit.dart';
+import 'search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isSidebarExpanded;
@@ -40,36 +43,73 @@ class _HomeScreenState extends State<HomeScreen>
     final isDesktop = MediaQuery.of(context).size.width > 1024;
 
     return Scaffold(
-      body: SafeArea(
-        child: BlocBuilder<HomeCubit, HomeState>(
-          builder: (context, state) {
-            if (state is HomeLoading) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (state is HomeLoaded) {
-              if (isDesktop) {
-                return DesktopHomeContent(
-                  state: state,
-                  isSidebarExpanded: widget.isSidebarExpanded,
-                );
-              }
+      backgroundColor: isDesktop ? AppColors.backgroundDark : null,
+      body: BlocBuilder<HomeCubit, HomeState>(
+        builder: (context, state) {
+          if (state is HomeLoading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is HomeLoaded) {
+            if (isDesktop) {
+              return DesktopHomeContent(
+                state: state,
+                isSidebarExpanded: widget.isSidebarExpanded,
+              );
+            }
 
-              return RefreshIndicator(
+            return SafeArea(
+              child: RefreshIndicator(
                 onRefresh: () async {
                   context.read<HomeCubit>().loadDashboard();
                 },
                 child: CustomScrollView(
                   slivers: [
-                    SliverToBoxAdapter(
-                      child: HeaderSection(
-                        selectedDate: state.selectedDate,
-                        selectedSport: state.selectedSport,
-                        availableSports: state.availableSports,
-                        onDateChanged: (date) =>
-                            context.read<HomeCubit>().updateDate(date),
-                        onSportChanged: (sport) =>
-                            context.read<HomeCubit>().updateSport(sport),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 16),
+                      sliver: SliverToBoxAdapter(
+                        child: Row(
+                          children: [
+                            const Expanded(child: CategoryBar()),
+                            const SizedBox(width: 12),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => BlocProvider.value(
+                                      value: context.read<SearchCubit>(),
+                                      child: const SearchScreen(),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.05)
+                                      : Colors.black.withValues(alpha: 0.05),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Icon(
+                                  Icons.search_rounded,
+                                  color:
+                                      isDark ? Colors.white70 : Colors.black54,
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
+                    const SliverPadding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverToBoxAdapter(
+                        child: TopPredictionsGrid(),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
                     SliverToBoxAdapter(
                       child: FeaturedCarousel(
                         matches: state.featuredMatches,
@@ -97,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen>
                               letterSpacing: 1.0,
                             ),
                             tabs: const [
-                              Tab(text: "ALL PREDICTIONS"),
+                              Tab(text: "ALL"),
                               Tab(text: "FINISHED"),
                               Tab(text: "SCHEDULED"),
                             ],
@@ -130,13 +170,13 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ],
                 ),
-              );
-            } else if (state is HomeError) {
-              return Center(child: Text(state.message));
-            }
-            return Container();
-          },
-        ),
+              ),
+            );
+          } else if (state is HomeError) {
+            return Center(child: Text(state.message));
+          }
+          return Container();
+        },
       ),
     );
   }

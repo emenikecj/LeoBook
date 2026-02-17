@@ -28,6 +28,7 @@ class DesktopHomeContent extends StatefulWidget {
 class _DesktopHomeContentState extends State<DesktopHomeContent>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late ScrollController _scrollController;
   int _visibleMatchCount = 12;
 
   // Match counts for tab labels
@@ -40,6 +41,7 @@ class _DesktopHomeContentState extends State<DesktopHomeContent>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(_handleTabChange);
+    _scrollController = ScrollController();
     _computeCounts();
   }
 
@@ -78,42 +80,78 @@ class _DesktopHomeContentState extends State<DesktopHomeContent>
   void dispose() {
     _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate([
-              const CategoryBar(),
-              const SizedBox(height: 8),
-              const TopPredictionsGrid(),
-              const SizedBox(height: 48),
-              const AccuracyReportCard(),
-              const SizedBox(height: 48),
-              const TopOddsList(),
-              const SizedBox(height: 48),
-            ]),
-          ),
-        ),
-        SliverPersistentHeader(
-          pinned: true,
-          delegate: _StickyTabBarDelegate(
-            child: Container(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              alignment: Alignment.centerLeft,
-              child: _buildTabBar(),
+    return Stack(
+      children: [
+        CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  const CategoryBar(),
+                  const SizedBox(height: 8),
+                  const TopPredictionsGrid(),
+                  const SizedBox(height: 48),
+                  const AccuracyReportCard(),
+                  const SizedBox(height: 48),
+                  const TopOddsList(),
+                  const SizedBox(height: 48),
+                ]),
+              ),
             ),
-          ),
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _StickyTabBarDelegate(
+                child: Container(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  alignment: Alignment.centerLeft,
+                  child: _buildTabBar(),
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.only(
+                  left: 40, right: 80, top: 24, bottom: 24),
+              sliver: SliverToBoxAdapter(
+                child: Builder(
+                  builder: (context) {
+                    final index = _tabController.index;
+                    MatchTabType type;
+                    switch (index) {
+                      case 1:
+                        type = MatchTabType.finished;
+                        break;
+                      case 2:
+                        type = MatchTabType.scheduled;
+                        break;
+                      default:
+                        type = MatchTabType.all;
+                    }
+                    return _buildMatchGrid(type);
+                  },
+                ),
+              ),
+            ),
+            // Footer
+            const SliverToBoxAdapter(
+              child: FootnoteSection(),
+            ),
+          ],
         ),
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-          sliver: SliverToBoxAdapter(
+        // Side Ruler - Positioned over the view but aligned to the right
+        Positioned(
+          top: 100, // Aligned closer to the TabBar area
+          bottom: 80, // Aligned above the Footer
+          right: 20,
+          child: Center(
             child: Builder(
               builder: (context) {
                 final index = _tabController.index;
@@ -128,14 +166,11 @@ class _DesktopHomeContentState extends State<DesktopHomeContent>
                   default:
                     type = MatchTabType.all;
                 }
-                return _buildMatchGridWithRuler(type);
+                final ruler = _buildSideRuler(type);
+                return ruler ?? const SizedBox.shrink();
               },
             ),
           ),
-        ),
-        // Footer
-        const SliverToBoxAdapter(
-          child: FootnoteSection(),
         ),
       ],
     );
@@ -164,23 +199,7 @@ class _DesktopHomeContentState extends State<DesktopHomeContent>
     );
   }
 
-  // ---------- Match Grid with Side Ruler ----------
-
-  Widget _buildMatchGridWithRuler(MatchTabType type) {
-    final grid = _buildMatchGrid(type);
-    final ruler = _buildSideRuler(type);
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: grid),
-        if (ruler != null) ...[
-          const SizedBox(width: 12),
-          ruler,
-        ],
-      ],
-    );
-  }
+  // ---------- Side Ruler ----------
 
   Widget? _buildSideRuler(MatchTabType type) {
     switch (type) {
@@ -194,25 +213,35 @@ class _DesktopHomeContentState extends State<DesktopHomeContent>
         if (labels.isEmpty) return null;
         return SideRuler(
           labels: labels,
-          onLabelTapped: (_) {
-            // Scroll feedback — future: implement precise scroll-to-section
-          },
+          onLabelTapped: (idx) => _scrollToSection(idx, labels[idx], type),
         );
 
       case MatchTabType.finished:
         final labels = SideRuler.finishedTimeLabels();
         return SideRuler(
           labels: labels,
-          onLabelTapped: (_) {},
+          onLabelTapped: (idx) => _scrollToSection(idx, labels[idx], type),
         );
 
       case MatchTabType.scheduled:
         final labels = SideRuler.scheduledTimeLabels();
         return SideRuler(
           labels: labels,
-          onLabelTapped: (_) {},
+          onLabelTapped: (idx) => _scrollToSection(idx, labels[idx], type),
         );
     }
+  }
+
+  void _scrollToSection(int index, String label, MatchTabType type) {
+    // Basic logic: Jump to a position relative to match count.
+    // In a production app, we'd use GlobalKeys per section or a FixedExtentScrollController.
+    // For now, we perform a smart scroll to the match grid area.
+    final targetOffset = 800.0 + (index * 200.0); // Rough estimate
+    _scrollController.animateTo(
+      targetOffset,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+    );
   }
 
   Widget _buildMatchGrid(MatchTabType type) {
@@ -240,7 +269,7 @@ class _DesktopHomeContentState extends State<DesktopHomeContent>
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: widget.isSidebarExpanded ? 2 : 3,
+            crossAxisCount: widget.isSidebarExpanded ? 3 : 4,
             crossAxisSpacing: 20,
             mainAxisSpacing: 20,
             mainAxisExtent: 350,

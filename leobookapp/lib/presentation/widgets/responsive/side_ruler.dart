@@ -63,41 +63,42 @@ class SideRuler extends StatelessWidget {
     if (labels.isEmpty) return const SizedBox.shrink();
 
     return Container(
-      width: 28,
+      width: 32,
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.desktopSearchFill.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(labels.length, (index) {
-          final isActive = activeIndex == index;
-          return GestureDetector(
-            onTap: () => onLabelTapped(index),
-            child: Container(
-              width: 28,
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              color: Colors.transparent,
-              child: Center(
-                child: Text(
-                  labels[index].length > 2
-                      ? labels[index].substring(0, 2)
-                      : labels[index],
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: isActive ? FontWeight.w900 : FontWeight.w600,
-                    color: isActive
-                        ? AppColors.primary
-                        : AppColors.textGrey.withValues(alpha: 0.6),
-                    letterSpacing: 0.5,
+      child: SingleChildScrollView(
+        child: Column(
+          children: List.generate(labels.length, (index) {
+            final isActive = activeIndex == index;
+            return GestureDetector(
+              onTap: () => onLabelTapped(index),
+              child: Container(
+                width: 32,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                color: Colors.transparent,
+                child: Center(
+                  child: Text(
+                    labels[index].length > 2
+                        ? labels[index].substring(0, 2)
+                        : labels[index],
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: isActive ? FontWeight.w900 : FontWeight.w600,
+                      color: isActive
+                          ? AppColors.primary
+                          : AppColors.textGrey.withValues(alpha: 0.6),
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
       ),
     );
   }

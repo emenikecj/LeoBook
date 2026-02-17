@@ -3,6 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:leobookapp/logic/cubit/search_cubit.dart';
 import 'package:leobookapp/logic/cubit/search_state.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';
+import 'package:leobookapp/data/repositories/data_repository.dart';
+import 'package:leobookapp/presentation/screens/team_screen.dart';
+import 'package:leobookapp/presentation/screens/league_screen.dart';
 import '../widgets/match_card.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -36,9 +39,8 @@ class _SearchScreenState extends State<SearchScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark
-          ? AppColors.backgroundDark
-          : AppColors.backgroundLight,
+      backgroundColor:
+          isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
       body: SafeArea(
         child: Column(
           children: [
@@ -207,7 +209,6 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           const SizedBox(height: 32),
         ],
-
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: const Text(
@@ -286,7 +287,13 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildResultsView(BuildContext context, SearchResults state) {
-    if (state.matchedMatches.isEmpty && state.matchedLeagues.isEmpty) {
+    // Separate results by type
+    final teams =
+        state.searchResults.where((r) => r['type'] == 'team').toList();
+    final leagues =
+        state.searchResults.where((r) => r['type'] == 'league').toList();
+
+    if (teams.isEmpty && leagues.isEmpty && state.matchedMatches.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -312,64 +319,28 @@ class _SearchScreenState extends State<SearchScreen> {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 16),
       children: [
-        if (state.matchedLeagues.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.emoji_events,
-                  color: AppColors.primary,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  "LEAGUES",
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.primary,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          ...state.matchedLeagues.map(
-            (league) => _buildResultRow(context, league, Icons.chevron_right),
-          ),
-          const SizedBox(height: 32),
+        // --- MATCHED TEAMS ---
+        if (teams.isNotEmpty) ...[
+          _buildSectionHeader("TEAMS"),
+          ...teams.map((t) => _buildSearchResultItem(context, t, Icons.shield)),
+          const SizedBox(height: 24),
         ],
 
+        // --- MATCHED LEAGUES ---
+        if (leagues.isNotEmpty) ...[
+          _buildSectionHeader("LEAGUES"),
+          ...leagues.map(
+              (l) => _buildSearchResultItem(context, l, Icons.emoji_events)),
+          const SizedBox(height: 24),
+        ],
+
+        // --- MATCHES ---
         if (state.matchedMatches.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.sports_soccer,
-                  color: AppColors.primary,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  "MATCHES",
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.primary,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
+          _buildSectionHeader("MATCHES"),
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             itemCount: state.matchedMatches.length,
             itemBuilder: (context, index) {
               return Padding(
@@ -383,33 +354,84 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildResultRow(BuildContext context, String title, IconData icon) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.black.withValues(alpha: 0.05),
-          ),
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          color: AppColors.primary,
+          letterSpacing: 1.2,
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+    );
+  }
+
+  Widget _buildSearchResultItem(
+      BuildContext context, Map<String, dynamic> item, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: () {
+        if (item['type'] == 'team') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => TeamScreen(
+                teamName: item['name'],
+                repository: context.read<DataRepository>(),
+              ),
+            ),
+          );
+        } else if (item['type'] == 'league') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => LeagueScreen(
+                leagueId: item['id'].toString(),
+                leagueName: item['name'],
+              ),
+            ),
+          );
+        }
+        // Save to recent searches
+        context.read<SearchCubit>().addRecentSearch(item['name']);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.cardDark : Colors.white,
+          border: Border(
+            bottom: BorderSide(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.black.withValues(alpha: 0.05),
+            ),
           ),
-          Icon(
-            icon,
-            size: 18,
-            color: AppColors.textGrey.withValues(alpha: 0.4),
-          ),
-        ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundDark,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 16, color: AppColors.textGrey),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                item['name'],
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const Icon(Icons.chevron_right,
+                size: 16, color: AppColors.textGrey),
+          ],
+        ),
       ),
     );
   }

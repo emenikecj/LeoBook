@@ -4,7 +4,7 @@
 
 import os
 from typing import List, Dict, Optional, Tuple
-from fuzzywuzzy import fuzz
+from Levenshtein import distance
 
 # Try importing Google GenAI (New Package)
 try:
@@ -34,7 +34,7 @@ class GrokMatcher:
         """
         # Quick exact/fuzzy pre-filter to avoid API costs limitations
         best_fuzzy, fuzzy_score = self._fuzzy_resolve(fs_name, fb_matches)
-        if fuzzy_score > 95:
+        if fuzzy_score > 90: # Slightly lower threshold for raw Levenshtein score mapping
             return best_fuzzy, fuzzy_score
 
         if not self.use_llm:
@@ -45,17 +45,22 @@ class GrokMatcher:
 
     def _fuzzy_resolve(self, fs_name: str, fb_matches: List[Dict]) -> Tuple[Optional[Dict], float]:
         best_match = None
-        highest_score = 0.0
+        min_distance = 999
         target = fs_name.lower()
         
         for m in fb_matches:
             candidate = f"{m.get('home_team')} vs {m.get('away_team')}".lower()
-            score = fuzz.token_set_ratio(target, candidate)
-            if score > highest_score:
-                highest_score = float(score)
+            dist = distance(target, candidate)
+            if dist < min_distance:
+                min_distance = dist
                 best_match = m
+        
+        # Convert distance to a pseudo-score (0-100)
+        # Score = 100 - (dist / max_len * 100)
+        max_len = max(len(target), 1)
+        score = max(0, 100 - (min_distance / max_len * 100))
                 
-        return best_match, highest_score
+        return best_match, score
 
     async def _llm_resolve(self, fs_name: str, fb_matches: List[Dict], fallback_match, fallback_score) -> Tuple[Optional[Dict], float]:
         """Call Gemini (google.genai) to pick the best match."""

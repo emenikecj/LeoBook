@@ -101,6 +101,9 @@ CREATE TABLE IF NOT EXISTS public.region_league (
     league_url TEXT,
     league_url TEXT,
     date_updated TEXT,
+    other_names JSONB DEFAULT '[]',
+    abbreviations JSONB DEFAULT '[]',
+    search_terms TEXT[] DEFAULT ARRAY[]::TEXT[],
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -117,6 +120,9 @@ CREATE TABLE IF NOT EXISTS public.teams (
     rl_ids TEXT,
     team_crest TEXT,
     team_url TEXT,
+    other_names JSONB DEFAULT '[]',
+    abbreviations JSONB DEFAULT '[]',
+    search_terms TEXT[] DEFAULT ARRAY[]::TEXT[],
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -331,3 +337,8 @@ CREATE TRIGGER update_audit_last_updated BEFORE UPDATE ON public.audit_log FOR E
 -- grants
 GRANT SELECT ON public.accuracy_reports TO anon, authenticated;
 GRANT SELECT ON public.audit_log TO anon, authenticated;
+
+-- MIGRATION: Search Dictionary Upgrade
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS stadium TEXT;
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS search_terms TEXT[];
+ALTER TABLE public.region_league ADD COLUMN IF NOT EXISTS search_terms TEXT[];

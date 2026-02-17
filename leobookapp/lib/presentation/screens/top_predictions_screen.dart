@@ -9,7 +9,8 @@ import '../screens/match_details_screen.dart';
 // We'll reuse the DateItem logic if possible, or just re-implement cleanly
 
 class TopPredictionsScreen extends StatelessWidget {
-  const TopPredictionsScreen({super.key});
+  final bool isSidebarExpanded;
+  const TopPredictionsScreen({super.key, this.isSidebarExpanded = true});
 
   void _navigateToMatch(
     BuildContext context,
@@ -85,14 +86,26 @@ class TopPredictionsScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          "TOP PREDICTIONS",
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: -1,
-                          ),
+                        Row(
+                          children: [
+                            IconButton(
+                              onPressed: () => Navigator.pop(context),
+                              icon: const Icon(Icons.arrow_back,
+                                  color: Colors.white70),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                            const SizedBox(width: 16),
+                            const Text(
+                              "TOP PREDICTIONS",
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                letterSpacing: -1,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 8),
                         const Text(
@@ -126,8 +139,8 @@ class TopPredictionsScreen extends StatelessWidget {
                       sliver: isDesktop
                           ? SliverGrid(
                               gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: isSidebarExpanded ? 2 : 3,
                                 crossAxisSpacing: 24,
                                 mainAxisSpacing: 24,
                                 childAspectRatio: 1.4,
