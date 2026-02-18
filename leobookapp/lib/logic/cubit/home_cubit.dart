@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:leobookapp/data/models/match_model.dart';
 import 'package:leobookapp/data/repositories/data_repository.dart';
@@ -59,6 +60,7 @@ class HomeError extends HomeState {
 class HomeCubit extends Cubit<HomeState> {
   final DataRepository _dataRepository;
   final NewsRepository _newsRepository;
+  StreamSubscription? _predictionsSub;
 
   HomeCubit(this._dataRepository, this._newsRepository) : super(HomeInitial());
 
@@ -72,15 +74,15 @@ class HomeCubit extends Cubit<HomeState> {
 
       // Try fetching predictions for today
       List<MatchModel> matches = await _dataRepository.fetchMatches(date: now);
-      List<RecommendationModel> recommendations = await _dataRepository
-          .fetchRecommendations();
+      List<RecommendationModel> recommendations =
+          await _dataRepository.fetchRecommendations();
 
       DateTime selectionDate = now;
 
       // If no matches for today, find the most recent date with predictions
       if (matches.isEmpty) {
-        final allRecent = await _dataRepository
-            .fetchMatches(); // Get latest 200
+        final allRecent =
+            await _dataRepository.fetchMatches(); // Get latest 200
         if (allRecent.isNotEmpty) {
           final latestDateStr = allRecent
               .map((m) => m.date)
@@ -128,8 +130,68 @@ class HomeCubit extends Cubit<HomeState> {
           isAllMatchesExpanded: false,
         ),
       );
+
+      // --- Start Realtime Subscription ---
+      _predictionsSub?.cancel();
+      _predictionsSub = _dataRepository
+          .watchPredictions(date: selectionDate)
+          .listen((updatedMatches) {
+        _handleRealtimeUpdate(updatedMatches);
+      });
     } catch (e) {
       emit(HomeError("Failed to load dashboard: $e"));
+    }
+  }
+
+  void _handleRealtimeUpdate(List<MatchModel> updatedMatches) {
+    if (state is HomeLoaded) {
+      final currentState = state as HomeLoaded;
+
+      // Merge updated matches into the current state
+      final Map<String, MatchModel> matchMap = {
+        for (var m in currentState.allMatches) m.fixtureId: m,
+      };
+
+      for (var updated in updatedMatches) {
+        matchMap[updated.fixtureId] = updated;
+      }
+
+      final mergedMatches = matchMap.values.toList();
+
+      final filteredMatches = _filterMatches(
+        mergedMatches,
+        currentState.selectedDate,
+        currentState.selectedSport,
+        leagues: currentState.selectedLeagues,
+        types: currentState.selectedPredictionTypes,
+        minO: currentState.minOdds,
+        maxO: currentState.maxOdds,
+      );
+
+      final live = mergedMatches.where((m) => m.isLive).toList();
+      final featured = mergedMatches
+          .where((m) => m.confidence != null && m.confidence!.contains('High'))
+          .toList();
+
+      emit(
+        HomeLoaded(
+          allMatches: mergedMatches,
+          filteredMatches: filteredMatches,
+          featuredMatches: featured,
+          liveMatches: live,
+          news: currentState.news,
+          allRecommendations: currentState.allRecommendations,
+          filteredRecommendations: currentState.filteredRecommendations,
+          selectedDate: currentState.selectedDate,
+          selectedSport: currentState.selectedSport,
+          availableSports: currentState.availableSports,
+          isAllMatchesExpanded: currentState.isAllMatchesExpanded,
+          selectedLeagues: currentState.selectedLeagues,
+          selectedPredictionTypes: currentState.selectedPredictionTypes,
+          minOdds: currentState.minOdds,
+          maxOdds: currentState.maxOdds,
+        ),
+      );
     }
   }
 
@@ -194,6 +256,13 @@ class HomeCubit extends Cubit<HomeState> {
           maxOdds: currentState.maxOdds,
         ),
       );
+
+      // Re-subscribe for the new date
+      _predictionsSub?.cancel();
+      _predictionsSub =
+          _dataRepository.watchPredictions(date: date).listen((updatedMatches) {
+        _handleRealtimeUpdate(updatedMatches);
+      });
     }
   }
 
@@ -347,8 +416,7 @@ class HomeCubit extends Cubit<HomeState> {
 
       bool leagueMatch =
           leagues.isEmpty || (m.league != null && leagues.contains(m.league));
-      bool typeMatch =
-          types.isEmpty ||
+      bool typeMatch = types.isEmpty ||
           (m.prediction != null && types.any((t) => m.prediction!.contains(t)));
 
       double mOdds = double.tryParse(m.odds ?? '1.0') ?? 1.0;
@@ -386,5 +454,11 @@ class HomeCubit extends Cubit<HomeState> {
 
   String _formatDateForMatching(DateTime date) {
     return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+  }
+
+  @override
+  Future<void> close() {
+    _predictionsSub?.cancel();
+    return super.close();
   }
 }

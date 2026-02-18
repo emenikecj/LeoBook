@@ -125,9 +125,8 @@ class DataRepository {
 
   Future<Map<String, String>> fetchTeamCrests() async {
     try {
-      final response = await _supabase
-          .from('teams')
-          .select('team_name, team_crest');
+      final response =
+          await _supabase.from('teams').select('team_name, team_crest');
       final Map<String, String> crests = {};
       for (var row in (response as List)) {
         if (row['team_name'] != null && row['team_crest'] != null) {
@@ -176,5 +175,27 @@ class DataRepository {
       debugPrint("DataRepository Error (Team Standing): $e");
       return null;
     }
+  }
+
+  // --- Realtime Streams ---
+
+  Stream<List<MatchModel>> watchLiveScores() {
+    return _supabase.from('live_scores').stream(primaryKey: ['fixture_id']).map(
+        (rows) => rows.map((row) => MatchModel.fromCsv(row)).toList());
+  }
+
+  Stream<List<MatchModel>> watchPredictions({DateTime? date}) {
+    var query =
+        _supabase.from('predictions').stream(primaryKey: ['fixture_id']);
+
+    return query.map((rows) {
+      var matches = rows.map((row) => MatchModel.fromCsv(row, row)).toList();
+      if (date != null) {
+        final dateStr =
+            "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+        matches = matches.where((m) => m.date == dateStr).toList();
+      }
+      return matches;
+    });
   }
 }

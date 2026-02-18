@@ -106,26 +106,40 @@ def _propagate_status_updates(live_matches: list):
                     sched_changed = True
             except Exception:
                 pass
+    sched_updates = []
     if sched_changed:
         _write_csv(SCHEDULES_CSV, sched_rows, sched_headers)
+        # Collect only the changed ones for cloud sync (optional, but cleaner)
+        sched_updates = [r for r in sched_rows if r.get('fixture_id') in live_ids]
 
     # --- Update predictions.csv ---
     pred_headers = files_and_headers.get(PREDICTIONS_CSV, [])
     pred_rows = _read_csv(PREDICTIONS_CSV)
     pred_changed = False
+    pred_updates = []
+    
     for row in pred_rows:
         fid = row.get('fixture_id', '')
         cur_status = row.get('status', row.get('match_status', '')).lower()
 
         if fid in live_ids:
             lm = live_map[fid]
+            row_changed = False
             if cur_status != 'live':
                 row['status'] = 'live'
+                row_changed = True
+            
+            new_hs = lm.get('home_score', '')
+            new_as = lm.get('away_score', '')
+            if row.get('home_score') != new_hs or row.get('away_score') != new_as:
+                row['home_score'] = new_hs
+                row['away_score'] = new_as
+                row['actual_score'] = f"{new_hs}-{new_as}"
+                row_changed = True
+            
+            if row_changed:
                 pred_changed = True
-            row['home_score'] = lm.get('home_score', '')
-            row['away_score'] = lm.get('away_score', '')
-            row['actual_score'] = f"{lm.get('home_score','0')}-{lm.get('away_score','0')}"
-            pred_changed = True
+                pred_updates.append(row)
         elif cur_status == 'live' and fid not in live_ids:
             try:
                 date_val = row.get('date', '2000-01-01')
@@ -142,10 +156,13 @@ def _propagate_status_updates(live_matches: list):
                     if oc:
                         row['outcome_correct'] = oc
                     pred_changed = True
+                    pred_updates.append(row)
             except Exception:
                 pass
     if pred_changed:
         _write_csv(PREDICTIONS_CSV, pred_rows, pred_headers)
+        
+    return sched_updates, pred_updates
 
 
 # ---------------------------------------------------------------------------
@@ -311,17 +328,33 @@ async def live_score_streamer(playwright: Playwright):
                         save_live_score_entry(m)
 
                     # Propagate status to schedules + predictions
-                    _propagate_status_updates(live_matches)
+                    sched_upd, pred_upd = _propagate_status_updates(live_matches)
 
-                    # Sync to Supabase
+                    # Sync everything to Supabase
                     if sync.supabase:
                         try:
+                            # 1. Push raw live scores
                             await sync.batch_upsert('live_scores', live_matches)
+                            # 2. Push modified predictions (for Realtime listeners)
+                            if pred_upd:
+                                await sync.batch_upsert('predictions', pred_upd)
+                            # 3. Push modified schedules
+                            if sched_upd:
+                                await sync.batch_upsert('schedules', sched_upd)
                         except Exception as e:
                             print(f"   [Streamer] Cloud sync error: {e}")
                 else:
                     # Even with no live matches, check for matches that should be finished
-                    _propagate_status_updates([])
+                    sched_upd, pred_upd = _propagate_status_updates([])
+                    
+                    if sync.supabase and (pred_upd or sched_upd):
+                        try:
+                            if pred_upd:
+                                await sync.batch_upsert('predictions', pred_upd)
+                            if sched_upd:
+                                await sync.batch_upsert('schedules', sched_upd)
+                        except Exception as e:
+                            print(f"   [Streamer] Cloud sync error (empty live): {e}")
 
                     if cycle % 5 == 1:  # Log "no matches" every 5 cycles to reduce noise
                         print(f"   [Streamer] {now} — No live matches (cycle {cycle})")
