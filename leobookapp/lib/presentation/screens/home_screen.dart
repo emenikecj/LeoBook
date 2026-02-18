@@ -29,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -139,6 +139,7 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                           tabs: const [
                             Tab(text: "ALL"),
+                            Tab(text: "LIVE"),
                             Tab(text: "FINISHED"),
                             Tab(text: "SCHEDULED"),
                           ],
@@ -153,6 +154,11 @@ class _HomeScreenState extends State<HomeScreen>
                           _buildMatchList(
                             state.filteredMatches,
                             MatchTabType.all,
+                            isDark,
+                          ),
+                          _buildMatchList(
+                            state.filteredMatches,
+                            MatchTabType.live,
                             isDark,
                           ),
                           _buildMatchList(

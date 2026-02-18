@@ -33,6 +33,7 @@ AUDIT_LOG_CSV = os.path.join(DB_DIR, "audit_log.csv")
 PROFILES_CSV = os.path.join(DB_DIR, "profiles.csv")
 CUSTOM_RULES_CSV = os.path.join(DB_DIR, "custom_rules.csv")
 RULE_EXECUTIONS_CSV = os.path.join(DB_DIR, "rule_executions.csv")
+LIVE_SCORES_CSV = os.path.join(DB_DIR, "live_scores.csv")
 
 
 def init_csvs():
@@ -182,6 +183,11 @@ def save_schedule_entry(match_info: Dict[str, Any]):
     match_info['last_updated'] = dt.now().isoformat()
 
     upsert_entry(SCHEDULES_CSV, match_info, files_and_headers[SCHEDULES_CSV], 'fixture_id')
+
+def save_live_score_entry(match_info: Dict[str, Any]):
+    """Saves or updates a live score entry in live_scores.csv."""
+    match_info['last_updated'] = dt.now().isoformat()
+    upsert_entry(LIVE_SCORES_CSV, match_info, files_and_headers[LIVE_SCORES_CSV], 'fixture_id')
 
 def save_standings(standings_data: List[Dict[str, Any]], region_league: str, league_id: str = ""):
     """UPSERTs standings data for a specific league in standings.csv."""
@@ -455,5 +461,9 @@ files_and_headers = {
     ],
     os.path.join(DB_DIR, "rule_executions.csv"): [
         'id', 'rule_id', 'fixture_id', 'user_id', 'result', 'executed_at', 'last_updated'
+    ],
+    LIVE_SCORES_CSV: [
+        'fixture_id', 'home_team', 'away_team', 'home_score', 'away_score',
+        'minute', 'status', 'region_league', 'match_link', 'timestamp', 'last_updated'
     ]
 }

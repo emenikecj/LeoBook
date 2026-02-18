@@ -1,6 +1,6 @@
 import 'package:leobookapp/data/models/match_model.dart';
 
-enum MatchTabType { all, finished, scheduled }
+enum MatchTabType { all, live, finished, scheduled }
 
 class MatchSorter {
   static List<dynamic> getSortedMatches(
@@ -10,6 +10,8 @@ class MatchSorter {
     switch (type) {
       case MatchTabType.all:
         return _groupByLeague(matches);
+      case MatchTabType.live:
+        return _groupByLeague(_filterLiveMatches(matches));
       case MatchTabType.finished:
         return _groupByTime(_filterFinishedMatches(matches), descending: true);
       case MatchTabType.scheduled:
@@ -91,26 +93,19 @@ class MatchSorter {
     return result;
   }
 
-  static List<MatchModel> _filterFinishedMatches(List<MatchModel> matches) {
-    return matches
-        .where(
-          (m) =>
-              m.status.toLowerCase().contains('finish') ||
-              m.status.toLowerCase().contains('ft') ||
-              m.status.toLowerCase().contains('full time'),
-        )
-        .toList();
+  /// LIVE: currentTime >= matchTime AND currentTime < matchTime + 2.5hrs
+  static List<MatchModel> _filterLiveMatches(List<MatchModel> matches) {
+    return matches.where((m) => m.isLive).toList();
   }
 
+  /// FINISHED: status says finished OR currentTime > matchTime + 2.5hrs
+  static List<MatchModel> _filterFinishedMatches(List<MatchModel> matches) {
+    return matches.where((m) => m.isFinished).toList();
+  }
+
+  /// SCHEDULED: not live AND not finished → currentTime < matchTime
   static List<MatchModel> _filterScheduledMatches(List<MatchModel> matches) {
-    return matches
-        .where(
-          (m) =>
-              !m.isLive &&
-              !m.status.toLowerCase().contains('finish') &&
-              !m.status.toLowerCase().contains('ft'),
-        )
-        .toList();
+    return matches.where((m) => !m.isLive && !m.isFinished).toList();
   }
 }
 

@@ -29,6 +29,7 @@ class MatchModel {
 
   final String? homeTeamId;
   final String? awayTeamId;
+  final String? outcomeCorrect; // From predictions CSV outcome_correct column
 
   MatchModel({
     required this.fixtureId,
@@ -58,6 +59,7 @@ class MatchModel {
     this.reasonTags,
     this.homeFormN,
     this.awayFormN,
+    this.outcomeCorrect,
   });
 
   String get aiReasoningSentence {
@@ -156,6 +158,27 @@ class MatchModel {
     }
   }
 
+  bool get isFinished {
+    final s = status.toLowerCase();
+    if (s.contains('finish') ||
+        s.contains('ft') ||
+        s.contains('finished') ||
+        s.contains('full time')) {
+      return true;
+    }
+    // Time-based: if more than 2.5 hours have passed since match start
+    try {
+      final now = DateTime.now();
+      final matchStart = DateTime.parse(
+        "${date}T${time.length == 5 ? time : '00:00'}:00",
+      );
+      final matchEnd = matchStart.add(const Duration(minutes: 150));
+      return now.isAfter(matchEnd);
+    } catch (_) {
+      return false;
+    }
+  }
+
   bool get isStartingSoon {
     try {
       final matchDateTime = DateTime.parse(
@@ -182,20 +205,25 @@ class MatchModel {
   }
 
   bool get isPredictionAccurate {
+    // Prefer outcome_correct from CSV/Supabase when available
+    if (outcomeCorrect != null && outcomeCorrect!.isNotEmpty) {
+      return outcomeCorrect!.toLowerCase() == 'true';
+    }
+    // Fallback: compute from scores
     if (homeScore == null || awayScore == null || prediction == null) {
       return false;
     }
     final hs = int.tryParse(homeScore!) ?? 0;
-    final as = int.tryParse(awayScore!) ?? 0;
+    final as_ = int.tryParse(awayScore!) ?? 0;
     final p = prediction!.toLowerCase();
 
-    if (p.contains('home win')) return hs > as;
-    if (p.contains('away win')) return as > hs;
-    if (p.contains('draw')) return hs == as;
-    if (p.contains('over 2.5')) return (hs + as) > 2.5;
-    if (p.contains('under 2.5')) return (hs + as) < 2.5;
+    if (p.contains('home win')) return hs > as_;
+    if (p.contains('away win')) return as_ > hs;
+    if (p.contains('draw')) return hs == as_;
+    if (p.contains('over 2.5')) return (hs + as_) > 2.5;
+    if (p.contains('under 2.5')) return (hs + as_) < 2.5;
     if (p.contains('btts') || p.contains('both teams to score')) {
-      return hs > 0 && as > 0;
+      return hs > 0 && as_ > 0;
     }
     return false;
   }
@@ -259,6 +287,8 @@ class MatchModel {
       }
     }
 
+    final outcomeCorrect = predictionData?['outcome_correct']?.toString();
+
     return MatchModel(
       fixtureId: fixtureId,
       date: formattedDate,
@@ -285,6 +315,7 @@ class MatchModel {
       reasonTags: reasonTags,
       homeFormN: (row['home_form_n'] as num?)?.toInt(),
       awayFormN: (row['away_form_n'] as num?)?.toInt(),
+      outcomeCorrect: outcomeCorrect,
     );
   }
 }

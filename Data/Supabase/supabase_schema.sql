@@ -342,3 +342,36 @@ GRANT SELECT ON public.audit_log TO anon, authenticated;
 ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS stadium TEXT;
 ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS search_terms TEXT[];
 ALTER TABLE public.region_league ADD COLUMN IF NOT EXISTS search_terms TEXT[];
+
+-- =============================================================================
+-- LIVE SCORES TABLE
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS public.live_scores (
+    fixture_id TEXT PRIMARY KEY,
+    home_team TEXT,
+    away_team TEXT,
+    home_score TEXT,
+    away_score TEXT,
+    minute TEXT,
+    status TEXT,
+    region_league TEXT,
+    match_link TEXT,
+    timestamp TIMESTAMP WITH TIME ZONE,
+    last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.live_scores ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public Read Access LiveScores" ON public.live_scores;
+CREATE POLICY "Public Read Access LiveScores" ON public.live_scores FOR SELECT USING (true);
+
+DROP TRIGGER IF EXISTS update_livescores_last_updated ON public.live_scores;
+CREATE TRIGGER update_livescores_last_updated BEFORE UPDATE ON public.live_scores FOR EACH ROW EXECUTE PROCEDURE update_last_updated_column();
+
+GRANT SELECT ON public.live_scores TO anon, authenticated;
+
+-- MIGRATION: Add outcome_correct and actual_score to predictions
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS outcome_correct TEXT;
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS actual_score TEXT;
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS home_score TEXT;
+ALTER TABLE public.predictions ADD COLUMN IF NOT EXISTS away_score TEXT;

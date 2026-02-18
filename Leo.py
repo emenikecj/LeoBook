@@ -30,6 +30,7 @@ from Data.Access.review_outcomes import run_review_process, run_accuracy_generat
 from Data.Access.prediction_accuracy import print_accuracy_report
 from Scripts.enrich_all_schedules import enrich_all_schedules
 from Modules.Flashscore.manager import run_flashscore_analysis, run_flashscore_offline_repredict
+from Modules.Flashscore.fs_live_streamer import live_score_streamer
 from Modules.FootballCom.fb_manager import run_odds_harvesting, run_automated_booking
 from Core.System.monitoring import run_chapter_3_oversight
 from Scripts.recommend_bets import get_recommendations
@@ -58,6 +59,9 @@ async def main():
         init_csvs()
 
         async with async_playwright() as p:
+            # Spawn live score streamer in parallel (own browser, 60s loop)
+            streamer_task = asyncio.create_task(live_score_streamer(p))
+
             while True:
                 try:
                     state["cycle_count"] += 1

@@ -36,13 +36,14 @@ class _DesktopHomeContentState extends State<DesktopHomeContent>
 
   // Match counts for tab labels
   int _allCount = 0;
+  int _liveCount = 0;
   int _finishedCount = 0;
   int _scheduledCount = 0;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_handleTabChange);
     _scrollController = ScrollController();
     _computeCounts();
@@ -59,6 +60,9 @@ class _DesktopHomeContentState extends State<DesktopHomeContent>
   void _computeCounts() {
     final matches = widget.state.filteredMatches.cast<MatchModel>();
     _allCount = matches.length;
+    _liveCount = MatchSorter.getSortedMatches(matches, MatchTabType.live)
+        .whereType<MatchModel>()
+        .length;
     _finishedCount =
         MatchSorter.getSortedMatches(matches, MatchTabType.finished)
             .whereType<MatchModel>()
@@ -146,9 +150,12 @@ class _DesktopHomeContentState extends State<DesktopHomeContent>
                         MatchTabType type;
                         switch (index) {
                           case 1:
-                            type = MatchTabType.finished;
+                            type = MatchTabType.live;
                             break;
                           case 2:
+                            type = MatchTabType.finished;
+                            break;
+                          case 3:
                             type = MatchTabType.scheduled;
                             break;
                           default:
@@ -189,6 +196,7 @@ class _DesktopHomeContentState extends State<DesktopHomeContent>
       ),
       tabs: [
         Tab(text: "ALL PREDICTIONS ($_allCount)"),
+        Tab(text: "LIVE ($_liveCount)"),
         Tab(text: "FINISHED ($_finishedCount)"),
         Tab(text: "SCHEDULED ($_scheduledCount)"),
       ],
