@@ -59,15 +59,30 @@ def log_audit_state(chapter: str, action: str, details: str = ""):
     })
 
 def setup_terminal_logging(args):
-    """Sets up Tee logging to file."""
+    """Sets up Tee logging to file with dynamic prefixes."""
     # Set timeout
     if args:
         os.environ["PLAYWRIGHT_TIMEOUT"] = "3600000"
 
+    # Determine prefix
+    prefix = "leo_session"
+    if args:
+        if args.sync: prefix = "leo_sync_session"
+        elif args.recommend: prefix = "leo_recommend_session"
+        elif args.accuracy: prefix = "leo_accuracy_session"
+        elif args.search_dict: prefix = "leo_search_session"
+        elif args.review: prefix = "leo_review_session"
+        elif args.backtest: prefix = "leo_backtest_session"
+        elif args.offline_repredict: prefix = "leo_offline_repredict_session"
+        elif args.rule_engine: prefix = "leo_rule_engine_session"
+        elif args.streamer: prefix = "leo_streamer_session"
+        elif args.prologue: prefix = "leo_prologue_session"
+        elif args.chapter: prefix = f"leo_chapter{args.chapter}_session"
+
     TERMINAL_LOG_DIR = LOG_DIR / "Terminal"
     TERMINAL_LOG_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = dt.now().strftime("%Y%m%d_%H%M%S")
-    log_file_path = TERMINAL_LOG_DIR / f"leo_session_{timestamp}.log"
+    log_file_path = TERMINAL_LOG_DIR / f"{prefix}_{timestamp}.log"
 
     log_file = open(log_file_path, "w", encoding="utf-8")
     original_stdout = sys.stdout
