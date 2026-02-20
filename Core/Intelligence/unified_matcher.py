@@ -1,3 +1,8 @@
+# unified_matcher.py: unified_matcher.py: Module for Core — Intelligence (AI Engine).
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: UnifiedBatchMatcher
+
 """
 Unified Batch Matcher - v7 (Prompt Fix + No-Match Handling + Data Validation)
 High-reliability batch matching with your specified models.

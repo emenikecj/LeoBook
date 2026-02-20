@@ -1,5 +1,7 @@
-# slip_aigo.py: AIGO-powered betslip management
-# Tier 1.2: Self-healing betslip interactions
+# slip_aigo.py: slip_aigo.py: AIGO-powered betslip management
+# Part of LeoBook Modules — Football.com Booking
+#
+# Functions: force_clear_slip_v5(), force_clear_slip(), get_bet_slip_count_v5()
 
 import asyncio
 from playwright.async_api import Page

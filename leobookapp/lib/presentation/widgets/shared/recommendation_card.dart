@@ -1,11 +1,16 @@
+// recommendation_card.dart: recommendation_card.dart: Widget/screen for App — Widgets.
+// Part of LeoBook App — Widgets
+//
+// Classes: RecommendationCard, _RecommendationCardState, _LivePulseTag, _LivePulseTagState
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';
 import 'package:leobookapp/core/constants/responsive_constants.dart';
 import 'package:leobookapp/data/models/recommendation_model.dart';
 import 'package:leobookapp/data/repositories/data_repository.dart';
-import '../screens/team_screen.dart';
-import '../screens/league_screen.dart';
+import '../../screens/team_screen.dart';
+import '../../screens/league_screen.dart';
 import 'package:leobookapp/core/widgets/glass_container.dart';
 
 class RecommendationCard extends StatefulWidget {
@@ -71,6 +76,7 @@ class _RecommendationCardState extends State<RecommendationCard> {
                       },
                       child: Text(
                         rec.league.toUpperCase(),
+                        maxLines: 1,
                         style: TextStyle(
                           color: AppColors.textGrey.withValues(alpha: 0.8),
                           fontSize: Responsive.sp(context, 7),
@@ -96,7 +102,7 @@ class _RecommendationCardState extends State<RecommendationCard> {
                 ],
               ),
 
-              SizedBox(height: Responsive.sp(context, 8)),
+              SizedBox(height: Responsive.sp(context, 6)),
 
               // ── Teams Row ──
               Row(
@@ -127,7 +133,7 @@ class _RecommendationCardState extends State<RecommendationCard> {
                 ],
               ),
 
-              SizedBox(height: Responsive.sp(context, 8)),
+              SizedBox(height: Responsive.sp(context, 6)),
 
               // ── Prediction Section (glass inner) ──
               Container(
@@ -139,7 +145,7 @@ class _RecommendationCardState extends State<RecommendationCard> {
                           ? Colors.white.withValues(alpha: 0.05)
                           : Colors.black.withValues(alpha: 0.03)),
                   borderRadius:
-                      BorderRadius.circular(Responsive.sp(context, 8)),
+                      BorderRadius.circular(Responsive.sp(context, 6)),
                   border: Border.all(
                     color: isLive
                         ? AppColors.liveRed.withValues(alpha: 0.15)
@@ -171,6 +177,7 @@ class _RecommendationCardState extends State<RecommendationCard> {
                           SizedBox(height: Responsive.sp(context, 1)),
                           Text(
                             rec.prediction,
+                            maxLines: 1,
                             style: TextStyle(
                               fontSize: Responsive.sp(context, 9),
                               fontWeight: FontWeight.w900,

@@ -1,6 +1,7 @@
-# withdrawal.py: Automated withdrawal orchestration for Football.com.
-# Refactored for Clean Architecture (v2.7)
-# This script manages payout triggers, PIN entry, and audit logging.
+# withdrawal.py: withdrawal.py: Automated withdrawal orchestration for Football.com.
+# Part of LeoBook Modules — Football.com Booking
+#
+# Functions: check_and_perform_withdrawal(), _execute_withdrawal_flow()
 
 import csv
 import asyncio

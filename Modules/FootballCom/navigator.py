@@ -1,6 +1,7 @@
-# navigator.py: High-level site navigation and state discovery for Football.com.
-# Refactored for Clean Architecture (v2.7)
-# This script handles URL routing, search, and verifying page context via Leo AI.
+# navigator.py: navigator.py: High-level site navigation and state discovery for Football.com.
+# Part of LeoBook Modules — Football.com
+#
+# Functions: log_page_title(), extract_balance(), perform_login(), load_or_create_session(), hide_overlays(), navigate_to_schedule(), select_target_date()
 
 """
 Navigator Module

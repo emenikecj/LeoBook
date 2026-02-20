@@ -1,6 +1,7 @@
-# match_resolver.py: Intelligent match resolution using Google GenAI (GrokMatcher)
-# Falls back to fuzzy matching if API is unavailable.
-# Updated to use 'google.genai' (v2025 deprecation fix)
+# match_resolver.py: match_resolver.py: Intelligent match resolution using Google GenAI (GrokMatcher)
+# Part of LeoBook Modules — Football.com
+#
+# Classes: GrokMatcher
 
 import os
 from typing import List, Dict, Optional, Tuple

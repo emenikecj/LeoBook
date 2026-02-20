@@ -1,3 +1,8 @@
+// liquid_glass_theme.dart: Central constants for the Liquid Glass design system.
+// Part of LeoBook App — Theme
+//
+// Classes: LiquidGlassTheme
+
 import 'package:flutter/material.dart';
 
 /// Central constants for the Liquid Glass design system.

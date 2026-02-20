@@ -1,6 +1,7 @@
-# csv_operations.py: Low-level CSV read/write and UPSERT logic.
-# Refactored for Clean Architecture (v2.7)
-# This script provides thread-safe access to tabular data storage.
+# csv_operations.py: csv_operations.py: Low-level CSV read/write and UPSERT logic.
+# Part of LeoBook Data — Access Layer
+#
+# Functions: _read_csv(), _append_to_csv(), _write_csv(), upsert_entry()
 
 """
 CSV Operations Module

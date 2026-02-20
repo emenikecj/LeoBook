@@ -1,6 +1,7 @@
-# page_analyzer.py: Webpage structure analysis and context validation.
-# Refactored for Clean Architecture (v2.7)
-# This script identifies page types and extracts structured data.
+# page_analyzer.py: page_analyzer.py: Webpage structure analysis and context validation.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: PageAnalyzer
 
 """
 Page Analyzer Module

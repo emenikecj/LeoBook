@@ -1,3 +1,8 @@
+// predictions_tab.dart: predictions_tab.dart: Widget/screen for App — League Tab Widgets.
+// Part of LeoBook App — League Tab Widgets
+//
+// Classes: LeaguePredictionsTab
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';

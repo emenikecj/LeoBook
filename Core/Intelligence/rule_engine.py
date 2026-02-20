@@ -1,6 +1,7 @@
-# rule_engine.py: Logic-based prediction engine.
-# Refactored for Clean Architecture (v2.7)
-# This script evaluates matches using weighted heuristics and xG thresholds.
+# rule_engine.py: rule_engine.py: Logic-based prediction engine.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: RuleEngine
 
 """
 Rule Engine Module

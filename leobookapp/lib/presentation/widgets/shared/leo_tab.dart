@@ -1,3 +1,8 @@
+// leo_tab.dart: leo_tab.dart: Widget/screen for App — Responsive Widgets.
+// Part of LeoBook App — Responsive Widgets
+//
+// Classes: LeoTab, _LeoTabState
+
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/responsive_constants.dart';

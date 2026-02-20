@@ -1,3 +1,8 @@
+// backtest_dashboard.dart: backtest_dashboard.dart: Widget/screen for App — Rule Engine Screens.
+// Part of LeoBook App — Rule Engine Screens
+//
+// Classes: BacktestDashboard, _BacktestDashboardState
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:leobookapp/data/models/rule_config_model.dart';

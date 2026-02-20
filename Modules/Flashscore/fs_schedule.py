@@ -1,6 +1,7 @@
-# fs_schedule.py: Daily match list extraction for Flashscore.
-# Refactored for Clean Architecture (v2.7)
-# This script scrapes upcoming fixtures and their relative URLs.
+# fs_schedule.py: fs_schedule.py: Daily match list extraction for Flashscore.
+# Part of LeoBook Modules — Flashscore
+#
+# Functions: extract_matches_from_page()
 
 import asyncio
 from typing import List, Dict, Any

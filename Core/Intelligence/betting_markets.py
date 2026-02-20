@@ -1,6 +1,7 @@
-# betting_markets.py: Analysis of specific betting market probabilities.
-# Refactored for Clean Architecture (v2.7)
-# This script calculates confidence for 1X2, Over/Under, DC, and BTTS.
+# betting_markets.py: betting_markets.py: Analysis of specific betting market probabilities.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: BettingMarkets
 
 """
 Betting Markets Module

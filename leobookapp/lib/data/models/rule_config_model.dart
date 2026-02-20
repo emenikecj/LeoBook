@@ -1,3 +1,8 @@
+// rule_config_model.dart: rule_config_model.dart: Widget/screen for App — Data Models.
+// Part of LeoBook App — Data Models
+//
+// Classes: RuleConfigModel
+
 class RuleConfigModel {
   String name;
   String description;

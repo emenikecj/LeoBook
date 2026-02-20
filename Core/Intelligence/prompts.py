@@ -1,6 +1,7 @@
-# prompts.py: Centralized management of AI prompts and element keys.
-# Refactored for Clean Architecture (v2.7)
-# This script defines specific keys for different page contexts to optimize token usage.
+# prompts.py: prompts.py: Centralized management of AI prompts and element keys.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Functions: get_keys_for_context()
 
 """
 Prompts Module

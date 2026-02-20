@@ -1,6 +1,7 @@
-# site_helpers.py: General browser automation helpers for Flashscore and Football.com.
-# Refactored for Clean Architecture (v2.7)
-# This script provides common actions like navigation and simple popup clearing.
+# site_helpers.py: site_helpers.py: General browser automation helpers for Flashscore and Football.com.
+# Part of LeoBook Core — Browser Automation
+#
+# Functions: fs_universal_popup_dismissal(), accept_cookies_robust(), click_next_day(), fb_universal_popup_dismissal(), get_main_frame()
 
 import asyncio # Keep asyncio for async operations
 from typing import Optional # Keep Optional for type hinting

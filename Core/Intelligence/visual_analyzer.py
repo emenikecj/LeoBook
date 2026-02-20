@@ -1,6 +1,8 @@
-# visual_analyzer.py: Advanced multimodal UI analysis engine.
-# Refactored for Clean Architecture (v2.7)
-# This script combines screenshots and DOM trees to derive interaction strategies.
+# visual_analyzer.py: visual_analyzer.py: Advanced multimodal UI analysis engine.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: VisualAnalyzer
+# Functions: get_visual_ui_analysis()
 
 """
 Visual Analyzer Module

@@ -1,3 +1,8 @@
+// leo_date_picker.dart: leo_date_picker.dart: Widget/screen for App — Responsive Widgets.
+// Part of LeoBook App — Responsive Widgets
+//
+// Classes: LeoDatePicker, _LeoDatePickerState
+
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 

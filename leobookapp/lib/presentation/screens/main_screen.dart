@@ -1,3 +1,8 @@
+// main_screen.dart: main_screen.dart: Widget/screen for App — Screens.
+// Part of LeoBook App — Screens
+//
+// Classes: MainScreen, _MainScreenState
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,7 +14,7 @@ import 'package:leobookapp/presentation/screens/home_screen.dart';
 import 'package:leobookapp/presentation/screens/account_screen.dart';
 import 'package:leobookapp/presentation/screens/rule_engine/backtest_dashboard.dart';
 import 'package:leobookapp/presentation/screens/top_predictions_screen.dart';
-import 'package:leobookapp/presentation/widgets/responsive/desktop_header.dart';
+import 'package:leobookapp/presentation/widgets/desktop/desktop_header.dart';
 import 'package:leobookapp/logic/cubit/search_cubit.dart';
 import 'package:leobookapp/logic/cubit/home_cubit.dart';
 import 'package:leobookapp/data/models/match_model.dart';

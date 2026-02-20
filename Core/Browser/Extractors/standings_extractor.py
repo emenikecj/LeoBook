@@ -1,6 +1,7 @@
-# standings_extractor.py: Extraction logic for league standings and goal differences.
-# Refactored for Clean Architecture (v2.7)
-# This script parses the standings table and form indicators.
+# standings_extractor.py: standings_extractor.py: Extraction logic for league standings and goal differences.
+# Part of LeoBook Core — Browser Extractors
+#
+# Functions: activate_standings_tab(), _post_activation_prep(), extract_standings_data()
 
 import re
 from playwright.async_api import Page, TimeoutError, ElementHandle

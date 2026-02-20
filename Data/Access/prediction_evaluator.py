@@ -1,6 +1,7 @@
-# prediction_evaluator.py: Logic for resolving betting market outcomes.
-# Refactored for Clean Architecture (v2.7)
-# This script determines if a prediction (e.g., BTTS) matches the final score.
+# prediction_evaluator.py: prediction_evaluator.py: Logic for resolving betting market outcomes.
+# Part of LeoBook Data — Access Layer
+#
+# Functions: evaluate_prediction()
 
 """
 Prediction Evaluator Module

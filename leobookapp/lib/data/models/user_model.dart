@@ -1,3 +1,8 @@
+// user_model.dart: user_model.dart: Widget/screen for App — Data Models.
+// Part of LeoBook App — Data Models
+//
+// Classes: UserModel
+
 enum UserTier { unregistered, lite, pro }
 
 class UserModel {

@@ -1,6 +1,7 @@
-# llm_matcher.py: Semantic team name matching using LLMs.
-# Refactored for Clean Architecture (v2.7)
-# This script resolves variations in team names across different data sources.
+# llm_matcher.py: llm_matcher.py: Semantic team name matching using LLMs.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: SemanticMatcher
 
 import requests
 import json

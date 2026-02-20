@@ -1,9 +1,8 @@
-/// Responsive layout constants and utilities for LeoBook.
-/// Centralizes breakpoints and scaling logic so layout-critical widgets
-/// never use raw hardcoded pixel values.
-///
-/// Key utility: [Responsive.sp] returns a proportional value that scales
-/// with the viewport width, using 375dp (iPhone SE) as the reference.
+// responsive_constants.dart: Responsive layout constants and utilities for LeoBook.
+// Part of LeoBook App — Constants
+//
+// Classes: Responsive
+
 library;
 
 import 'package:flutter/material.dart';

@@ -1,3 +1,8 @@
+// user_cubit.dart: user_cubit.dart: Widget/screen for App — State Management (Cubit).
+// Part of LeoBook App — State Management (Cubit)
+//
+// Classes: UserCubit
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../data/models/user_model.dart';

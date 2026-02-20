@@ -1,6 +1,7 @@
-# fb_manager.py: Orchestration layer for Football.com booking process.
-# Refactored for Clean Architecture (v2.8)
-# Decoupled: run_odds_harvesting (Ch1 P2) and run_automated_booking (Ch2 P1).
+# fb_manager.py: fb_manager.py: Orchestration layer for Football.com booking process.
+# Part of LeoBook Modules — Football.com
+#
+# Functions: _create_session(), run_odds_harvesting(), run_automated_booking(), run_football_com_booking()
 
 """
 Football.com Orchestrator — Decoupled v2.8

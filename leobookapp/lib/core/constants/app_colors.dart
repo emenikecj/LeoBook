@@ -1,3 +1,8 @@
+// app_colors.dart: ─── Brand ───────────────────────────────────────────────
+// Part of LeoBook App — Constants
+//
+// Classes: AppColors
+
 import 'package:flutter/material.dart';
 
 class AppColors {

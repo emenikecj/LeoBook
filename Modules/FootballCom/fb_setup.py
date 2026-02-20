@@ -1,6 +1,7 @@
-# fb_setup.py: Pre-booking initialization tasks.
-# Refactored for Clean Architecture (v2.7)
-# This script filters and groups pending predictions for the harvest loop.
+# fb_setup.py: fb_setup.py: Pre-booking initialization tasks.
+# Part of LeoBook Modules — Football.com
+#
+# Functions: get_pending_predictions_by_date()
 
 from datetime import datetime as dt
 from .matcher import filter_pending_predictions

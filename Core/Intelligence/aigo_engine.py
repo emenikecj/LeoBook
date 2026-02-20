@@ -1,7 +1,8 @@
-# aigo_engine.py: AIGO Phase 3 Expert Consultation via Grok API.
-# Captures artifacts (screenshot + sanitized HTML), builds a rich contextual prompt,
-# forces the LLM to return Primary + Backup paths with diversity,
-# and validates/salvages the response.
+# aigo_engine.py: aigo_engine.py: AIGO Phase 3 Expert Consultation via Grok API.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: AIGOEngine
+# Functions: _extract_json_with_salvage()
 
 import os
 import re

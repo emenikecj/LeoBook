@@ -1,6 +1,8 @@
-# slip.py: Interaction logic for the Football.com betslip.
-# Refactored for Clean Architecture (v2.7)
-# This script provides functions to count, inspect, and clear selections.
+# slip.py: slip.py: Interaction logic for the Football.com betslip.
+# Part of LeoBook Modules — Football.com Booking
+#
+# Classes: FatalSessionError
+# Functions: get_bet_slip_count(), force_clear_slip()
 
 """
 Betslip Management

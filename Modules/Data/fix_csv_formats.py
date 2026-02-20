@@ -1,3 +1,8 @@
+# fix_csv_formats.py: fix_csv_formats.py: Module for Modules — Data Processing.
+# Part of LeoBook Modules — Data Processing
+#
+# Functions: normalize_date(), fix_csvs()
+
 import pandas as pd
 import re
 from pathlib import Path

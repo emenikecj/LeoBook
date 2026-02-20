@@ -1,6 +1,7 @@
-# intelligence.py: Central AI orchestrator for visual and semantic tasks.
-# Refactored for Clean Architecture (v2.7)
-# This script delegates complex analysis to specialized AI sub-modules.
+# intelligence.py: intelligence.py: Central AI orchestrator for visual and semantic tasks.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Functions: analyze_page_and_update_selectors(), attempt_visual_recovery(), get_selector(), get_selector_auto(), get_selector_with_fallback(), extract_league_data(), fb_universal_popup_dismissal(), fb_tooltip_btn()
 
 import re
 import json

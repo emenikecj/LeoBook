@@ -1,6 +1,7 @@
-# fb_session.py: Browser context and anti-detect management.
-# Refactored for Clean Architecture (v2.7)
-# This script handles persistent profiles and Chrome process cleanup.
+# fb_session.py: fb_session.py: Browser context and anti-detect management.
+# Part of LeoBook Modules — Football.com
+#
+# Functions: cleanup_chrome_processes(), launch_browser_with_retry()
 
 import asyncio
 import os

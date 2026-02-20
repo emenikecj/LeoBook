@@ -1,6 +1,7 @@
-# outcome_reviewer.py: Post-match results extraction and accuracy reporting.
-# Refactored for Clean Architecture (v2.7)
-# This script updates predictions with final scores to calculate model performance.
+# outcome_reviewer.py: outcome_reviewer.py: Post-match results extraction and accuracy reporting.
+# Part of LeoBook Data — Access Layer
+#
+# Functions: _load_schedule_db(), get_predictions_to_review(), smart_parse_datetime(), save_single_outcome(), sync_schedules_to_predictions(), _sync_outcome_to_site_registry(), process_review_task_offline(), process_review_task_browser() (+4 more)
 
 """
 Outcome Reviewer Module

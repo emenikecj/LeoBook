@@ -1,3 +1,8 @@
+# fb_url_resolver.py: fb_url_resolver.py: Module for Modules — Football.com.
+# Part of LeoBook Modules — Football.com
+#
+# Functions: match_flash_to_fb(), resolve_urls(), get_harvested_matches_for_date()
+
 from playwright.async_api import Page
 from fuzzywuzzy import fuzz
 import asyncio

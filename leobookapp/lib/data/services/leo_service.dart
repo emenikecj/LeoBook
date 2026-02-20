@@ -1,3 +1,8 @@
+// leo_service.dart: leo_service.dart: Widget/screen for App — Services.
+// Part of LeoBook App — Services
+//
+// Classes: LeoService
+
 import 'dart:convert';
 import 'dart:io';
 import '../models/rule_config_model.dart';

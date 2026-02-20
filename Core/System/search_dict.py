@@ -1,3 +1,8 @@
+# search_dict.py: search_dict.py: Module for Core — System.
+# Part of LeoBook Core — System
+#
+# Functions: build_search_dict(), token_sort_ratio(), fuzzy_search()
+
 from supabase import create_client
 from Levenshtein import distance, ratio
 import os, re, csv

@@ -1,3 +1,8 @@
+// main.dart: main.dart: Widget/screen for Unknown.
+// Part of LeoBook Unknown
+//
+// Classes: LeoBookApp
+
 import 'package:flutter/material.dart';
 import 'package:leobookapp/core/theme/app_theme.dart';
 import 'package:leobookapp/logic/cubit/home_cubit.dart';

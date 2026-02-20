@@ -1,3 +1,8 @@
+// news_feed.dart: news_feed.dart: Widget/screen for App — Widgets.
+// Part of LeoBook App — Widgets
+//
+// Classes: NewsFeed, _NewsCard, _NewsCardState
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';

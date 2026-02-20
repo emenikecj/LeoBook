@@ -1,3 +1,8 @@
+// category_bar.dart: category_bar.dart: Widget/screen for App — Responsive Widgets.
+// Part of LeoBook App — Responsive Widgets
+//
+// Classes: CategoryBar, _CategoryBarState, _CategoryChip, _CategoryChipState
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';

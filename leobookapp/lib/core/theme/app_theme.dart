@@ -1,3 +1,8 @@
+// app_theme.dart: app_theme.dart: Widget/screen for App — Theme.
+// Part of LeoBook App — Theme
+//
+// Classes: AppTheme
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';

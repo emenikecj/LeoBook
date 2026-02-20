@@ -1,3 +1,8 @@
+# build_search_dict.py: build_search_dict.py: Module for Scripts — Pipeline.
+# Part of LeoBook Scripts — Pipeline
+#
+# Functions: normalize_for_search(), generate_deterministic_id(), extract_json_with_salvage(), query_grok_for_metadata_with_retry(), query_grok_for_metadata(), batch_upsert(), update_csv_file(), find_best_match_league() (+1 more)
+
 import csv
 import os
 import json

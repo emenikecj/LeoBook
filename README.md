@@ -74,24 +74,34 @@ See [AIGO_Learning_Guide.md](AIGO_Learning_Guide.md) for the full pipeline speci
 
 ```
 LeoBook/
-├── Leo.py                  # Orchestrator (275 lines, zero logic)
+├── Leo.py                  # Orchestrator v3.0 (dispatch-based CLI)
+├── RULEBOOK.md             # Developer rules (MANDATORY reading)
 ├── Core/
-│   ├── Browser/            # Playwright automation + extractors (5 files)
-│   ├── Intelligence/       # AI engine, AIGO, selectors (29 files)
-│   ├── System/             # Lifecycle, monitoring, withdrawal (4 files)
-│   └── Utils/              # Constants, page monitor, error logging (3 files)
+│   ├── Browser/            # Playwright automation + extractors
+│   ├── Intelligence/       # AI engine, AIGO, selectors
+│   ├── System/             # Lifecycle, monitoring, withdrawal
+│   └── Utils/              # Constants, utilities
 ├── Modules/
-│   ├── Flashscore/         # Sports data extraction + live streamer (7 files)
-│   └── FootballCom/        # Betting platform automation (20 files)
-├── Scripts/                # Enrichment pipeline + utilities (13 files)
+│   ├── Flashscore/         # Sports data extraction + live streamer
+│   └── FootballCom/        # Betting platform automation
+├── Scripts/                # Pipeline scripts (called by Leo.py)
+│   └── archive/            # Diagnostic/one-time scripts
 ├── Data/
-│   ├── Access/             # Data access layer (11 files)
-│   ├── Store/              # CSV/JSON data stores (19 files)
-│   └── Supabase/           # Cloud schema + migrations (3 files)
+│   ├── Access/             # Data access layer + sync
+│   ├── Store/              # CSV/JSON data stores
+│   └── Supabase/           # Cloud schema
 ├── Config/
-│   └── knowledge.json      # CSS selector knowledge base (32 KB)
-├── leobookapp/             # Flutter frontend (56 Dart files)
-└── StitchLeoBookHomeScoresNews/  # UI design mockups
+│   └── knowledge.json      # CSS selector knowledge base
+└── leobookapp/lib/
+    ├── core/               # Theme, constants, animations
+    ├── data/               # Models, repositories, services
+    ├── logic/              # Cubits, state management
+    └── presentation/
+        ├── screens/        # Pure viewport dispatchers
+        └── widgets/
+            ├── desktop/    # Desktop-only widgets
+            ├── mobile/     # Mobile-only widgets
+            └── shared/     # Reusable cross-platform widgets
 ```
 
 ---
@@ -117,7 +127,11 @@ The v3.0 rebuild introduces a **Telegram-inspired high-density aesthetic** optim
 pip install -r requirements.txt
 playwright install chromium
 cp .env.example .env  # Configure API keys
-python Leo.py
+python Leo.py              # Full cycle
+python Leo.py --prologue    # Run prologue only
+python Leo.py --chapter 1   # Run chapter 1 only
+python Leo.py --sync        # Sync only
+python Leo.py --help        # See all 20+ commands
 ```
 
 ### Frontend (leobookapp)
@@ -147,20 +161,20 @@ flutter run -d chrome  # or: flutter run (mobile)
 
 | Document | Purpose |
 |----------|---------|
+| [RULEBOOK.md](RULEBOOK.md) | **MANDATORY** — Developer rules, architecture decisions, coding standards |
 | [LeoBook_Technical_Master_Report.md](LeoBook_Technical_Master_Report.md) | Complete file inventory, execution trace, data flow diagrams |
 | [leobook_algorithm.md](leobook_algorithm.md) | Algorithm reference — every function call mapped to its module |
 | [AIGO_Learning_Guide.md](AIGO_Learning_Guide.md) | Self-healing framework specification (5-phase pipeline) |
 | [SUPABASE_SETUP.md](SUPABASE_SETUP.md) | Supabase setup, credentials, Flutter config |
-| [SUPABASE_SYNC_REQUIREMENTS.md](SUPABASE_SYNC_REQUIREMENTS.md) | SyncManager technical spec, conflict resolution, performance |
-| [LeoBook Developer Tasks.txt](LeoBook%20Developer%20Tasks.txt) | Roadmap with implementation status |
 
 ---
 
 ## Maintenance
 
+- `python Leo.py --sync` — Manual cloud sync
+- `python Leo.py --recommend` — Regenerate recommendations
+- `python Leo.py --accuracy` — Regenerate accuracy reports
+- `python Leo.py --review` — Run outcome review
+- `python Leo.py --backtest` — Run backtest check
 - Monitor `Data/Store/audit_log.csv` for real-time event transparency
-- Monitor `Data/Store/live_scores.csv` for live match streaming data
-- Use `python Scripts/recommend_bets.py --save` to manually generate recommendations
-- Use `python Scripts/enrich_all_schedules.py --limit 50` for targeted enrichment
-- Check Chapter 3 oversight reports in Supabase `audit_events` table
 - Live streamer runs automatically in parallel — check `[Streamer]` logs

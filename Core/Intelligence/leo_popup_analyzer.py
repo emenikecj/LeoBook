@@ -1,6 +1,8 @@
-# leo_popup_analyzer.py: Local AI-driven overlay detection and dismissal.
-# Refactored for Clean Architecture (v2.7)
-# This script uses multimodal AI to identify closing buttons and banners.
+# leo_popup_analyzer.py: leo_popup_analyzer.py: Local AI-driven overlay detection and dismissal.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: LeoPopupAnalyzer
+# Functions: clean_json_response()
 
 """
 Leo AI Popup Analyzer Module

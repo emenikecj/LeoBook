@@ -1,3 +1,8 @@
+# supabase_client.py: supabase_client.py: Module for Data — Access Layer.
+# Part of LeoBook Data — Access Layer
+#
+# Functions: get_supabase_client()
+
 import os
 import logging
 from typing import Optional

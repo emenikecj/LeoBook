@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+# enrich_all_schedules.py: enrich_all_schedules.py: Module for Scripts — Pipeline.
+# Part of LeoBook Scripts — Pipeline
+#
+# Functions: load_selectors(), _raw_safe_attr(), _raw_safe_text(), _smart_attr(), _smart_text(), _id_from_href(), _standardize_url(), strip_league_stage() (+6 more)
+
 """
 Match Enrichment Pipeline: Process ALL schedules to extract missing data
 Author: LeoBook Team

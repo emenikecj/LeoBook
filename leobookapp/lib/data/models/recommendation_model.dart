@@ -1,3 +1,8 @@
+// recommendation_model.dart: recommendation_model.dart: Widget/screen for App — Data Models.
+// Part of LeoBook App — Data Models
+//
+// Classes: RecommendationModel
+
 class RecommendationModel {
   final String match;
   final String fixtureId;

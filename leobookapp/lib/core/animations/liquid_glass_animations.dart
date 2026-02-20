@@ -1,3 +1,8 @@
+// liquid_glass_animations.dart: Reusable fade-in + slide-up animation for staggered content loading.
+// Part of LeoBook App — Animations
+//
+// Classes: LiquidFadeIn, _LiquidFadeInState
+
 import 'package:flutter/material.dart';
 import '../theme/liquid_glass_theme.dart';
 

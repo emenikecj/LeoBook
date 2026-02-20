@@ -1,3 +1,8 @@
+// supabase_config.dart: Supabase Project URL
+// Part of LeoBook App — Configuration
+//
+// Classes: SupabaseConfig
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class SupabaseConfig {

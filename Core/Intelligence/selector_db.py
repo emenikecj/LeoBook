@@ -1,6 +1,7 @@
-# selector_db.py: Database manager for AI-learned CSS selectors.
-# Refactored for Clean Architecture (v2.7)
-# This script handles persistence for the automated selector knowledge base.
+# selector_db.py: selector_db.py: Database manager for AI-learned CSS selectors.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Functions: load_knowledge(), save_knowledge()
 
 """
 Database Manager for LeoBook

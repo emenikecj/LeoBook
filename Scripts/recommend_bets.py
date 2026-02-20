@@ -1,6 +1,7 @@
-# recommend_bets.py: Terminal-based prediction viewer and formatter.
-# Refactored for Clean Architecture (v2.7)
-# This script displays the top-rated AI predictions for manual review or export.
+# recommend_bets.py: recommend_bets.py: Terminal-based prediction viewer and formatter.
+# Part of LeoBook Scripts — Pipeline
+#
+# Functions: load_data(), calculate_market_reliability(), get_recommendations(), save_recommendations_to_predictions_csv()
 
 import csv
 import os

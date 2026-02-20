@@ -1,6 +1,7 @@
-# data_validator.py: Integrity checks for extracted match data.
-# Refactored for Clean Architecture (v2.7)
-# This script ensures required fields (names, times, IDs) are present and valid.
+# data_validator.py: data_validator.py: Integrity checks for extracted match data.
+# Part of LeoBook Data — Access Layer
+#
+# Classes: DataValidator
 
 """
 Data Validator Module

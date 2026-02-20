@@ -1,6 +1,7 @@
-# utils.py: AI-related utility functions.
-# Refactored for Clean Architecture (v2.7)
-# This script provides common functions like JSON cleaning for AI responses.
+# utils.py: utils.py: AI-related utility functions.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Functions: clean_json_response()
 
 """
 Intelligence Utils Module

@@ -1,6 +1,7 @@
-# page_logger.py: Diagnostic tool for capturing HTML and screenshot snapshots.
-# Refactored for Clean Architecture (v2.7)
-# This script saves raw page data to the Logs/ folder for debugging AI failures.
+# page_logger.py: page_logger.py: Diagnostic tool for capturing HTML and screenshot snapshots.
+# Part of LeoBook Core — Browser Automation
+#
+# Functions: log_fb_login_page(), log_page_html()
 
 import asyncio
 from datetime import datetime as dt

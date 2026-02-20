@@ -1,5 +1,7 @@
-# league_page_extractor.py: Extract all match URLs from a league's results/fixtures page.
-# Part of Phase 6 Overhaul (v2.8)
+# league_page_extractor.py: league_page_extractor.py: Extract all match URLs from a league's results/fixtures page.
+# Part of LeoBook Core — Browser Extractors
+#
+# Functions: extract_league_match_urls(), get_active_leagues_from_main(), extract_league_metadata()
 
 import asyncio
 from typing import List, Dict, Any

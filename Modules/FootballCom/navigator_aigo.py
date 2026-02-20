@@ -1,3 +1,8 @@
+# navigator_aigo.py: navigator_aigo.py: Module for Modules — Football.com.
+# Part of LeoBook Modules — Football.com
+#
+# Functions: perform_login_v5()
+
 async def perform_login_v5(page: Page):
     """Refactored login flow using AIGO V5 for self-healing interactions."""
     from Core.Intelligence.interaction_engine import execute_smart_action

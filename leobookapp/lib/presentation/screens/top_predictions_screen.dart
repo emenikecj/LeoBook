@@ -1,3 +1,8 @@
+// top_predictions_screen.dart: top_predictions_screen.dart: Widget/screen for App — Screens.
+// Part of LeoBook App — Screens
+//
+// Classes: TopPredictionsScreen
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';
@@ -5,8 +10,8 @@ import 'package:leobookapp/core/constants/responsive_constants.dart';
 import 'package:leobookapp/data/models/recommendation_model.dart';
 import 'package:leobookapp/data/models/match_model.dart';
 import 'package:leobookapp/logic/cubit/home_cubit.dart';
-import '../widgets/recommendation_card.dart';
-import '../screens/match_details_screen.dart';
+import '../widgets/shared/recommendation_card.dart';
+import 'match_details_screen.dart';
 
 /// Unified Top Predictions screen — lives inside MainScreen's IndexedStack.
 /// No own Scaffold/AppBar. Shows recommendations for SCHEDULED matches,
@@ -174,20 +179,62 @@ class TopPredictionsScreen extends StatelessWidget {
                         ],
                       ),
                     )
-                  : ListView.builder(
-                      padding: EdgeInsets.only(
-                        bottom: Responsive.sp(context, 80),
-                      ),
-                      itemCount: recs.length,
-                      itemBuilder: (context, index) {
-                        final rec = recs[index];
-                        return GestureDetector(
-                          onTap: () =>
-                              _navigateToMatch(context, rec, state.allMatches),
-                          child: RecommendationCard(recommendation: rec),
-                        );
-                      },
-                    ),
+                  : Responsive.isDesktop(context)
+                      ? SingleChildScrollView(
+                          padding: EdgeInsets.fromLTRB(
+                            Responsive.sp(context, 14),
+                            0,
+                            Responsive.sp(context, 14),
+                            Responsive.sp(context, 80),
+                          ),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              const crossAxisCount = 4;
+                              final spacing = Responsive.sp(context, 14);
+                              final itemWidth = (constraints.maxWidth -
+                                      (spacing * (crossAxisCount - 1))) /
+                                  crossAxisCount;
+
+                              return Wrap(
+                                spacing: spacing,
+                                runSpacing: spacing,
+                                children: recs
+                                    .map(
+                                      (rec) => SizedBox(
+                                        width: itemWidth,
+                                        child: GestureDetector(
+                                          onTap: () => _navigateToMatch(
+                                            context,
+                                            rec,
+                                            state.allMatches,
+                                          ),
+                                          child: RecommendationCard(
+                                              recommendation: rec),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                              );
+                            },
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: EdgeInsets.only(
+                            bottom: Responsive.sp(context, 80),
+                          ),
+                          itemCount: recs.length,
+                          itemBuilder: (context, index) {
+                            final rec = recs[index];
+                            return GestureDetector(
+                              onTap: () => _navigateToMatch(
+                                context,
+                                rec,
+                                state.allMatches,
+                              ),
+                              child: RecommendationCard(recommendation: rec),
+                            );
+                          },
+                        ),
             ),
           ],
         );

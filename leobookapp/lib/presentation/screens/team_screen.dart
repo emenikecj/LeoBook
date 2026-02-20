@@ -1,10 +1,15 @@
+// team_screen.dart: import 'package:fl_chart/fl_chart.dart'; // Optional for future graph
+// Part of LeoBook App — Screens
+//
+// Classes: TeamScreen, _TeamScreenState
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 // import 'package:fl_chart/fl_chart.dart'; // Optional for future graph
 import 'package:leobookapp/core/constants/app_colors.dart';
 import 'package:leobookapp/data/models/match_model.dart';
 import 'package:leobookapp/data/repositories/data_repository.dart';
-import '../widgets/match_card.dart';
+import '../widgets/shared/match_card.dart';
 
 class TeamScreen extends StatefulWidget {
   final String teamName;

@@ -1,5 +1,7 @@
-# balance_extractor_aigo.py: AIGO-powered balance extraction
-# Tier 3.2: Path C (Direct Extraction) for robust balance retrieval
+# balance_extractor_aigo.py: balance_extractor_aigo.py: AIGO-powered balance extraction
+# Part of LeoBook Modules — Football.com
+#
+# Functions: extract_balance_v5()
 
 from playwright.async_api import Page
 from Core.Intelligence.interaction_engine import execute_smart_action

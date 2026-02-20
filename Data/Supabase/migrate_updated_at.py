@@ -1,3 +1,7 @@
+# migrate_updated_at.py: migrate_updated_at.py: Module for Data — Supabase Migrations.
+# Part of LeoBook Data — Supabase Migrations
+#
+
 """
 One-time migration: Add updated_at column to tables that lack it,
 and replace the trigger function with a robust version that checks

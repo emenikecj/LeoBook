@@ -1,6 +1,8 @@
-# api_manager.py: Manages AI API interactions (Gemini, local Leo AI).
-# Refactored for Clean Architecture (v2.7)
-# This script handles authentication, rotation, and request formatting.
+# api_manager.py: api_manager.py: Manages AI API interactions (Gemini, local Leo AI).
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Functions: leo_api_call_with_rotation(), grok_api_call(), gemini_api_call_with_rotation(), ai_api_call()
+
 import os
 import requests
 import json

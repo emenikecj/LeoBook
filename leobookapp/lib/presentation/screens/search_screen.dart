@@ -1,3 +1,8 @@
+// search_screen.dart: search_screen.dart: Widget/screen for App — Screens.
+// Part of LeoBook App — Screens
+//
+// Classes: SearchScreen, _SearchScreenState
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:leobookapp/logic/cubit/search_cubit.dart';
@@ -6,7 +11,7 @@ import 'package:leobookapp/core/constants/app_colors.dart';
 import 'package:leobookapp/data/repositories/data_repository.dart';
 import 'package:leobookapp/presentation/screens/team_screen.dart';
 import 'package:leobookapp/presentation/screens/league_screen.dart';
-import '../widgets/match_card.dart';
+import '../widgets/shared/match_card.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});

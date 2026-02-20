@@ -1,6 +1,7 @@
-# selector_manager.py: Multi-strategy selector retrieval and validation.
-# Refactored for Clean Architecture (v2.7)
-# This script manages selector health and coordinates on-demand healing.
+# selector_manager.py: selector_manager.py: Multi-strategy selector retrieval and validation.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: SelectorManager
 
 """
 Selector Manager Module

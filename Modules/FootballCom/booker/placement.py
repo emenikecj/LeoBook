@@ -1,6 +1,7 @@
-# placement.py: Final bet submission and stakeholder management.
-# Refactored for Clean Architecture (v2.8)
-# This script injects codes, calculates Kelly stakes, and confirms placement.
+# placement.py: placement.py: Final bet submission and stakeholder management.
+# Part of LeoBook Modules — Football.com Booking
+#
+# Functions: ensure_bet_insights_collapsed(), expand_collapsed_market(), place_bets_for_matches(), calculate_kelly_stake(), place_multi_bet_from_codes()
 
 """
 Bet Placement Orchestration

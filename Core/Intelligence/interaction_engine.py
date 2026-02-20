@@ -1,3 +1,7 @@
+# interaction_engine.py: interaction_engine.py: Module for Core — Intelligence (AI Engine).
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Functions: execute_smart_action()
 
 import asyncio
 import json

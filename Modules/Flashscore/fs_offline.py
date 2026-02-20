@@ -1,6 +1,7 @@
-# fs_offline.py: Reprediction loop using stored data.
-# Refactored for Clean Architecture (v2.7)
-# This script re-runs the rule engine on matches already extracted to CSV.
+# fs_offline.py: fs_offline.py: Reprediction loop using stored data.
+# Part of LeoBook Modules — Flashscore
+#
+# Functions: run_flashscore_offline_repredict(), _save_custom_prediction()
 
 from datetime import datetime as dt, timedelta
 from zoneinfo import ZoneInfo

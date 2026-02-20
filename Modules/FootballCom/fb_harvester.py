@@ -1,6 +1,7 @@
-# fb_harvester.py: Batch processing of match booking codes.
-# Refactored for Clean Architecture (v2.7)
-# This script iterates through resolved URLs to generate shareable bet codes.
+# fb_harvester.py: fb_harvester.py: Batch processing of match booking codes.
+# Part of LeoBook Modules — Football.com
+#
+# Functions: run_harvest_loop()
 
 from datetime import datetime as dt
 from playwright.async_api import Page

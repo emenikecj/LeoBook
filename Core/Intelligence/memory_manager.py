@@ -1,3 +1,9 @@
+# memory_manager.py: memory_manager.py: Module for Core — Intelligence (AI Engine).
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: MemoryManager
+# Functions: load_memory(), save_memory()
+
 import json
 import time
 from pathlib import Path

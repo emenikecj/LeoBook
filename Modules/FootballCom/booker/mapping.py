@@ -1,6 +1,7 @@
-# mapping.py: Prediction mapper for Football.com markets.
-# Refactored for Clean Architecture (v2.7)
-# This script translates common prediction terms into site-specific UI labels.
+# mapping.py: mapping.py: Prediction mapper for Football.com markets.
+# Part of LeoBook Modules — Football.com Booking
+#
+# Functions: find_market_and_outcome()
 
 """
 Market Mapping Logic

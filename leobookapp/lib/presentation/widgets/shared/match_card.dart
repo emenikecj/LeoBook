@@ -1,12 +1,17 @@
+// match_card.dart: match_card.dart: Widget/screen for App — Widgets.
+// Part of LeoBook App — Widgets
+//
+// Classes: MatchCard, _MatchCardState, _LiveBadge, _LiveBadgeState
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:leobookapp/data/models/match_model.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';
 import 'package:leobookapp/core/constants/responsive_constants.dart';
 import 'package:leobookapp/data/repositories/data_repository.dart';
-import '../screens/match_details_screen.dart';
-import '../screens/team_screen.dart';
-import '../screens/league_screen.dart';
+import '../../screens/match_details_screen.dart';
+import '../../screens/team_screen.dart';
+import '../../screens/league_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:leobookapp/core/widgets/glass_container.dart';
 

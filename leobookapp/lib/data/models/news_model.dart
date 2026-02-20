@@ -1,3 +1,8 @@
+// news_model.dart: news_model.dart: Widget/screen for App — Data Models.
+// Part of LeoBook App — Data Models
+//
+// Classes: NewsModel
+
 class NewsModel {
   final String id;
   final String title;

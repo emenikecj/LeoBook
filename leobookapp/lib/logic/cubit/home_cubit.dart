@@ -1,3 +1,8 @@
+// home_cubit.dart: home_cubit.dart: Widget/screen for App — State Management (Cubit).
+// Part of LeoBook App — State Management (Cubit)
+//
+// Classes: HomeState, HomeInitial, HomeLoading, HomeLoaded, HomeError, HomeCubit
+
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

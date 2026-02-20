@@ -1,3 +1,8 @@
+// accuracy_report_card.dart: accuracy_report_card.dart: Widget/screen for App — Responsive Widgets.
+// Part of LeoBook App — Responsive Widgets
+//
+// Classes: AccuracyReportCard, _LeagueAccuracyGrid, _SectionHeader, _LeagueAccuracy
+
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/responsive_constants.dart';

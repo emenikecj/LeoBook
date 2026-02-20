@@ -1,3 +1,8 @@
+// search_cubit.dart: search_cubit.dart: Widget/screen for App — State Management (Cubit).
+// Part of LeoBook App — State Management (Cubit)
+//
+// Classes: SearchCubit
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'search_state.dart';
 import 'package:leobookapp/data/models/match_model.dart';

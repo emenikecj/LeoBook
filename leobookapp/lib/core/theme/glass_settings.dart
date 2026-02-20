@@ -1,3 +1,8 @@
+// glass_settings.dart: Performance-aware glass intensity toggle.
+// Part of LeoBook App — Theme
+//
+// Classes: GlassSettings
+
 import 'package:flutter/foundation.dart';
 
 /// Performance-aware glass intensity toggle.

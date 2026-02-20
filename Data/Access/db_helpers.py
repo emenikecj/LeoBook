@@ -1,6 +1,7 @@
-# db_helpers.py: High-level database access layers for LeoBook.
-# Refactored for Clean Architecture (v2.7)
-# This script manages CSV initialization and structured data saving.
+# db_helpers.py: db_helpers.py: High-level database access layers for LeoBook.
+# Part of LeoBook Data — Access Layer
+#
+# Functions: init_csvs(), log_audit_event(), save_prediction(), update_prediction_status(), backfill_prediction_entry(), save_schedule_entry(), save_live_score_entry(), save_standings() (+12 more)
 
 """
 Database Helpers Module

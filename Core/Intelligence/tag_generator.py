@@ -1,6 +1,7 @@
-# tag_generator.py: Analytical tag generation for match insights.
-# Refactored for Clean Architecture (v2.7)
-# This script converts raw stats (form, H2H, xG) into descriptive analysis tags.
+# tag_generator.py: tag_generator.py: Analytical tag generation for match insights.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: TagGenerator
 
 """
 Tag Generator Module

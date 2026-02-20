@@ -1,6 +1,7 @@
-# withdrawal_checker.py: Logic for managing automated withdrawal proposals.
-# Refactored for Clean Architecture (v2.8)
-# Withdrawal proposals are surfaced via LeoBook Web/App for approval.
+# withdrawal_checker.py: withdrawal_checker.py: Logic for managing automated withdrawal proposals.
+# Part of LeoBook Core — System
+#
+# Functions: calculate_proposed_amount(), get_latest_win(), check_triggers(), propose_withdrawal(), check_withdrawal_approval(), execute_withdrawal()
 
 import asyncio
 from datetime import datetime as dt, timedelta

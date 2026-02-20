@@ -1,3 +1,8 @@
+// auth_repository.dart: auth_repository.dart: Widget/screen for App — Repositories.
+// Part of LeoBook App — Repositories
+//
+// Classes: AuthRepository
+
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';

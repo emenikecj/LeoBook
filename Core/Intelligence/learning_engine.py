@@ -1,6 +1,7 @@
-# learning_engine.py: Self-learning component for weight adjustment.
-# Refactored for Clean Architecture (v2.7)
-# This script analyzes performance and adapts rule weights.
+# learning_engine.py: learning_engine.py: Self-learning component for weight adjustment.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: LearningEngine
 
 """
 LearningEngine Module

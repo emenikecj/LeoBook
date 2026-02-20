@@ -1,3 +1,8 @@
+// data_repository.dart: data_repository.dart: Widget/screen for App — Repositories.
+// Part of LeoBook App — Repositories
+//
+// Classes: DataRepository
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

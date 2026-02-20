@@ -1,3 +1,8 @@
+// search_service.dart: search_service.dart: Widget/screen for App — Services.
+// Part of LeoBook App — Services
+//
+// Classes: SearchService
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SearchService {

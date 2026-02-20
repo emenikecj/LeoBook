@@ -1,3 +1,8 @@
+// desktop_header.dart: desktop_header.dart: Widget/screen for App — Responsive Widgets.
+// Part of LeoBook App — Responsive Widgets
+//
+// Classes: DesktopHeader
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

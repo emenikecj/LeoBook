@@ -1,3 +1,8 @@
+// rule_editor_screen.dart: rule_editor_screen.dart: Widget/screen for App — Rule Engine Screens.
+// Part of LeoBook App — Rule Engine Screens
+//
+// Classes: RuleEditorScreen, _RuleEditorScreenState
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:leobookapp/data/models/rule_config_model.dart';

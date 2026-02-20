@@ -1,6 +1,7 @@
-# extractor.py: Schedule scraper for Football.com.
-# Refactored for Clean Architecture (v2.7)
-# This script extracts match cards and metadata from league-specific pages.
+# extractor.py: extractor.py: Schedule scraper for Football.com.
+# Part of LeoBook Modules — Football.com
+#
+# Functions: extract_league_matches(), validate_match_data()
 
 """
 Extractor Module

@@ -1,3 +1,8 @@
+// footnote_section.dart: footnote_section.dart: Widget/screen for App — Widgets.
+// Part of LeoBook App — Widgets
+//
+// Classes: FootnoteSection
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';

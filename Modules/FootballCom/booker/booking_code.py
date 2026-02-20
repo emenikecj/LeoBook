@@ -1,3 +1,8 @@
+# booking_code.py: booking_code.py: Module for Modules — Football.com Booking.
+# Part of LeoBook Modules — Football.com Booking
+#
+# Functions: ensure_bet_insights_collapsed(), check_match_start_time(), harvest_booking_codes(), find_and_click_outcome(), finalize_accumulator(), extract_booking_details(), save_booking_code()
+
 """
 Bet Placement Orchestration
 Handles adding selections to the slip and finalizing accumulators.

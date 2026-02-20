@@ -1,6 +1,7 @@
-# selector_utils.py: Helper functions for CSS selector manipulation.
-# Refactored for Clean Architecture (v2.7)
-# This script simplifies and sanitizes AI-generated selectors for robustness.
+# selector_utils.py: selector_utils.py: Helper functions for CSS selector manipulation.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Functions: simplify_selectors(), _is_simple_selector(), _simplify_complex_selector()
 
 """
 Selector Utilities Module

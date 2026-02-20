@@ -1,6 +1,7 @@
-# monitor.py: Page monitoring and change detection.
-# Refactored for Clean Architecture (v2.7)
-# This script tracks unique page states (URL+Title) to detect site updates.
+# monitor.py: monitor.py: Page monitoring and change detection.
+# Part of LeoBook Core — Utilities
+#
+# Classes: PageMonitor
 
 import asyncio
 import hashlib

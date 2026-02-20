@@ -1,6 +1,7 @@
-# review_outcomes.py: Entry point for reviewing match results (Chapter 0).
-# Refactored for Clean Architecture (v2.7)
-# This script initiates the outcome review process for pending predictions.
+# review_outcomes.py: review_outcomes.py: Entry point for reviewing match results (Chapter 0).
+# Part of LeoBook Data — Access Layer
+#
+# Functions: evaluate_prediction(), run_accuracy_generation(), start_review()
 
 """
 LeoBook Review Outcomes System v2.6.0

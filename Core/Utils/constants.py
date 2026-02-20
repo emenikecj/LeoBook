@@ -1,6 +1,6 @@
-# constants.py: Centralized timeout and configuration constants.
-# Refactored for Clean Architecture (v2.7)
-# This script provides global settings for navigations and waits.
+# constants.py: constants.py: Centralized timeout and configuration constants.
+# Part of LeoBook Core — Utilities
+#
 
 """
 LeoBook Constants

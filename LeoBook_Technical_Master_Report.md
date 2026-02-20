@@ -54,8 +54,11 @@ The v3.0 rebuild implements a **Constraints-Based Design** system for uniform sc
 | Directory | Feature | Purpose |
 | :--- | :--- | :--- |
 | `lib/core/constants/` | **`responsive_constants.dart`** | Central `Responsive.sp()` utility for dynamic font and spacing scaling |
-| `lib/presentation/widgets/` | **High Density** | 80% reduction in UI element sizes for professional "Telegram-grade" information density |
-| `lib/presentation/widgets/responsive/` | **Adaptive Layouts** | Viewport-aware widgets (`CategoryBar`, `NavigationSidebar`) that scale proportionally |
+| `lib/presentation/widgets/desktop/` | **Desktop-Only** | `DesktopHomeContent`, `DesktopHeader`, `NavigationSidebar` |
+| `lib/presentation/widgets/mobile/` | **Mobile-Only** | `MobileHomeContent` — full mobile home layout with tabs |
+| `lib/presentation/widgets/shared/` | **Reusable** | `MatchCard`, `FeaturedCarousel`, `NewsFeed`, `RecommendationCard`, `CategoryBar`, `LeoTab`, etc. |
+| `lib/presentation/widgets/shared/league_tabs/` | **League Tabs** | Overview, Fixtures, Predictions, Stats tabs |
+| `lib/presentation/screens/` | **Dispatchers** | Pure viewport dispatchers — render desktop or mobile widget tree |
 
 ---
 

@@ -1,6 +1,7 @@
-# h2h_extractor.py: Extraction logic for Head-to-Head (H2H) match history.
-# Refactored for Clean Architecture (v2.7)
-# This script parses historical match results and dates from the browser DOM.
+# h2h_extractor.py: h2h_extractor.py: Extraction logic for Head-to-Head (H2H) match history.
+# Part of LeoBook Core — Browser Extractors
+#
+# Functions: activate_h2h_tab(), extract_h2h_data(), save_extracted_h2h_to_schedules()
 
 """
 H2H Extractor Module

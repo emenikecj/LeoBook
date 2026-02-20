@@ -1,3 +1,8 @@
+// news_repository.dart: news_repository.dart: Widget/screen for App — Repositories.
+// Part of LeoBook App — Repositories
+//
+// Classes: NewsRepository
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:leobookapp/data/models/news_model.dart';
 

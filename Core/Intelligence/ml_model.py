@@ -1,6 +1,7 @@
-# ml_model.py: Machine Learning component for ensemble predictions.
-# Refactored for Clean Architecture (v2.7)
-# This script handles model training and prediction logic.
+# ml_model.py: ml_model.py: Machine Learning component for ensemble predictions.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: MLModel
 
 """
 ML Model Module

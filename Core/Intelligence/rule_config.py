@@ -1,4 +1,8 @@
-# rule_config.py: Configuration object for custom prediction rules.
+# rule_config.py: rule_config.py: Configuration object for custom prediction rules.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: RuleConfig
+
 from dataclasses import dataclass, field
 from typing import Dict
 

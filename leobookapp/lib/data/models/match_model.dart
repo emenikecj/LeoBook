@@ -1,3 +1,8 @@
+// match_model.dart: match_model.dart: Widget/screen for App — Data Models.
+// Part of LeoBook App — Data Models
+//
+// Classes: MatchModel
+
 class MatchModel {
   final String date;
   final String time;

@@ -1,6 +1,7 @@
-# prediction_accuracy.py: Analytical tools for measuring prediction success.
-# Refactored for Clean Architecture (v2.7)
-# This script calculates hit rates and profit/loss metrics based on resolved outcomes.
+# prediction_accuracy.py: prediction_accuracy.py: Analytical tools for measuring prediction success.
+# Part of LeoBook Data — Access Layer
+#
+# Functions: get_market_option(), calculate_accuracy_by_date(), calculate_overall_accuracy(), calculate_accuracy_by_confidence(), format_date_for_display(), format_date_range(), print_accuracy_report()
 
 """
 Prediction Accuracy Analysis Module

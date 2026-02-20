@@ -1,3 +1,8 @@
+// match_sorter.dart: match_sorter.dart: Widget/screen for App — Utilities.
+// Part of LeoBook App — Utilities
+//
+// Classes: MatchSorter, MatchGroupHeader
+
 import 'package:leobookapp/data/models/match_model.dart';
 
 enum MatchTabType { all, live, finished, scheduled }

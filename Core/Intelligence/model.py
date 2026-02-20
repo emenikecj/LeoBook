@@ -1,4 +1,7 @@
-
+# model.py: model.py: Module for Core — Intelligence (AI Engine).
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Functions: analyze_match(), update_learning_weights(), train_ml_models(), analyze()
 
 """
 LeoBook AI Model Engine

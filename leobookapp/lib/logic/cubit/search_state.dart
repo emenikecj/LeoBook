@@ -1,3 +1,8 @@
+// search_state.dart: search_state.dart: Widget/screen for App — State Management (Cubit).
+// Part of LeoBook App — State Management (Cubit)
+//
+// Classes: SearchState, SearchInitial, SearchLoading, SearchResults, SearchError
+
 import 'package:leobookapp/data/models/match_model.dart';
 
 abstract class SearchState {}

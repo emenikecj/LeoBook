@@ -1,6 +1,7 @@
-# selector_mapping.py: AI-powered mapping of UI elements to CSS selectors.
-# Refactored for Clean Architecture (v2.7)
-# This script translates visual intent into functional automation selectors.
+# selector_mapping.py: selector_mapping.py: AI-powered mapping of UI elements to CSS selectors.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Functions: map_visuals_to_selectors()
 
 """
 Selector Mapping Module

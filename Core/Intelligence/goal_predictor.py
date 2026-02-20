@@ -1,6 +1,7 @@
-# goal_predictor.py: Goal distribution and xG (Expected Goals) calculation.
-# Refactored for Clean Architecture (v2.7)
-# This script predicts most likely scorelines using Poisson distribution.
+# goal_predictor.py: goal_predictor.py: Goal distribution and xG (Expected Goals) calculation.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: GoalPredictor
 
 """
 Goal Predictor Module

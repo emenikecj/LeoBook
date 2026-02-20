@@ -1,6 +1,7 @@
-# fs_processor.py: Match processing and prediction generation flow.
-# Refactored for Clean Architecture (v2.7)
-# This script orchestrates the full extraction/analysis pipeline for a single match.
+# fs_processor.py: fs_processor.py: Match processing and prediction generation flow.
+# Part of LeoBook Modules — Flashscore
+#
+# Functions: strip_league_stage(), process_match_task()
 
 import asyncio
 from playwright.async_api import Browser

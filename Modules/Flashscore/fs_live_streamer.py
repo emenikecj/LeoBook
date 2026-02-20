@@ -1,7 +1,7 @@
-# fs_live_streamer.py: Continuous live score streaming from Flashscore ALL tab.
-# Runs in parallel with the main Leo cycle via asyncio.create_task().
-# v3: Uses the ALL tab as single source of truth for live, finished, postponed,
-#     cancelled, FRO statuses. 15s refresh. 2.5hr fallback deprecated (last-resort).
+# fs_live_streamer.py: fs_live_streamer.py: Continuous live score streaming from Flashscore ALL tab.
+# Part of LeoBook Modules — Flashscore
+#
+# Functions: _read_csv(), _write_csv(), _compute_outcome_correct(), _is_streamer_alive(), _touch_heartbeat(), _propagate_status_updates(), _purge_stale_live_scores(), _extract_all_matches() (+2 more)
 
 """
 Live Score Streamer v3
@@ -275,105 +275,10 @@ def _purge_stale_live_scores(current_live_ids: set):
     return stale_ids
 
 
-# ---------------------------------------------------------------------------
-# JS: Expand all collapsed league headers
-# ---------------------------------------------------------------------------
-EXPAND_COLLAPSED_JS = """() => {
-    const buttons = document.querySelectorAll('.wcl-accordion_7Fi80');
-    let clicked = 0;
-    buttons.forEach(btn => {
-        const parent = btn.closest('.wcl-trigger_CGiIV');
-        if (parent && parent.getAttribute('data-state') === 'delayed-open') {
-            btn.click();
-            clicked++;
-        }
-    });
-    return clicked;
-}"""
 
+# NOTE: EXPAND_COLLAPSED_JS and _extract_live_matches (V2 LIVE tab)
+# were removed in the first-principles audit. V3 uses _extract_all_matches only.
 
-# ---------------------------------------------------------------------------
-# Flashscore LIVE tab extraction
-# ---------------------------------------------------------------------------
-async def _extract_live_matches(page) -> list:
-    """
-    Extracts all live matches from the currently visible LIVE tab.
-    Expands collapsed league headers first.
-    """
-    # Expand collapsed headers
-    try:
-        expanded = await page.evaluate(EXPAND_COLLAPSED_JS)
-        if expanded:
-            print(f"   [Streamer] Expanded {expanded} collapsed league headers (LIVE)")
-            await asyncio.sleep(1)
-    except Exception:
-        pass
-
-    matches = await page.evaluate(r"""() => {
-        const matches = [];
-        const container = document.querySelector('.sportName.soccer') || document.body;
-        if (!container) return [];
-
-        const allElements = container.querySelectorAll(
-            '.headerLeague__wrapper, .event__match--live'
-        );
-
-        let currentRegion = '';
-        let currentLeague = '';
-
-        allElements.forEach((el) => {
-            if (el.classList.contains('headerLeague__wrapper')) {
-                const catEl = el.querySelector('.headerLeague__category-text');
-                const titleEl = el.querySelector('.headerLeague__title-text');
-                currentRegion = catEl ? catEl.innerText.trim() : '';
-                currentLeague = titleEl ? titleEl.innerText.trim() : '';
-                return;
-            }
-
-            if (el.classList.contains('event__match--live')) {
-                const rowId = el.getAttribute('id');
-                const cleanId = rowId ? rowId.replace('g_1_', '') : null;
-                if (!cleanId) return;
-
-                const homeNameEl = el.querySelector('.event__homeParticipant .wcl-name_jjfMf');
-                const awayNameEl = el.querySelector('.event__awayParticipant .wcl-name_jjfMf');
-                const homeScoreEl = el.querySelector('span.event__score--home');
-                const awayScoreEl = el.querySelector('span.event__score--away');
-                const stageEl = el.querySelector('.event__stage--block');
-                const linkEl = el.querySelector('a.eventRowLink');
-
-                if (homeNameEl && awayNameEl) {
-                    let minute = stageEl ? stageEl.innerText.trim().replace(/\s+/g, '') : '';
-
-                    let status = 'live';
-                    const minuteLower = minute.toLowerCase();
-                    if (minuteLower.includes('half')) status = 'halftime';
-                    else if (minuteLower.includes('break')) status = 'break';
-                    else if (minuteLower.includes('pen')) status = 'penalties';
-                    else if (minuteLower.includes('et')) status = 'extra_time';
-
-                    const regionLeague = currentRegion
-                        ? currentRegion + ' - ' + currentLeague
-                        : currentLeague || 'Unknown';
-
-                    matches.push({
-                        fixture_id: cleanId,
-                        home_team: homeNameEl.innerText.trim(),
-                        away_team: awayNameEl.innerText.trim(),
-                        home_score: homeScoreEl ? homeScoreEl.innerText.trim() : '0',
-                        away_score: awayScoreEl ? awayScoreEl.innerText.trim() : '0',
-                        minute: minute,
-                        status: status,
-                        region_league: regionLeague,
-                        match_link: linkEl ? linkEl.getAttribute('href') : '',
-                        timestamp: new Date().toISOString()
-                    });
-                }
-            }
-        });
-        return matches;
-    }""")
-    return matches or []
 
 
 # ---------------------------------------------------------------------------

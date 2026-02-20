@@ -1,3 +1,8 @@
+// standing_model.dart: standing_model.dart: Widget/screen for App — Data Models.
+// Part of LeoBook App — Data Models
+//
+// Classes: StandingModel
+
 class StandingModel {
   final String teamName;
   final String? teamId;

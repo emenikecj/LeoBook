@@ -1,6 +1,7 @@
-# health_monitor.py: System health and data integrity monitoring.
-# Refactored for Clean Architecture (v2.7)
-# This script checks for missing files, database size, and extraction staleness.
+# health_monitor.py: health_monitor.py: System health and data integrity monitoring.
+# Part of LeoBook Data — Access Layer
+#
+# Classes: HealthMonitor
 
 """
 Health Monitor Module

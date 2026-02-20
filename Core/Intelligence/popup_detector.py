@@ -1,6 +1,7 @@
-# popup_detector.py: Heuristic-based detection of blocking overlays.
-# Refactored for Clean Architecture (v2.7)
-# This script identifies modals and popups within the DOM structure.
+# popup_detector.py: popup_detector.py: Heuristic-based detection of blocking overlays.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: PopupDetector
 
 """
 Popup Detector Module

@@ -1,16 +1,21 @@
+// desktop_home_content.dart: desktop_home_content.dart: Widget/screen for App — Responsive Widgets.
+// Part of LeoBook App — Responsive Widgets
+//
+// Classes: DesktopHomeContent, _DesktopHomeContentState, _PinnedHeaderDelegate
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'category_bar.dart';
-import '../featured_carousel.dart';
-import 'accuracy_report_card.dart';
+import '../shared/category_bar.dart';
+import '../shared/featured_carousel.dart';
+import '../shared/accuracy_report_card.dart';
 import '../../../logic/cubit/home_cubit.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/responsive_constants.dart';
 import '../../../core/utils/match_sorter.dart';
-import 'package:leobookapp/presentation/widgets/match_card.dart';
+import 'package:leobookapp/presentation/widgets/shared/match_card.dart';
 import 'package:leobookapp/data/models/match_model.dart';
 import '../../../core/theme/liquid_glass_theme.dart';
-import '../footnote_section.dart';
+import '../shared/footnote_section.dart';
 
 class DesktopHomeContent extends StatefulWidget {
   final HomeLoaded state;

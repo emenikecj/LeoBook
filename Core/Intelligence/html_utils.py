@@ -1,6 +1,7 @@
-# html_utils.py: Optimized HTML cleaning for AI analysis.
-# Refactored for Clean Architecture (v2.7)
-# This script reduces token usage by stripping non-essential tags and attributes.
+# html_utils.py: html_utils.py: Optimized HTML cleaning for AI analysis.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Functions: clean_html_content()
 
 """
 HTML Utilities Module

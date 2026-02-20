@@ -1,3 +1,9 @@
+# sync_manager.py: sync_manager.py: Module for Data — Access Layer.
+# Part of LeoBook Data — Access Layer
+#
+# Classes: SyncManager
+# Functions: run_full_sync()
+
 import csv
 import logging
 import asyncio

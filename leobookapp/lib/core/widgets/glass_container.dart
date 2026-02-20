@@ -1,3 +1,8 @@
+// glass_container.dart: glass_container.dart: Widget/screen for App — Core Widgets.
+// Part of LeoBook App — Core Widgets
+//
+// Classes: GlassContainer, _GlassContainerState
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

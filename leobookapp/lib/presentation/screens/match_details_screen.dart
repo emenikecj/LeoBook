@@ -1,3 +1,8 @@
+// match_details_screen.dart: match_details_screen.dart: Widget/screen for App — Screens.
+// Part of LeoBook App — Screens
+//
+// Classes: MatchDetailsScreen, _MatchDetailsScreenState
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';

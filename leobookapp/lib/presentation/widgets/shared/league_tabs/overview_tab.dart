@@ -1,3 +1,8 @@
+// overview_tab.dart: overview_tab.dart: Widget/screen for App — League Tab Widgets.
+// Part of LeoBook App — League Tab Widgets
+//
+// Classes: LeagueOverviewTab, _LeagueOverviewTabState
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';

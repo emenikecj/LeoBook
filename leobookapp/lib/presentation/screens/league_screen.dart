@@ -1,11 +1,16 @@
+// league_screen.dart: league_screen.dart: Widget/screen for App — Screens.
+// Part of LeoBook App — Screens
+//
+// Classes: LeagueScreen, _LeagueScreenState
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';
-import '../widgets/responsive/leo_tab.dart';
-import '../widgets/league_tabs/overview_tab.dart';
-import '../widgets/league_tabs/fixtures_tab.dart';
-import '../widgets/league_tabs/predictions_tab.dart';
-import '../widgets/league_tabs/stats_tab.dart';
+import '../widgets/shared/leo_tab.dart';
+import '../widgets/shared/league_tabs/overview_tab.dart';
+import '../widgets/shared/league_tabs/fixtures_tab.dart';
+import '../widgets/shared/league_tabs/predictions_tab.dart';
+import '../widgets/shared/league_tabs/stats_tab.dart';
 
 class LeagueScreen extends StatefulWidget {
   final String leagueId;

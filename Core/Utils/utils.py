@@ -1,6 +1,8 @@
-# utils.py: General-purpose utility functions and system helpers.
-# Refactored for Clean Architecture (v2.7)
-# This script handles error logging, multi-threading/async patterns, and path resolution.
+# utils.py: utils.py: General-purpose utility functions and system helpers.
+# Part of LeoBook Core — Utilities
+#
+# Classes: Tee, BatchProcessor
+# Functions: log_error_state(), capture_debug_snapshot()
 
 """
 Utilities Module

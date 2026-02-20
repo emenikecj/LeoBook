@@ -1,6 +1,7 @@
-# ui.py: Resilient UI interaction helpers for Football.com.
-# Refactored for Clean Architecture (v2.7)
-# This script handles overlays, skip buttons, and robust click dispatching.
+# ui.py: ui.py: Resilient UI interaction helpers for Football.com.
+# Part of LeoBook Modules — Football.com Booking
+#
+# Functions: handle_page_overlays(), wait_for_condition(), dismiss_overlays(), wait_for_element()
 
 """
 Booker UI Utilities

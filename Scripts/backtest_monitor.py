@@ -1,3 +1,8 @@
+# backtest_monitor.py: backtest_monitor.py: Module for Scripts — Pipeline.
+# Part of LeoBook Scripts — Pipeline
+#
+# Functions: run_backtest(), monitor()
+
 import os
 import sys
 import time

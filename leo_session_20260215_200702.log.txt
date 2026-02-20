@@ -1,267 +1,0 @@
-     Initializing databases...
-   [STATE] Cycle Start | Done: Starting Cycle #1 | Next: Startup Checks | Why: System initialization
-   [STATE] Prologue P1 | Done: Cloud Handshake & Prediction Review | Next: Startup Checks | Why: System initialization
-
-============================================================
-  PROLOGUE PAGE 1: Cloud Handshake & Prediction Review
-============================================================
-    Pushing predictions:   0%|          | 0/203 [00:00<?, ?row/s]    Pushing predictions: 100%|##########| 203/203 [00:00<00:00, 406.36row/s]    Pushing predictions: 100%|##########| 203/203 [00:00<00:00, 406.07row/s]
-    Pushing schedules:   0%|          | 0/2375 [00:00<?, ?row/s]    Pushing schedules:  42%|####2     | 1000/2375 [00:00<00:00, 2339.84row/s]    Pushing schedules:  84%|########4 | 2000/2375 [00:00<00:00, 3043.31row/s]    Pushing schedules: 100%|##########| 2375/2375 [00:00<00:00, 3077.56row/s]    Pushing schedules: 100%|##########| 2375/2375 [00:00<00:00, 2951.92row/s]
-    Pushing teams:   0%|          | 0/531 [00:00<?, ?row/s]    Pushing teams: 100%|##########| 531/531 [00:00<00:00, 3925.89row/s]    Pushing teams: 100%|##########| 531/531 [00:00<00:00, 3919.93row/s]
-    Pushing region_league:   0%|          | 0/7 [00:00<?, ?row/s]    Pushing region_league: 100%|##########| 7/7 [00:00<00:00, 125.58row/s]
-    Pulling standings:   0%|          | 0/12 [00:00<?, ?row/s]    Pulling standings: 100%|##########| 12/12 [00:00<00:00, 257.61row/s]
-    Pushing standings:   0%|          | 0/404 [00:00<?, ?row/s]    Pushing standings: 100%|##########| 404/404 [00:00<00:00, 3518.70row/s]    Pushing standings: 100%|##########| 404/404 [00:00<00:00, 3512.83row/s]
-    Pulling accuracy_reports:   0%|          | 0/1 [00:00<?, ?row/s]    Pulling accuracy_reports: 100%|##########| 1/1 [00:00<00:00, 26.01row/s]
---- LEO V2.6: Outcome Review Engine (Concurrent) ---
-[Chapter 0] Found 13838 schedule entries to enrich/update.
-[Processing] Starting concurrent review for 568 matches...
-  [Reviewing] Hostoun (Cze) vs Vitkovice (Cze)
-  [Reviewing] Cardiff vs Luton
-  [Reviewing] Bromley vs Notts Co
-  [Reviewing] Barrow vs Colchester
-  [Reviewing] Cambridge Utd vs Bristol Rovers
-  [Reviewing] Preston vs Watford
-  [Reviewing] Lincoln vs Bolton
-  [Reviewing] Derby vs Swansea
-  [Reviewing] Chesterfield vs Harrogate
-  [Reviewing] Shrewsbury vs Swindon
-      [Cloud] Immediate sync for IZTlAbsK...
-    [Result] Chesterfield 1-1 Harrogate
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s]      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-      [Cloud] Immediate sync for dhu6kMBE...
-    [Result] Derby 2-0 Swansea
-
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s][A      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:04<?, ?row/s]
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-    [Cookies] Accepted via text: I Accept
-    [Cookies] Accepted via text: I Accept
-    [Cookies] Accepted via text: I Accept
-      [Cloud] Immediate sync for Chep1ntT...
-    [Result] Hostoun (Cze) 2-2 Vitkovice (Cze)
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s]      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:04<?, ?row/s]
-      [Cloud] Immediate sync for xUPQrYGt...
-    [Result] Lincoln 1-1 Bolton
-
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s][A      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-      [Cloud] Immediate sync for O0Igjwjl...
-    [Result] Barrow 1-0 Colchester
-
-
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s][A[A      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-      [Cloud] Immediate sync for KSB2lHK0...
-    [Result] Bromley 1-1 Notts Co
-
-
-
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s][A[A[A      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:04<?, ?row/s]
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-      [Cloud] Immediate sync for 0lKwxNWh...
-    [Result] Preston 2-2 Watford
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s]      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:04<?, ?row/s]
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-      [Cloud] Immediate sync for 4jhWMyRP...
-    [Result] Shrewsbury 3-1 Swindon
-
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s][A      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Cloud] Immediate sync for SS9lJf3F...
-    [Result] Cardiff 3-1 Luton
-
-
-
-
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s][A[A[A[A      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:03<?, ?row/s]
-      [Cloud] Immediate sync for htAAnekD...
-    [Result] Cambridge Utd 3-1 Bristol Rovers
-
-
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s][A[A      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-   [Sync] Periodic Upsert: Sending 10 reviewed entries to Cloud...
-
-
-
-
-
-    Pushing predictions:   0%|          | 0/10 [00:00<?, ?row/s][A[A[A[A[A    Pushing predictions: 100%|##########| 10/10 [00:00<00:00, 180.00row/s]
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:03<?, ?row/s]
-  [Reviewing] Oldham vs Fleetwood
-  [Reviewing] KaPa vs Haka
-  [Reviewing] Sankara Nationals vs Tamale City
-  [Reviewing] Ebony FC vs Future Stars
-  [Reviewing] Throttur W vs Thor/KA W
-  [Reviewing] Panetolikos vs Asteras Tripolis
-  [Reviewing] Fram W vs Tindastoll W
-  [Reviewing] IR Tanger vs Dcheira
-  [Reviewing] Carrick Rangers vs Coleraine
-  [Reviewing] Crusaders vs Bangor FC
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:03<?, ?row/s]
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:03<?, ?row/s]
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:03<?, ?row/s]
-      [Cloud] Immediate sync for IcCy1f46...
-    [Result] Oldham 1-1 Fleetwood
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s]      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:05<?, ?row/s]
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:03<?, ?row/s]
-    [Cookies] Accepted via OneTrust
-    [Cookies] Accepted via OneTrust
-    [Cookies] Accepted via AI selector
-    [Cookies] Accepted via OneTrust
-    [Cookies] Accepted via OneTrust
-    [Cookies] Accepted via OneTrust
-    [Cookies] Accepted via AI selector
-    [Cookies] Accepted via text: I Accept
-      [Cloud] Immediate sync for xAiVxhmT...
-    [Result] Throttur W 3-1 Thor/KA W
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s]      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-    [Cookies] Accepted via AI selector
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-      [Cloud] Immediate sync for pYmhfqFa...
-    [Result] KaPa 1-1 Haka
-
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s][A      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Cloud] Immediate sync for MBsGlOoR...
-    [Result] IR Tanger 1-2 Dcheira
-
-
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s][A[A      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:05<?, ?row/s]
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-      [Cloud] Immediate sync for tWDnJBS7...
-    [Result] Ebony FC 1-0 Future Stars
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s]      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-      [Cloud] Immediate sync for UR87Za7F...
-    [Result] Panetolikos 3-1 Asteras Tripolis
-
-
-
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s][A[A[A      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:06<?, ?row/s]
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:04<?, ?row/s]
-      [Cloud] Immediate sync for UHsHF6dd...
-    [Result] Sankara Nationals 1-1 Tamale City
-
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s][A      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-      [Cloud] Immediate sync for vuZH6bxe...
-    [Result] Carrick Rangers 1-1 Coleraine
-
-
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s][A[A      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:04<?, ?row/s]
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-      [Cloud] Immediate sync for z7SQ4x77...
-    [Result] Crusaders 2-2 Bangor FC
-    Pushing predictions:   0%|          | 0/1 [00:00<?, ?row/s]      [Retry 1/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 1.0s...
-   [Sync] Periodic Upsert: Sending 9 reviewed entries to Cloud...
-
-
-
-
-    Pushing predictions:   0%|          | 0/9 [00:00<?, ?row/s][A[A[A[A    Pushing predictions: 100%|##########| 9/9 [00:00<00:00, 154.48row/s]
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-  [Reviewing] Portadown vs Larne
-  [Reviewing] Glenavon vs Linfield
-  [Reviewing] Annagh vs Armagh
-  [Reviewing] Sanjoanense vs Sao Joao Ver
-  [Reviewing] Newington vs Warrenpoint
-  [Reviewing] Dundela vs Ballinamallard
-  [Reviewing] Dundee FC vs Livingston
-  [Reviewing] Hibernian vs St. Mirren
-  [Reviewing] Falkirk vs Dundee Utd
-  [Reviewing] Arbroath vs Ayr
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:03<?, ?row/s]
-      [Retry 2/3] Transient error: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}. Retrying in 2.0s...
-  [Error] Prologue Page 1 failed: BrowserContext.close: Protocol error (Target.disposeBrowserContext): Failed to find context with id 1319307D657CC536366F4782133FD532
-   [STATE] Prologue P2 | Done: Metadata Enrichment | Next: Startup Checks | Why: System initialization
-
-============================================================
-  PROLOGUE PAGE 2: Schedules & Metadata Enrichment
-============================================================
-================================================================================
-  MATCH ENRICHMENT PIPELINE
-  Mode: standings
-  Concurrency: 5
-  Batch Size: 10
-================================================================================
-  PROLOGUE PHASE 1: CLOUD HANDSHAKE & SYNC
-  Goal: Establish data parity between local CSVs and Supabase.
-================================================================================
-[INFO] Initiating Bi-Directional Cloud Handshake...
-
-
-
-    Pushing predictions:   0%|          | 0/203 [00:00<?, ?row/s][A[A[A
-
-
-    Pushing predictions: 100%|##########| 203/203 [00:00<00:00, 1243.49row/s][A[A[A    Pushing predictions: 100%|##########| 203/203 [00:00<00:00, 1240.84row/s]
-
-
-
-    Pushing schedules:   0%|          | 0/2375 [00:00<?, ?row/s][A[A[A
-
-
-    Pushing schedules:  42%|####2     | 1000/2375 [00:00<00:00, 4796.83row/s][A[A[A
-
-
-    Pushing schedules:  84%|########4 | 2000/2375 [00:00<00:00, 5316.52row/s][A[A[A    Pushing schedules: 100%|##########| 2375/2375 [00:00<00:00, 4762.58row/s]
-
-
-
-    Pushing teams:   0%|          | 0/531 [00:00<?, ?row/s][A[A[A    Pushing teams: 100%|##########| 531/531 [00:00<00:00, 6931.40row/s]
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:07<?, ?row/s]
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:06<?, ?row/s]
-      [Retry Fail] Final attempt failed after 3 tries: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    [x] Upsert failed: {'message': 'invalid input syntax for type integer: "None"', 'code': '22P02', 'hint': None, 'details': None}
-    Pushing predictions:   0%|          | 0/1 [00:06<?, ?row/s]
-
-   --- LEO: Shutting down. ---

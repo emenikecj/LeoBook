@@ -1,6 +1,7 @@
-# popup_executor.py: Low-level execution of popup dismissal actions.
-# Refactored for Clean Architecture (v2.7)
-# This script performs clicks and JS injections to clear the UI.
+# popup_executor.py: popup_executor.py: Low-level execution of popup dismissal actions.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: PopupExecutor
 
 """
 Popup Executor Module

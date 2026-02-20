@@ -1,3 +1,8 @@
+// global_stats_footer.dart: global_stats_footer.dart: Widget/screen for App — Responsive Widgets.
+// Part of LeoBook App — Responsive Widgets
+//
+// Classes: GlobalStatsFooter
+
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 

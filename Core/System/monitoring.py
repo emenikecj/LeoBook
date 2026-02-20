@@ -1,5 +1,7 @@
-# monitoring.py: Chapter 3 - Chief Engineer Oversight System
-# Refactored for Clean Architecture (v2.8)
+# monitoring.py: monitoring.py: Chapter 3 - Chief Engineer Oversight System
+# Part of LeoBook Core — System
+#
+# Functions: run_chapter_3_oversight(), perform_health_check(), _count_predictions_for_date(), _get_bet_success_rate(), generate_oversight_report()
 
 import os
 import csv

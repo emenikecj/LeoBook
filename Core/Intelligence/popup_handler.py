@@ -1,6 +1,7 @@
-# popup_handler.py: Orchestration layer for the popup dismissal system.
-# Refactored for Clean Architecture (v2.7)
-# This script coordinates detection, analysis, and execution flow.
+# popup_handler.py: popup_handler.py: Orchestration layer for the popup dismissal system.
+# Part of LeoBook Core — Intelligence (AI Engine)
+#
+# Classes: PopupHandler
 
 """
 Popup Handler Module - MODULAR VERSION

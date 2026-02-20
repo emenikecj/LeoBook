@@ -1,6 +1,7 @@
-# fs_utils.py: Shared utilities for Flashscore automation.
-# Refactored for Clean Architecture (v2.7)
-# This script contains retry logic and odds parsing helpers.
+# fs_utils.py: fs_utils.py: Shared utilities for Flashscore automation.
+# Part of LeoBook Modules — Flashscore
+#
+# Functions: retry_extraction()
 
 import asyncio
 

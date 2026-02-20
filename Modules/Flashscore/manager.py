@@ -1,6 +1,7 @@
-# manager.py: Orchestration layer for Flashscore data extraction.
-# Refactored for Clean Architecture (v2.7)
-# This script coordinates schedule harvesting, match extraction, and result reviews.
+# manager.py: manager.py: Orchestration layer for Flashscore data extraction.
+# Part of LeoBook Modules — Flashscore
+#
+# Functions: run_flashscore_analysis()
 
 """
 Flashscore Orchestrator

@@ -1,3 +1,8 @@
+// featured_carousel.dart: featured_carousel.dart: Widget/screen for App — Widgets.
+// Part of LeoBook App — Widgets
+//
+// Classes: FeaturedCarousel
+
 import 'package:flutter/material.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';
 import 'package:leobookapp/core/constants/responsive_constants.dart';
@@ -23,9 +28,7 @@ class FeaturedCarousel extends StatelessWidget {
   Widget build(BuildContext context) {
     if (recommendations.isEmpty) return const SizedBox.shrink();
 
-    final cardWidth =
-        Responsive.sp(context, 260); // Wider for RecommendationCard info
-    final carouselHeight = Responsive.sp(context, 145);
+    final isDesktop = Responsive.isDesktop(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,22 +77,52 @@ class FeaturedCarousel extends StatelessWidget {
             ],
           ),
         ),
-        SizedBox(
-          height: carouselHeight,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
+        if (isDesktop)
+          Padding(
             padding:
                 EdgeInsets.symmetric(horizontal: Responsive.sp(context, 10)),
-            itemCount: recommendations.length,
-            itemBuilder: (context, index) {
-              final rec = recommendations[index];
-              return SizedBox(
-                width: cardWidth,
-                child: RecommendationCard(recommendation: rec),
-              );
-            },
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                const crossAxisCount = 4;
+                final spacing = Responsive.sp(context, 14);
+                final itemWidth =
+                    (constraints.maxWidth - (spacing * (crossAxisCount - 1))) /
+                        crossAxisCount;
+
+                // Show only first 4 (or 8) if we want to keep it "featured"
+                // But usually, on desktop, we can show a few more or the same as mobile
+                final displayRecs = recommendations.take(8).toList();
+
+                return Wrap(
+                  spacing: spacing,
+                  runSpacing: spacing,
+                  children: displayRecs
+                      .map(
+                        (rec) => SizedBox(
+                          width: itemWidth,
+                          child: RecommendationCard(recommendation: rec),
+                        ),
+                      )
+                      .toList(),
+                );
+              },
+            ),
+          )
+        else
+          Padding(
+            padding:
+                EdgeInsets.symmetric(horizontal: Responsive.sp(context, 10)),
+            child: Column(
+              children: recommendations
+                  .take(5) // Show only a few on home screen mobile
+                  .map((rec) => Padding(
+                        padding:
+                            EdgeInsets.only(bottom: Responsive.sp(context, 8)),
+                        child: RecommendationCard(recommendation: rec),
+                      ))
+                  .toList(),
+            ),
           ),
-        ),
       ],
     );
   }

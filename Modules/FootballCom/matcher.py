@@ -1,6 +1,7 @@
-# matcher.py: Multi-stage team name matching logic.
-# Refactored for Clean Architecture (v2.7)
-# This script combines difflib and LLM matching to resolve fixture URLs.
+# matcher.py: matcher.py: Multi-stage team name matching logic.
+# Part of LeoBook Modules — Football.com
+#
+# Functions: filter_pending_predictions(), normalize_team_name(), calculate_similarity(), build_match_string(), parse_match_datetime(), match_predictions_with_site()
 
 """
 Matcher Module
