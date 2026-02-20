@@ -360,7 +360,9 @@ class _MatchCardState extends State<MatchCard> {
         Container(
           padding: EdgeInsets.symmetric(horizontal: Responsive.sp(context, 6)),
           child: match.isLive ||
-                  (match.homeScore != null && match.awayScore != null)
+                  (!match.isNonPlayable &&
+                      match.homeScore != null &&
+                      match.awayScore != null)
               ? Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -411,14 +413,31 @@ class _MatchCardState extends State<MatchCard> {
                       ),
                   ],
                 )
-              : Text(
-                  "VS",
-                  style: TextStyle(
-                    fontSize: Responsive.sp(context, 9),
-                    fontWeight: FontWeight.w900,
-                    fontStyle: FontStyle.italic,
-                    color: AppColors.textGrey,
-                  ),
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "VS",
+                      style: TextStyle(
+                        fontSize: Responsive.sp(context, 9),
+                        fontWeight: FontWeight.w900,
+                        fontStyle: FontStyle.italic,
+                        color: AppColors.textGrey,
+                      ),
+                    ),
+                    if (match.isNonPlayable &&
+                        match.displayStatus.isNotEmpty) ...[
+                      SizedBox(height: Responsive.sp(context, 2)),
+                      Text(
+                        match.displayStatus,
+                        style: TextStyle(
+                          fontSize: Responsive.sp(context, 6),
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.liveRed.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
         ),
         Expanded(child: _buildTeamLogoCol(context, match.awayTeam, isDark)),

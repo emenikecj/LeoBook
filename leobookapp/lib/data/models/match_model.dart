@@ -136,56 +136,51 @@ class MatchModel {
 
   bool get isLive {
     final s = status.toLowerCase();
-    // Explicitly check status first
+    // Status-only check — 2.5hr time rule deprecated (v3)
     if (s.contains('live') ||
         s.contains('in-play') ||
         s.contains('halftime') ||
-        s.contains('ht')) {
+        s.contains('ht') ||
+        s.contains('penalties') ||
+        s.contains('extra_time') ||
+        s.contains('break')) {
       return true;
     }
-
-    if (s.contains('finish') || s.contains('ft') || s.contains('finished')) {
-      return false;
-    }
-    if (s.contains('postp') ||
-        s.contains('pp') ||
-        s.contains('canc') ||
-        s.contains('can')) {
-      return false;
-    }
-
-    try {
-      final now = DateTime.now();
-      final matchStart = DateTime.parse(
-        "${date}T${time.length == 5 ? time : '00:00'}:00",
-      );
-      final matchEnd = matchStart.add(const Duration(minutes: 150));
-      return now.isAfter(matchStart) && now.isBefore(matchEnd);
-    } catch (_) {
-      return false;
-    }
+    return false;
   }
 
   bool get isFinished {
     final s = status.toLowerCase();
+    // Status-only check — 2.5hr time rule deprecated (v3)
     if (s.contains('finish') ||
         s.contains('ft') ||
         s.contains('finished') ||
         s.contains('full time')) {
       return true;
     }
-    // Time-based: if more than 2.5 hours have passed since match start
-    try {
-      final now = DateTime.now();
-      final matchStart = DateTime.parse(
-        "${date}T${time.length == 5 ? time : '00:00'}:00",
-      );
-      final matchEnd = matchStart.add(const Duration(minutes: 150));
-      return now.isAfter(matchEnd);
-    } catch (_) {
-      return false;
-    }
+    return false;
   }
+
+  bool get isPostponed {
+    final s = status.toLowerCase();
+    return s.contains('postp') || s.contains('pp');
+  }
+
+  bool get isCancelled {
+    final s = status.toLowerCase();
+    return s.contains('canc') ||
+        s.contains('cancelled') ||
+        s.contains('abandoned') ||
+        s.contains('abn');
+  }
+
+  bool get isFrozen {
+    final s = status.toLowerCase();
+    return s.contains('fro') || s.contains('susp');
+  }
+
+  /// Matches that should never show scores or live badge
+  bool get isNonPlayable => isPostponed || isCancelled || isFrozen;
 
   bool get isStartingSoon {
     try {
@@ -206,8 +201,9 @@ class MatchModel {
     if (s.contains('finish') || s.contains('ft') || s.contains('finished')) {
       return "FINISHED";
     }
-    if (s.contains('postp') || s.contains('pp')) return "POSTPONED";
-    if (s.contains('canc') || s.contains('can')) return "CANCELED";
+    if (isPostponed) return "POSTPONED";
+    if (isCancelled) return "CANCELLED";
+    if (isFrozen) return "FRO";
     if (s.contains('sched') || s.contains('pending') || s.isEmpty) return "";
     return status.toUpperCase();
   }

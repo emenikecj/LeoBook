@@ -373,26 +373,53 @@ def main():
     print(f"Found {len(teams_raw)} unique teams (by ID)")
 
     # ───────────────────────────────────────────────
-    # OPTIMIZATION: Load already-enriched items to skip them
+    # TWO-PASS ENRICHMENT STRATEGY
+    #   Pass 1: Items with NO search_terms  (empty → enrich)
+    #   Pass 2: Items WITH search_terms but MISSING critical fields (incomplete → re-enrich)
     # ───────────────────────────────────────────────
-    enriched_team_ids = set()
+    fully_enriched_team_ids = set()   # have search_terms AND all critical fields
+    incomplete_team_ids = set()       # have search_terms but missing critical fields
+    TEAM_CRITICAL_FIELDS = ['country', 'city', 'stadium', 'team_crest']
     if os.path.exists(TEAMS_CSV):
         with open(TEAMS_CSV, mode='r', encoding='utf-8') as f:
             for row in csv.DictReader(f):
                 st = row.get('search_terms', '').strip()
-                if st and st != '[]' and row.get('team_id'):
-                    enriched_team_ids.add(row['team_id'])
+                tid = row.get('team_id', '').strip()
+                if not tid:
+                    continue
+                if st and st != '[]':
+                    # Has search_terms — check if critical fields are filled
+                    missing = [fld for fld in TEAM_CRITICAL_FIELDS
+                               if not row.get(fld, '').strip()]
+                    if missing:
+                        incomplete_team_ids.add(tid)
+                    else:
+                        fully_enriched_team_ids.add(tid)
 
-    enriched_league_keys = set()
+    fully_enriched_league_keys = set()
+    incomplete_league_keys = set()
+    LEAGUE_CRITICAL_FIELDS = ['country', 'logo_url']
     if os.path.exists(REGION_LEAGUE_CSV):
         with open(REGION_LEAGUE_CSV, mode='r', encoding='utf-8') as f:
             for row in csv.DictReader(f):
                 st = row.get('search_terms', '').strip()
-                if st and st != '[]' and row.get('league'):
-                    enriched_league_keys.add(row.get('league', '').strip())
+                lkey = row.get('league', '').strip()
+                if not lkey:
+                    continue
+                if st and st != '[]':
+                    missing = [fld for fld in LEAGUE_CRITICAL_FIELDS
+                               if not row.get(fld, '').strip()]
+                    if missing:
+                        incomplete_league_keys.add(lkey)
+                    else:
+                        fully_enriched_league_keys.add(lkey)
 
-    print(f"\n[SKIP] {len(enriched_team_ids)} teams already enriched (have search_terms)")
-    print(f"[SKIP] {len(enriched_league_keys)} leagues already enriched (have search_terms)")
+    print(f"\n[PASS 1] Teams:   {len(teams_raw) - len(fully_enriched_team_ids) - len(incomplete_team_ids)} empty → enrich")
+    print(f"[PASS 2] Teams:   {len(incomplete_team_ids)} incomplete → re-enrich")
+    print(f"[SKIP]   Teams:   {len(fully_enriched_team_ids)} fully enriched")
+    print(f"[PASS 1] Leagues: {len(leagues_raw) - len(fully_enriched_league_keys) - len(incomplete_league_keys)} empty → enrich")
+    print(f"[PASS 2] Leagues: {len(incomplete_league_keys)} incomplete → re-enrich")
+    print(f"[SKIP]   Leagues: {len(fully_enriched_league_keys)} fully enriched")
 
     # Prepared Update Maps for CSVs
     league_updates = {}
@@ -408,12 +435,18 @@ def main():
                     existing_leagues[row["rl_id"]] = row
 
     # ───────────────────────────────────────────────
-    # Enrich and Upsert Leagues (SKIP ALREADY-ENRICHED)
+    # PASS 1: Enrich leagues with NO search_terms
     # ───────────────────────────────────────────────
     league_list_all = list(leagues_raw)
-    league_list = [l for l in league_list_all if l not in enriched_league_keys]
-    print(f"\nEnriching leagues: {len(league_list)} new (skipping {len(league_list_all) - len(league_list)} already enriched)")
-    for i in range(0, len(league_list), BATCH_SIZE):
+    league_list_pass1 = [l for l in league_list_all if l not in fully_enriched_league_keys and l not in incomplete_league_keys]
+    league_list_pass2 = [l for l in league_list_all if l in incomplete_league_keys]
+    print(f"\n── PASS 1: Enriching {len(league_list_pass1)} empty leagues ──")
+    for league_list, pass_name in [(league_list_pass1, "PASS 1"), (league_list_pass2, "PASS 2")]:
+      if not league_list:
+        print(f"  [{pass_name}] No leagues to process, skipping.")
+        continue
+      print(f"  [{pass_name}] Processing {len(league_list)} leagues...")
+      for i in range(0, len(league_list), BATCH_SIZE):
         batch = league_list[i:i + BATCH_SIZE]
         print(f" Processing league batch {i//BATCH_SIZE + 1} ({len(batch)} items)")
         results = query_grok_for_metadata_with_retry(batch, item_type="league")
@@ -467,67 +500,74 @@ def main():
             league_updates.clear() # Clear specific batch updates after writing
 
     # ───────────────────────────────────────────────
-    # Enrich and Upsert Teams
+    # PASS 1 + PASS 2: Enrich Teams
     # ───────────────────────────────────────────────
     team_ids_all = list(teams_raw.keys())
-    team_ids = [tid for tid in team_ids_all if tid not in enriched_team_ids]
-    print(f"\nEnriching teams: {len(team_ids)} new (skipping {len(team_ids_all) - len(team_ids)} already enriched)")
-    for i in range(0, len(team_ids), BATCH_SIZE):
-        batch_ids = team_ids[i:i + BATCH_SIZE]
-        batch_names = [list(teams_raw[tid]["names"])[0] for tid in batch_ids]
-        print(f" Processing team batch {i//BATCH_SIZE + 1} ({len(batch_ids)} teams)")
-        results = query_grok_for_metadata_with_retry(batch_names, item_type="team")
+    team_ids_pass1 = [tid for tid in team_ids_all if tid not in fully_enriched_team_ids and tid not in incomplete_team_ids]
+    team_ids_pass2 = [tid for tid in team_ids_all if tid in incomplete_team_ids]
+    print(f"\n── PASS 1: Enriching {len(team_ids_pass1)} empty teams ──")
+    print(f"── PASS 2: Re-enriching {len(team_ids_pass2)} incomplete teams ──")
+    for team_ids, pass_name in [(team_ids_pass1, "PASS 1"), (team_ids_pass2, "PASS 2")]:
+      if not team_ids:
+        print(f"  [{pass_name}] No teams to process, skipping.")
+        continue
+      print(f"  [{pass_name}] Processing {len(team_ids)} teams...")
+      for i in range(0, len(team_ids), BATCH_SIZE):
+          batch_ids = team_ids[i:i + BATCH_SIZE]
+          batch_names = [list(teams_raw[tid]["names"])[0] for tid in batch_ids]
+          print(f" Processing team batch {i//BATCH_SIZE + 1} ({len(batch_ids)} teams)")
+          results = query_grok_for_metadata_with_retry(batch_names, item_type="team")
         
-        for idx, item in enumerate(results):
-            if idx >= len(batch_ids): break
-            tid = batch_ids[idx]
-            input_names = teams_raw[tid]["names"]
-            official_name = item.get("official_name") or list(input_names)[0]
+          for idx, item in enumerate(results):
+              if idx >= len(batch_ids): break
+              tid = batch_ids[idx]
+              input_names = teams_raw[tid]["names"]
+              official_name = item.get("official_name") or list(input_names)[0]
 
-            # Build search terms
-            search_terms = {normalize_for_search(official_name)}
-            for n in input_names:
-                search_terms.add(normalize_for_search(n))
-            for n in item.get("other_names", []):
-                search_terms.add(normalize_for_search(n))
-            for a in item.get("abbreviations", []):
-                search_terms.add(normalize_for_search(a))
+              # Build search terms
+              search_terms = {normalize_for_search(official_name)}
+              for n in input_names:
+                  search_terms.add(normalize_for_search(n))
+              for n in item.get("other_names", []):
+                  search_terms.add(normalize_for_search(n))
+              for a in item.get("abbreviations", []):
+                  search_terms.add(normalize_for_search(a))
 
-            # Add misspellings/aliases
-            for term in list(search_terms):
-                search_terms.add(term.replace("united", "utd"))
-                search_terms.add(term.replace("city", "fc"))
+              # Add misspellings/aliases
+              for term in list(search_terms):
+                  search_terms.add(term.replace("united", "utd"))
+                  search_terms.add(term.replace("city", "fc"))
 
-            upsert_data = {
-                "team_id": tid, # use team_id as per schema
-                "team_name": official_name, # map to team_name
-                "other_names": item.get("other_names", []),
-                "abbreviations": item.get("abbreviations", []),
-                "search_terms": list(filter(None, search_terms)),
-                "country": item.get("country"),
-                "city": item.get("city"),
-                "stadium": item.get("stadium"),
-                "team_crest": item.get("crest_url") # column is team_crest in schema
-            }
+              upsert_data = {
+                  "team_id": tid, # use team_id as per schema
+                  "team_name": official_name, # map to team_name
+                  "other_names": item.get("other_names", []),
+                  "abbreviations": item.get("abbreviations", []),
+                  "search_terms": list(filter(None, search_terms)),
+                  "country": item.get("country"),
+                  "city": item.get("city"),
+                  "stadium": item.get("stadium"),
+                  "team_crest": item.get("crest_url") # column is team_crest in schema
+              }
             
-            # Prepare CSV update data
-            team_updates[tid] = upsert_data
+              # Prepare CSV update data
+              team_updates[tid] = upsert_data
 
-            # Prepare for batch upsert
-            team_updates[tid] = upsert_data
+              # Prepare for batch upsert
+              team_updates[tid] = upsert_data
 
-        # Batched Upsert to Supabase
-        if team_updates:
-            print(f"  [Supabase] Batch upserting {len(team_updates)} teams...")
-            batch_upsert("teams", list(team_updates.values()))
+          # Batched Upsert to Supabase
+          if team_updates:
+              print(f"  [Supabase] Batch upserting {len(team_updates)} teams...")
+              batch_upsert("teams", list(team_updates.values()))
                 
-        time.sleep(SLEEP_BETWEEN_BATCHES) # Wait between batches
+          time.sleep(SLEEP_BETWEEN_BATCHES) # Wait between batches
 
-        # INCREMENTAL UPDATE: Update Teams CSV after each batch
-        if team_updates:
-            print(f" Syncing {len(team_updates)} team updates to local CSV...")
-            update_csv_file(TEAMS_CSV, team_updates, "team_id", ["team_name", "other_names", "abbreviations", "search_terms", "country", "city", "stadium", "team_crest"])
-            team_updates.clear() # Clear specific batch updates after writing
+          # INCREMENTAL UPDATE: Update Teams CSV after each batch
+          if team_updates:
+              print(f" Syncing {len(team_updates)} team updates to local CSV...")
+              update_csv_file(TEAMS_CSV, team_updates, "team_id", ["team_name", "other_names", "abbreviations", "search_terms", "country", "city", "stadium", "team_crest"])
+              team_updates.clear() # Clear specific batch updates after writing
 
     print("\nSearch dictionary built and local CSVs/Supabase synced!")
 

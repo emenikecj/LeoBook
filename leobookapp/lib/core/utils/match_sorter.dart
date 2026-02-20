@@ -93,17 +93,17 @@ class MatchSorter {
     return result;
   }
 
-  /// LIVE: currentTime >= matchTime AND currentTime < matchTime + 2.5hrs
+  /// LIVE: status says live/halftime/break/penalties/extra_time (no date filter)
   static List<MatchModel> _filterLiveMatches(List<MatchModel> matches) {
     return matches.where((m) => m.isLive).toList();
   }
 
-  /// FINISHED: status says finished OR currentTime > matchTime + 2.5hrs
+  /// FINISHED: status says finished/ft
   static List<MatchModel> _filterFinishedMatches(List<MatchModel> matches) {
     return matches.where((m) => m.isFinished).toList();
   }
 
-  /// SCHEDULED: not live AND not finished → currentTime < matchTime
+  /// SCHEDULED: not live AND not finished (includes postponed/cancelled/fro)
   static List<MatchModel> _filterScheduledMatches(List<MatchModel> matches) {
     return matches.where((m) => !m.isLive && !m.isFinished).toList();
   }

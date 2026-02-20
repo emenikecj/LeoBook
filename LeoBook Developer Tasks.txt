@@ -45,3 +45,50 @@ LeoBook Developer Tasks — Updated 2026-02-17
      - Unregistered:   Prologue (read-only), Ch1-A (default rules), Ch1-C (odds view)
      - LeoBook Lite:   + Ch1-B (custom rules, backtesting, custom predictions)
      - LeoBook Pro:    + Ch2 (automated booking/withdrawal), Ch3 (oversight dashboard)
+
+
+
+
+Notes from February 19, 2026 (3:20 AM Session)
+
+### Development / Bugfix / Feature Notes
+
+**Core data fetching & persistence issues**  
+1. Prologue Page should **upsert** the CSV only if the database contains more recent data than the current CSV; otherwise pull from CSV.  
+2. The `build_search_dict` function unnecessarily repeats itself by re-querying already-fetched metadata on every restart. It should focus **only** on entries that still need to be filled instead of redoing everything from scratch on each run.
+
+**Processing & feedback problems**  
+3. When attempting **ALGO**, no feedback is provided about the attempt status or result. It should give clear feedback (success/failure/partial/etc.).  
+4. The process `Enrich_all_Schedule_League_Page=True` always gets **stuck** afterward and never completes. This needs to be fixed.
+
+**UI / Display / Badge logic**  
+5. The **persistent "Live" badge** remains visible even when the day's games/matches are completely finished. This should be resolved.  
+6. Similar to the live tab streaming logic, the streamer should also handle/stream the **finished** tab (or equivalent), which contains extra info such as:  
+   - "Pen" → penalties  
+   - "canc" → cancelled match  
+   The goal is to use this information to correctly remove the "Live" badge once matches are truly over.
+
+**Scheduled tab improvements**  
+7. Update the **Scheduled** tab to properly recognize and display matches marked **FRO – Final Results Only**  
+   → Meaning: no livestream is/was available → only final result is shown.
+
+**Refresh & performance**  
+8. Increase the refresh time interval of **livescore(s)** to **15 seconds**.
+
+**Flashscore ALL tab handling & fallback logic**  
+9. Regarding point 6 above (finished tab):  
+   - Switch to using the **ALL** tab of Flashscore instead of the finished tab.  
+   - Do **not** display "null" in the UI for postponed/cancelled/FRO matches.  
+   - Instead show:  
+     - "Postponed" or "Cancelled" or "FRO"  
+     - **No live badge** and **no score** — just show "vs" (same as how scheduled matches without result are displayed).  
+   - The **2.5 hours** rule **no longer applies** to these cases.  
+   - In fact, the **2.5 hours** logic has been **deprecated** throughout the entire codebase.  
+   - We no longer rely on the "ALL" tab of Flashscore for primary data — stream parsers now provide those updates.  
+   - The 2.5-hour fallback is **only** used when the streamer fails or is not streaming.
+
+**Flashscore module critical bug**  
+10. In `flashscore_module_manager.py`, the function `extract_matches_from_page` is **not defined anywhere** (neither in the Page class nor elsewhere).  
+    → This is causing **no schedule extraction** to happen at all.
+
+

@@ -106,8 +106,8 @@ async def extract_matches_from_page(page: Page) -> list:
                     const cleanId = rowId ? rowId.replace('g_1_', '') : null;
                     if (!cleanId) return;
 
-                    const homeEl = el.querySelector('.event__participant--home');
-                    const awayEl = el.querySelector('.event__participant--away');
+                    const homeEl = el.querySelector('.event__homeParticipant .wcl-name_jjfMf') || el.querySelector('.event__homeParticipant') || el.querySelector('.event__participant--home');
+                    const awayEl = el.querySelector('.event__awayParticipant .wcl-name_jjfMf') || el.querySelector('.event__awayParticipant') || el.querySelector('.event__participant--away');
                     const timeEl = el.querySelector('.event__time');
                     const stageEl = el.querySelector('.event__stage') || el.querySelector('.event__status');
                     const linkEl = el.querySelector('a.eventRowLink') || el.querySelector('a');
