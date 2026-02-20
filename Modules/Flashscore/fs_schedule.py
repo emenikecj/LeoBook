@@ -47,7 +47,8 @@ async def extract_matches_from_page(page: Page) -> list:
         }""")
         if still_collapsed > 0:
             print(f"    [Extractor] Tier 2: {still_collapsed} leagues still collapsed — retrying with locator clicks...")
-            expand_buttons = page.locator('.wclIcon__leagueShowMoreCont .wcl-trigger_CGiIV[data-state="delayed-open"] button.wcl-accordion_7Fi80')
+            expand_sel = SelectorManager.get_selector("fs_home_page", "expand_show_more_button") or '.wclIcon__leagueShowMoreCont .wcl-trigger_CGiIV[data-state="delayed-open"] button.wcl-accordion_7Fi80'
+            expand_buttons = page.locator(expand_sel)
             count = await expand_buttons.count()
             for i in range(min(count, 50)):  # Safety cap
                 try:

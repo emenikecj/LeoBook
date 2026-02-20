@@ -23,9 +23,9 @@ from .api_manager import leo_api_call_with_rotation
 
 
 # Legacy compatibility functions - delegate to specialized modules
-async def analyze_page_and_update_selectors(page, context_key: str, force_refresh: bool = False, info: Optional[str] = None):
+async def analyze_page_and_update_selectors(page, context_key: str, force_refresh: bool = False, info: Optional[str] = None, target_key: Optional[str] = None):
     """Delegate to VisualAnalyzer"""
-    return await VisualAnalyzer.analyze_page_and_update_selectors(page, context_key, force_refresh, info)
+    return await VisualAnalyzer.analyze_page_and_update_selectors(page, context_key, force_refresh, info, target_key)
 
 
 async def attempt_visual_recovery(page, context_name: str) -> bool:

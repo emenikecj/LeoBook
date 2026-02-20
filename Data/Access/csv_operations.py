@@ -11,7 +11,11 @@ Responsible for reading, writing, appending, and upserting CSV data safely.
 
 import os
 import csv
+import sys
 from typing import Dict, Any, List
+
+# Increase CSV field size limit to handle large strings (e.g. HTML/JSON blobs)
+csv.field_size_limit(sys.maxsize)
 
 # --- CSV File Paths ---
 DB_DIR = "Data/Store"

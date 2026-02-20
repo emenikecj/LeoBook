@@ -50,10 +50,15 @@ from Modules.Flashscore.fs_utils import retry_extraction
 from Core.Utils.constants import NAVIGATION_TIMEOUT, WAIT_FOR_LOAD_STATE_TIMEOUT
 
 # Configuration
-CONCURRENCY = int(os.getenv('ENRICH_CONCURRENCY', 5))  # Default 5 for stability
+_IS_CODESPACE = bool(os.getenv('CODESPACES') or os.getenv('CODESPACE_NAME'))
+_DEFAULT_CONCURRENCY = 2 if _IS_CODESPACE else 5  # Adaptive: 2 in Codespace, 5 locally
+CONCURRENCY = int(os.getenv('ENRICH_CONCURRENCY', _DEFAULT_CONCURRENCY))
 BATCH_SIZE = int(os.getenv('ENRICH_BATCH_SIZE', 10))   # Report progress more frequently
 KNOWLEDGE_PATH = Path(__file__).parent.parent / "Config" / "knowledge.json"
 HISTORICAL_GAP_LIMIT = 500  # Prevent Priority 3 bloat
+
+if _IS_CODESPACE:
+    print(f"[ENV] Codespace detected. Concurrency capped at {CONCURRENCY} to prevent memory exhaustion.")
 
 # Selective dynamic selectors will still be used but Core/ extracts will handle standings
 
@@ -96,11 +101,11 @@ async def _raw_safe_text(page, selector: str) -> Optional[str]:
 
 
 async def _smart_attr(page, context: str, key: str, attr: str) -> Optional[str]:
-    """Safe extraction using direct selector lookup with hardening."""
+    """Safe extraction using AIGO self-healing selector lookup."""
     try:
-        selector = SelectorManager.get_selector(context, key)
+        # I3: Use get_selector_auto for self-healing (falls back to AI re-analysis if selector is stale)
+        selector = await SelectorManager.get_selector_auto(page, context, key)
         if selector:
-            # Hardening: Wait for selector if it might be dynamic
             try:
                 await page.wait_for_selector(selector, timeout=2000)
             except: pass
@@ -110,11 +115,11 @@ async def _smart_attr(page, context: str, key: str, attr: str) -> Optional[str]:
     return None
 
 async def _smart_text(page, context: str, key: str) -> Optional[str]:
-    """Safe extraction using direct selector lookup with hardening."""
+    """Safe extraction using AIGO self-healing selector lookup."""
     try:
-        selector = SelectorManager.get_selector(context, key)
+        # I3: Use get_selector_auto for self-healing (falls back to AI re-analysis if selector is stale)
+        selector = await SelectorManager.get_selector_auto(page, context, key)
         if selector:
-            # Hardening: Wait for selector if it might be dynamic
             try:
                 await page.wait_for_selector(selector, timeout=2000)
             except: pass
@@ -338,22 +343,34 @@ async def process_match_task_isolated(browser: Browser, match: Dict, sel: Dict[s
             if enriched:
                 match.update(enriched)
             else:
-                # AIGO Fallback: Capture diagnostics on extraction failure
-                log_dir = Path("Data/Logs/EnrichmentFailures") / fixture_id
-                log_dir.mkdir(parents=True, exist_ok=True)
+                # I1: Pre-capture validation — only save diagnostics if page actually loaded
+                page_html = ""
+                try:
+                    page_html = await page.content()
+                except Exception:
+                    page_html = ""
                 
-                screenshot_path = log_dir / "failure.png"
-                html_path = log_dir / "source.html"
+                is_blank_page = len(page_html.strip()) < 60 or page_html.strip() == "<html><head></head><body></body></html>"
                 
-                await page.screenshot(path=str(screenshot_path))
-                with open(html_path, "w", encoding='utf-8') as f:
-                    f.write(await page.content())
-                
-                print(f"      [AIGO Fallback] Extraction failed for {fixture_id}. Diagnostics saved to {log_dir}")
+                if is_blank_page:
+                    # Page never loaded — browser crash or navigation failure
+                    print(f"      [BROWSER_CRASH] Page blank for {fixture_id}. Skipping diagnostic save (no useful data).")
+                else:
+                    # Real page content exists — save diagnostics for AIGO analysis
+                    log_dir = Path("Data/Logs/EnrichmentFailures") / fixture_id
+                    log_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    screenshot_path = log_dir / "failure.png"
+                    html_path = log_dir / "source.html"
+                    
+                    await page.screenshot(path=str(screenshot_path))
+                    with open(html_path, "w", encoding='utf-8') as f:
+                        f.write(page_html)
+                    
+                    print(f"      [AIGO Fallback] Extraction failed for {fixture_id}. Diagnostics saved to {log_dir}")
                 
         except Exception as e:
-            # print(f"      [ISOLATION INFO] Failed to enrich {match.get('fixture_id')}: {str(e)[:100]}")
-            pass
+            print(f"      [ISOLATION INFO] Failed to enrich {fixture_id}: {str(e)[:100]}")
         finally:
             await context.close()
     except Exception as e:
@@ -752,9 +769,11 @@ async def enrich_all_schedules(limit: Optional[int] = None, dry_run: bool = Fals
     to_enrich = final_to_enrich
     print(f"  [PRIORITY] Sorted {len(to_enrich)} tasks. (Capped Priority 3 to {HISTORICAL_GAP_LIMIT})")
 
-    # Calculate auto-scaling concurrency (2-5)
-    calc_concurrency = max(2, min(5, len(to_enrich) // 20))
-    print(f"  [AUTO-SCALE] Concurrency set to: {calc_concurrency}")
+    # I2: Calculate auto-scaling concurrency — capped lower in Codespace
+    max_concurrency = 2 if _IS_CODESPACE else 5
+    calc_concurrency = max(1, min(max_concurrency, len(to_enrich) // 20))
+    env_label = "Codespace" if _IS_CODESPACE else "Local"
+    print(f"  [AUTO-SCALE] Concurrency set to: {calc_concurrency} ({env_label} mode, max={max_concurrency})")
 
     if limit:
         to_enrich = to_enrich[:limit]

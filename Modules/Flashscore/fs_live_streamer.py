@@ -26,6 +26,7 @@ from Data.Access.db_helpers import (
 from Data.Access.sync_manager import SyncManager
 from Core.Browser.site_helpers import fs_universal_popup_dismissal
 from Core.Utils.constants import NAVIGATION_TIMEOUT, WAIT_FOR_LOAD_STATE_TIMEOUT
+from Core.Intelligence.selector_manager import SelectorManager
 
 STREAM_INTERVAL = 15  # seconds (was 60 in v2)
 FLASHSCORE_URL = "https://www.flashscore.com/football/"
@@ -410,16 +411,19 @@ async def _extract_all_matches(page) -> list:
 async def _click_all_tab(page) -> bool:
     """Clicks the ALL tab on the Flashscore football page (default/first tab)."""
     try:
-        tab = page.locator('.filters__tab[data-analytics-alias="summary"]')
-        if await tab.count() > 0:
-            await tab.first.click()
-            await asyncio.sleep(1.5)
-            return True
+        tab_sel = SelectorManager.get_selector("fs_home_page", "all_tab")
+        if tab_sel:
+            tab = page.locator(tab_sel)
+            if await tab.count() > 0:
+                await tab.first.click()
+                await asyncio.sleep(1.5)
+                return True
     except Exception:
         pass
     try:
         # Fallback: click the first tab (ALL is always first)
-        tab = page.locator('.filters__tab').first
+        fallback_sel = SelectorManager.get_selector("fs_home_page", "all_tab_fallback") or ".filters__tab"
+        tab = page.locator(fallback_sel).first
         if await tab.count() > 0:
             await tab.click()
             await asyncio.sleep(1.5)

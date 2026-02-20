@@ -114,25 +114,36 @@ class VisualAnalyzer:
         context_key: str,
         force_refresh: bool = False,
         info: Optional[str] = None,
+        target_key: Optional[str] = None,
     ):
         """
         1. Checks if selectors exist. If they do and not force_refresh, skips.
         2. Captures Visual UI Inventory (The What).
         3. Captures HTML (The How).
-        4. Maps Visuals to HTML Selectors with STANDARDIZED KEYS for critical items.
+        4. Maps Visuals to HTML Selectors.
+        
+        CONTEXTUAL DISCOVERY:
+        - Many selectors for a page context live behind tabs/interactions
+          (e.g. standings selectors are only visible on the Standings tab).
+        - When target_key is provided: ONLY ask AI about that ONE selector.
+          This is the fast path for on-demand healing.
+        - When target_key is None: bulk mode, update whatever is visible.
+          Never loops — accepts that some selectors won't be found in the
+          current page state. They'll be healed when their tab is active.
         """
         Focus = info
 
-        print(
-            f"    [AI INTEL] Starting Aggressive Discovery for context: '{context_key}'..."
-        )
-
-        # --- STRICT UPSERT LOGIC ---
-        # 1. Get existing keys for this context to force 'Upsert-Only' mode
+        # --- Determine mode ---
         existing_selectors = knowledge_db.get(context_key, {})
-        existing_keys = list(existing_selectors.keys())
         
-        print(f"    [AI INTEL] Context '{context_key}' has {len(existing_keys)} existing keys. Mode: Strict Upsert.")
+        if target_key:
+            # TARGETED MODE: Only heal this specific key
+            keys_to_find = [target_key]
+            print(f"    [AI INTEL] TARGETED Discovery for '{target_key}' in '{context_key}'...")
+        else:
+            # BULK MODE: Try all keys, accept partial results
+            keys_to_find = list(existing_selectors.keys())
+            print(f"    [AI INTEL] Bulk Discovery for context: '{context_key}' ({len(keys_to_find)} keys)...")
 
         print(f"    [AI INTEL] Taking Screenshot and HTML capture of: '{context_key}'...")
         await log_page_html(page, context_key)
@@ -163,30 +174,51 @@ class VisualAnalyzer:
         html_content = re.sub(r"<style.*?</style>", "", html_content, flags=re.DOTALL | re.IGNORECASE)
         html_content = html_content[:100000]
 
-        # Step 3: Map Visuals to HTML (with Extraction Rules)
-        print(f"    [AI INTEL] Mapping Visuals for {len(existing_keys)} keys...")
-        
-        # Construct the specialized Upsert-Only prompt
-        keys_list_str = ", ".join([f'"{k}"' for k in existing_keys]) if existing_keys else "[]"
-        
-        prompt = f"""
-        You are an elite front-end reverse-engineer. Your task is to perform a STRICT UPSERT of CSS selectors.
-        
-        ### GOAL
-        For the given list of EXISTING KEYS, find the most accurate CSS selector in the provided HTML source.
-        
-        ### CRITICAL RULES
-        1. ONLY return keys from this list: [{keys_list_str}]
-        2. DO NOT create new keys.
-        3. DO NOT modify the structure of the keys.
-        4. If you cannot find a selector for a key, OMIT it from the response.
-        5. RETURN ONLY a valid JSON object. No markdown. No explanations.
-        
-        ### SELECTOR QUALITY
-        - Prefer IDs > data-attributes > specific Classes.
-        - Avoid unstable generated classes (e.g., 'css-1abc').
-        - Ensure selectors are uniquely identifiable within the context.
-        """
+        # --- Build prompt based on mode ---
+        keys_list_str = ", ".join([f'"{k}"' for k in keys_to_find])
+
+        if target_key:
+            # TARGETED PROMPT: Focused, fast, cheap
+            prompt = f"""
+    You are an elite front-end reverse-engineer. Find the CSS selector for ONE specific element.
+    
+    ### GOAL
+    Find the CSS selector for the key: "{target_key}" in the context "{context_key}".
+    
+    ### CRITICAL RULES
+    1. Return ONLY a JSON object with this exact structure: {{"{target_key}": "<css_selector>"}}
+    2. If the element is NOT visible in the current page state (e.g. behind a tab, collapsed section, or requires interaction to reveal), return an EMPTY JSON object: {{}}
+    3. DO NOT guess. DO NOT return selectors for elements you cannot see.
+    4. RETURN ONLY valid JSON. No markdown. No explanations.
+    
+    ### SELECTOR QUALITY
+    - Prefer IDs > data-attributes > specific Classes.
+    - Avoid unstable generated classes (e.g., 'css-1abc').
+    - Ensure the selector uniquely identifies the element.
+
+    ### CONTEXT
+    {info or ""}
+    """
+        else:
+            # BULK PROMPT: Tolerant of missing selectors
+            prompt = f"""
+    You are an elite front-end reverse-engineer. Your task is to perform a STRICT UPSERT of CSS selectors.
+    
+    ### GOAL
+    For the given list of EXISTING KEYS, find the most accurate CSS selector in the provided HTML source.
+    
+    ### CRITICAL RULES
+    1. ONLY return keys from this list: [{keys_list_str}]
+    2. DO NOT create new keys.
+    3. DO NOT modify the structure of the keys.
+    4. If you cannot find a selector for a key (e.g. the element is behind a tab, collapsed, or not visible), OMIT it from the response. This is EXPECTED — not all selectors are visible at once.
+    5. RETURN ONLY a valid JSON object. No markdown. No explanations.
+    
+    ### SELECTOR QUALITY
+    - Prefer IDs > data-attributes > specific Classes.
+    - Avoid unstable generated classes (e.g., 'css-1abc').
+    - Ensure selectors are uniquely identifiable within the context.
+    """
 
         prompt_tail = f"""
         ### INPUT
@@ -200,27 +232,43 @@ class VisualAnalyzer:
         full_prompt = prompt + prompt_tail
 
         try:
-            from .api_manager import gemini_api_call_with_rotation, GenerationConfig
+            from .api_manager import gemini_api_call_with_rotation
             response = await gemini_api_call_with_rotation(
                 full_prompt,
-                generation_config=GenerationConfig(response_mime_type="application/json")
+                generation_config={"response_mime_type": "application/json"}
             )
             # Fix for JSON Decode Errors
             from .utils import clean_json_response
             cleaned_json = clean_json_response(response.text)
             new_selectors = json.loads(cleaned_json)
 
-            # 4. Strict Upsert: Only update existing keys
+            # Apply results
             updated_count = 0
+            if context_key not in knowledge_db:
+                knowledge_db[context_key] = {}
+                
             for key, selector in new_selectors.items():
-                if key in existing_selectors:
+                if target_key:
+                    # TARGETED: Accept the result for the target key (UPDATE or UPSERT)
+                    if key == target_key:
+                        knowledge_db[context_key][key] = selector
+                        updated_count += 1
+                elif key in existing_selectors:
+                    # BULK: Strict upsert — only update existing keys
                     knowledge_db[context_key][key] = selector
                     updated_count += 1
                 else:
                     print(f"    [AI INTEL WARNING] AI hallucinated new key '{key}'. Ignored (Strict Upsert Mode).")
 
             save_knowledge()
-            print(f"    [AI INTEL] Successfully upserted {updated_count} elements in context '{context_key}'.")
+            
+            if target_key:
+                if updated_count:
+                    print(f"    [AI INTEL] Successfully healed '{target_key}' in '{context_key}'.")
+                else:
+                    print(f"    [AI INTEL] '{target_key}' not found in current page state. Element may be behind a tab or require interaction.")
+            else:
+                print(f"    [AI INTEL] Successfully upserted {updated_count}/{len(keys_to_find)} elements in context '{context_key}'.")
         except Exception as e:
             print(f"    [AI INTEL ERROR] Failed to generate selectors map: {e}")
             return

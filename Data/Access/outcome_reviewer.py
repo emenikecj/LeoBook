@@ -157,6 +157,7 @@ def save_single_outcome(match_data: Dict, new_status: str):
     Atomic Upsert to save the review result.
     """
     temp_file = PREDICTIONS_CSV + '.tmp'
+    os.makedirs(os.path.dirname(PREDICTIONS_CSV), exist_ok=True)
     updated = False
     row_id_key = 'ID' if 'ID' in match_data else 'fixture_id'
     target_id = match_data.get(row_id_key)

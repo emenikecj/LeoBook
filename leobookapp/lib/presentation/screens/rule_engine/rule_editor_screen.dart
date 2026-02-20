@@ -90,19 +90,25 @@ class _RuleEditorScreenState extends State<RuleEditorScreen> {
       appBar: AppBar(
         title: Text(title),
         centerTitle: true,
-        actions: [
-          TextButton.icon(
-            onPressed: _isSaving ? null : _save,
-            icon: _isSaving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save),
-            label: const Text('Save'),
-          ),
-        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _isSaving ? null : _save,
+        backgroundColor: AppColors.successGreen,
+        foregroundColor: Colors.white,
+        icon: _isSaving
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.save),
+        label: const Text(
+          'SAVE ENGINE',
+          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+        ),
       ),
       body: ListView(
         padding: EdgeInsets.symmetric(
@@ -156,7 +162,7 @@ class _RuleEditorScreenState extends State<RuleEditorScreen> {
             _SliderDef('Beats Top Teams', _config.formVsTopWin,
                 (v) => _config.formVsTopWin = v),
           ]),
-          const SizedBox(height: 32),
+          const SizedBox(height: 80), // Padding for FAB
         ],
       ),
     );

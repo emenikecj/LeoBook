@@ -228,9 +228,25 @@ e0b28cde-8e1a-46b6-9111-4d93714c6540,2026-02-20T00:32:53+00:00,STREAMER_START,Li
 3cb3cfce-52e2-474d-aafd-ffdee312af56,2026-02-20T02:04:45+00:00,PROLOGUE_P1,Cloud handshake and prediction review completed.,,,,success,2026-02-20T02:06:28.034993+00:00,1970-01-01T00:00:00+00:00
 0aa56d16-68fb-4964-8c65-84e61ca0e169,2026-02-20T04:55:16+00:00,SYSTEM_SYNC,"Full Chapter Sync (Manual Sync): 12 passed, 0 failed.",,,,success,2026-02-20T04:57:14.270221+00:00,1970-01-01T00:00:00+00:00
 8e64e689-9eed-4295-ab0e-bcaa580248bf,2026-02-20T04:57:14+00:00,SYSTEM_SYNC,"Full Chapter Sync (Manual Sync): 12 passed, 0 failed.",,,,success,2026-02-20T04:58:44.134866+00:00,1970-01-01T00:00:00+00:00
-a0b6dd9a-68c4-4042-869b-dcc1fd31f22d,2026-02-20T06:01:26+00:00,SYSTEM_SYNC,"Full Chapter Sync (Manual Sync): 12 passed, 0 failed.",None,None,None,success,2026-02-20T05:13:08.478936+00:00,1970-01-01T00:00:00+00:00
+a0b6dd9a-68c4-4042-869b-dcc1fd31f22d,2026-02-20T06:01:26+00:00,SYSTEM_SYNC,"Full Chapter Sync (Manual Sync): 12 passed, 0 failed.",,,,success,2026-02-20T05:13:08.478936+00:00,1970-01-01T00:00:00+00:00
 bb118d3b-1425-44c8-9f40-4785ba163aeb,2026-02-20T05:05:41+00:00,SYSTEM_SYNC,"Full Chapter Sync (Manual Sync): 12 passed, 0 failed.",,,,success,2026-02-20T05:07:43.80215+00:00,1970-01-01T00:00:00+00:00
 5c3292e6-ce2c-4985-9b25-295f0ee923be,2026-02-20T05:07:43+00:00,SYSTEM_SYNC,"Full Chapter Sync (Manual Sync): 12 passed, 0 failed.",,,,success,2026-02-20T05:12:05.131838+00:00,1970-01-01T00:00:00+00:00
-17c3f757-24c0-4f3d-a8c1-05f5d0437d61,2026-02-20 06:12:34,SYSTEM_SYNC,"Full Chapter Sync (Manual Sync): 12 passed, 0 failed.",,,,success,,
-0d6ab8b2-4ac7-43ce-add0-861ef8044ef9,2026-02-20T05:12:05+00:00,SYSTEM_SYNC,"Full Chapter Sync (Manual Sync): 12 passed, 0 failed.",None,None,None,success,2026-02-20T05:24:11.037061+00:00,1970-01-01T00:00:00+00:00
-9475d7d6-bce4-41b6-a515-a9f0aa7368bb,2026-02-20 07:02:25,SYSTEM_SYNC,"Full Chapter Sync (Manual Sync): 12 passed, 0 failed.",,,,success
+17c3f757-24c0-4f3d-a8c1-05f5d0437d61,2026-02-20T06:12:34+00:00,SYSTEM_SYNC,"Full Chapter Sync (Manual Sync): 12 passed, 0 failed.",None,None,None,success,2026-02-20T06:02:59.018676+00:00,1970-01-01T00:00:00+00:00
+0d6ab8b2-4ac7-43ce-add0-861ef8044ef9,2026-02-20T05:12:05+00:00,SYSTEM_SYNC,"Full Chapter Sync (Manual Sync): 12 passed, 0 failed.",,,,success,2026-02-20T05:24:11.037061+00:00,1970-01-01T00:00:00+00:00
+9475d7d6-bce4-41b6-a515-a9f0aa7368bb,2026-02-20T07:02:25+00:00,SYSTEM_SYNC,"Full Chapter Sync (Manual Sync): 12 passed, 0 failed.",None,None,None,success,2026-02-20T06:36:31.182867+00:00,1970-01-01T00:00:00+00:00
+d3360c75-5059-442f-adc2-af9c58e7f3da,2026-02-20T06:02:55+00:00,PROLOGUE_P1,Cloud handshake and prediction review completed.,None,None,None,success,2026-02-20T06:04:13.663802+00:00,1970-01-01T00:00:00+00:00
+0e96b165-d755-43b5-ac7f-46c20099ae00,2026-02-20T06:19:27+00:00,CH1_P1,Failed: Browser.close: Connection closed while reading from the driver,None,None,None,failed,2026-02-20T06:21:25.218613+00:00,1970-01-01T00:00:00+00:00
+29973549-624a-4e26-99d5-b6fdb2386268,2026-02-20T06:20:02+00:00,CYCLE_START,Cycle #1 initiated.,None,None,None,success,2026-02-20T06:21:25.218613+00:00,1970-01-01T00:00:00+00:00
+54bd177a-91d2-4703-8a72-f201463ee4d3,2026-02-20T06:20:40+00:00,STREAMER_START,"Live score streamer v3 initialized (ALL tab, 15s).",None,None,None,success,2026-02-20T06:21:25.218613+00:00,1970-01-01T00:00:00+00:00
+0428276a-202c-4c85-81c3-d0b1a7425d4e,2026-02-20T06:35:06+00:00,CYCLE_START,Cycle #1 initiated.,None,None,None,success,2026-02-20T06:36:31.182867+00:00,1970-01-01T00:00:00+00:00
+8004c1e9-0d8d-461d-a8c2-c105b1d1a09f,2026-02-20T06:38:31+00:00,STREAMER_START,"Live score streamer v3 initialized (ALL tab, 15s).",None,None,None,success,2026-02-20T07:08:21.714094+00:00,1970-01-01T00:00:00+00:00
+ac1b72cf-ab3f-4885-bd33-e35d9e66b7b2,2026-02-20T07:06:31+00:00,CYCLE_START,Cycle #1 initiated.,None,None,None,success,2026-02-20T07:08:21.714094+00:00,1970-01-01T00:00:00+00:00
+be08f439-1bd9-4712-b080-54a4519e4924,2026-02-20T07:08:59+00:00,STREAMER_START,"Live score streamer v3 initialized (ALL tab, 15s).",None,None,None,success,2026-02-20T07:22:48.678261+00:00,1970-01-01T00:00:00+00:00
+baa01c56-5e2b-45f8-b77c-0b19c5075dda,2026-02-20T07:20:25+00:00,PROLOGUE_P1,Cloud handshake and prediction review completed.,None,None,None,success,2026-02-20T07:22:48.678261+00:00,1970-01-01T00:00:00+00:00
+dacb3465-a059-46c3-a837-c88eb074fc01,2026-02-20T07:30:08+00:00,PROLOGUE_P1,Cloud handshake and prediction review completed.,None,None,None,success,2026-02-20T07:33:23.909147+00:00,1970-01-01T00:00:00+00:00
+8d7f151e-9926-49c7-9f55-dd6dcf99624d,2026-02-20T08:00:26+00:00,CH1_P1,Failed: Browser.close: Connection closed while reading from the driver,None,None,None,failed,2026-02-20T08:01:40.668562+00:00,1970-01-01T00:00:00+00:00
+3ec10536-c3ba-493b-ad0d-51a8f4979911,2026-02-20T08:01:40+00:00,SYSTEM_SYNC,"Full Chapter Sync (Periodic): 12 passed, 0 failed.",None,None,None,success,2026-02-20T10:04:59.824395+00:00,1970-01-01T00:00:00+00:00
+84ce7f93-9589-4334-941b-946b86898ff6,2026-02-20T10:03:36+00:00,CYCLE_START,Cycle #1 initiated.,None,None,None,success,2026-02-20T10:04:59.824395+00:00,1970-01-01T00:00:00+00:00
+7ff017de-c618-41c5-9cef-6d3e60dde955,2026-02-20T10:03:46+00:00,STREAMER_START,"Live score streamer v3 initialized (ALL tab, 15s).",None,None,None,success,2026-02-20T10:04:59.824395+00:00,1970-01-01T00:00:00+00:00
+4b7be2f8-0834-4034-8ecb-0c7019066045,2026-02-20 12:49:45,SYSTEM_SYNC,"Full Chapter Sync (Manual Sync): 12 passed, 0 failed.",,,,success
+c84f741b-05c2-4ed3-9526-a3703dcf77b9,2026-02-20 13:05:28,SYSTEM_SYNC,"Full Chapter Sync (Manual Sync): 12 passed, 0 failed.",,,,success

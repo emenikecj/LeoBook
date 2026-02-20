@@ -35,20 +35,24 @@ from Data.Access.sync_manager import run_full_sync
 async def ensure_bet_insights_collapsed(page: Page):
     """Ensure the bet insights widget is collapsed to prevent obstruction."""
     try:
-        header = page.locator('div.srct-widget-header_custom').first
+        header_sel = await get_selector_auto(page, "fb_match_page", "bet_insights_header")
+        if not header_sel:
+            return
+        header = page.locator(header_sel).first
         if await header.count() > 0:
-            arrow = header.locator('div.srct-widget-header_custom-arrow')
-            if await arrow.count() > 0:
-                is_expanded = await arrow.evaluate('el => el.classList.contains("rotate-arrow")')
-                if is_expanded:
-                    print("    [UI] Collapsing Bet Insights widget...")
-                    await header.scroll_into_view_if_needed()
-                    await header.click()
-                    # Wait for collapse animation or arrow status change
-                    try:
-                       await arrow.wait_for(state='visible', timeout=2000)
-                    except:
-                       pass
+            arrow_sel = await get_selector_auto(page, "fb_match_page", "bet_insights_arrow")
+            if arrow_sel:
+                arrow = header.locator(arrow_sel)
+                if await arrow.count() > 0:
+                    is_expanded = await arrow.evaluate('el => el.classList.contains("rotate-arrow")')
+                    if is_expanded:
+                        print("    [UI] Collapsing Bet Insights widget...")
+                        await header.scroll_into_view_if_needed()
+                        await header.click()
+                        try:
+                           await arrow.wait_for(state='visible', timeout=2000)
+                        except:
+                           pass
     except Exception as e:
         print(f"    [UI] Bet Insights collapse check failed (non-critical): {e}")
 
@@ -100,18 +104,11 @@ async def check_match_start_time(page: Page) -> bool:
                     print("    [Time Check] Could not parse exact time, but match doesn't appear live. Proceeding.")
                     return True
 
-        # Fallback: check for live indicators
-        live_indicators = [
-            "div.live-in-play-icon",
-            "[data-testid='wcl-icon-live']",
-            ".live-tag",
-            "span.live-in-play-icon"
-        ]
-
-        for indicator in live_indicators:
-            if await page.locator(indicator).count() > 0:
-                print("    [Time Check] Found live indicator. Match is already in progress. Skipping.")
-                return False
+        # Fallback: check for live indicators using knowledge.json selector
+        live_sel = await get_selector_auto(page, "fb_match_page", "live_indicator")
+        if live_sel and await page.locator(live_sel).count() > 0:
+            print("    [Time Check] Found live indicator. Match is already in progress. Skipping.")
+            return False
 
         print("    [Time Check] No clear time or live indicators found. Assuming match is upcoming.")
         return True

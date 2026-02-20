@@ -57,7 +57,11 @@ class SelectorManager:
         SMART ACCESSOR:
         1. Checks if selector exists in DB.
         2. Validates if selector is present on the current page.
-        3. If missing or invalid, AUTOMATICALLY triggers AI re-analysis and returns fresh selector.
+        3. If missing or invalid, AUTOMATICALLY triggers TARGETED AI healing for THIS KEY ONLY.
+        
+        IMPORTANT: Does NOT re-analyze all selectors for the context.
+        Many selectors are behind tabs/interactions and won't be visible
+        in the current page state. Only heals what we actually need now.
         """
         # 1. Quick Lookup
         selector = knowledge_db.get(context_key, {}).get(element_key)
@@ -65,38 +69,32 @@ class SelectorManager:
         # 2. Validation
         is_valid = False
         if selector:
-            # Wait up to 5s for the selector to be attached (DOM presence)
-            # Reduced timeout to prevent delays, use 'visible' for better reliability
             try:
-                # 'visible' ensures it's both in DOM and visible, more reliable than 'attached'
                 await page.wait_for_selector(selector, state='visible', timeout=5000)
                 is_valid = True
             except Exception:
-                # print(f"    [Selector Stale] '{element_key}' ('{selector}') not found after wait.")
                 is_valid = False
 
-        # 3. Auto-Healing
+        # 3. Targeted Auto-Healing (SINGLE KEY ONLY)
         if not is_valid:
             print(
-                f"    [Auto-Heal] Selector '{element_key}' in '{context_key}' invalid/missing. Initiating AI repair..."
+                f"    [Auto-Heal] Selector '{element_key}' in '{context_key}' invalid/missing. Initiating TARGETED AI repair..."
             )
-            # Import here to avoid circular imports
             from .intelligence import analyze_page_and_update_selectors
             
             info = f"Selector '{element_key}' in '{context_key}' invalid/missing."
-            # A. Capture NEW Snapshot (Crucial for fresh analysis)
-            # Note: analyze_page_and_update_selectors handles the snapshot capturing
-            
-            # B. Run AI Analysis (Forces update of DB)
-            await analyze_page_and_update_selectors(page, context_key, force_refresh=True, info=info)
+            # TARGETED: Only ask AI about THIS specific key, not all 155+ keys
+            await analyze_page_and_update_selectors(
+                page, context_key, force_refresh=True, info=info, target_key=element_key
+            )
 
-            # C. Re-fetch
+            # Re-fetch
             selector = knowledge_db.get(context_key, {}).get(element_key)
 
             if selector:
                 print(f"    [Auto-Heal Success] New selector for '{element_key}': {selector}")
             else:
-                print(f"    [Auto-Heal Failed] AI could not find '{element_key}' even after refresh.")
+                print(f"    [Auto-Heal Skipped] '{element_key}' not visible in current page state. Will retry when tab/section is active.")
 
         return str(selector) if selector else ""
 
@@ -105,15 +103,13 @@ class SelectorManager:
         """
         ON-DEMAND HEALING:
         Called only when a selector actually fails during use.
-        Attempts to find a new selector for the failed element.
+        Attempts to find a new selector for the SPECIFIC failed element only.
         """
-        # Import here to avoid circular imports
         from .intelligence import analyze_page_and_update_selectors
 
-        print(f"    [On-Demand Heal] Selector '{element_key}' failed in '{context_key}'. Attempting repair...")
+        print(f"    [On-Demand Heal] Selector '{element_key}' failed in '{context_key}'. Attempting TARGETED repair...")
 
         try:
-            # Verify we're on the correct page context before healing
             from .page_analyzer import PageAnalyzer
             content_is_correct = await PageAnalyzer.verify_page_context(page, context_key)
 
@@ -122,17 +118,18 @@ class SelectorManager:
                 print(f"    [Heal Aborted] Wrong page context for '{context_key}': {curr_url}")
                 return ""
 
-            # Attempt AI-powered healing
             info = f"Selector '{element_key}' failed during use in '{context_key}'. {failure_reason}"
-            await analyze_page_and_update_selectors(page, context_key, force_refresh=True, info=info)
+            # TARGETED: Only heal THIS specific key
+            await analyze_page_and_update_selectors(
+                page, context_key, force_refresh=True, info=info, target_key=element_key
+            )
 
-            # Return the healed selector
             healed_selector = knowledge_db.get(context_key, {}).get(element_key, "")
             if healed_selector:
                 print(f"    [Heal Success] New selector for '{element_key}': {healed_selector}")
                 return str(healed_selector)
             else:
-                print(f"    [Heal Failed] Could not find replacement for '{element_key}'")
+                print(f"    [Heal Skipped] '{element_key}' not visible in current page state. May require tab navigation first.")
                 return ""
 
         except Exception as e:

@@ -129,6 +129,7 @@ async def process_match_task(match_data: dict, browser: Browser):
             sel_region_name = await SelectorManager.get_selector_auto(page, "fs_match_page", "region_name")
             sel_region_flag = await SelectorManager.get_selector_auto(page, "fs_match_page", "region_flag_img")
             sel_league_url = await SelectorManager.get_selector_auto(page, "fs_match_page", "league_url")
+            sel_region_url = await SelectorManager.get_selector_auto(page, "fs_match_page", "region_url")
             
             sel_home_crest = await SelectorManager.get_selector_auto(page, "fs_match_page", "home_crest")
             sel_home_url = await SelectorManager.get_selector_auto(page, "fs_match_page", "home_url")

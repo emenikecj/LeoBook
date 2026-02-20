@@ -370,6 +370,27 @@ LeoBook/
 
 ---
 
+## 9. 12-Step Problem-Solving Framework
+
+> **MANDATORY** for all failure investigation and resolution. Follow in exact order.
+
+| Step | Action | Rule |
+|------|--------|------|
+| **1. Define** | What is the problem? | Focus on understanding — no blame. |
+| **2. Validate** | Is it really a problem? | Pause. Does this actually need solving, or is it just uncomfortable? |
+| **3. Expand** | What else is the problem? | Look for hidden or related issues you might be missing. |
+| **4. Trace** | How did the problem occur? | Reverse-engineer the timeline from the very beginning. |
+| **5. Brainstorm** | What are ALL possible solutions? | No filtering yet — list everything. |
+| **6. Evaluate** | What is the best solution right now? | Consider current resources, time, and constraints. |
+| **7. Decide** | Commit to the best solution. | No second-guessing once decided. |
+| **8. Assign** | Break into actionable steps. | Systematic, accountable, specific. |
+| **9. Measure** | Define what "solved" looks like. | What does the completed solution look like? What are its expected effects? |
+| **10. Start** | Take the first action. | Momentum matters. |
+| **11. Complete** | Finish every step you planned. | No half-measures. |
+| **12. Review** | Compare outcomes against step 9. | Not satisfied? Repeat steps 1–11 until it's solved. |
+
+---
+
 *Last updated: February 20, 2026*
 *Authored by: LeoBook Engineering Team*
 

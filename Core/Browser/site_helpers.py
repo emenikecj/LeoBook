@@ -31,12 +31,14 @@ async def fs_universal_popup_dismissal(page: Page, context: str = "fs_generic"):
 async def accept_cookies_robust(page: Page):
     """Handles cookie consent dialogs across different patterns."""
     try:
-        onetrust_btn = page.locator("#onetrust-accept-btn-handler")
-        if await onetrust_btn.is_visible(timeout=2000):
-            await onetrust_btn.click()
-            print("    [Cookies] Accepted via OneTrust")
-            await asyncio.sleep(0.5)
-            return
+        onetrust_sel = get_selector('fs_home_page', 'cookie_accept_onetrust')
+        if onetrust_sel:
+            onetrust_btn = page.locator(onetrust_sel)
+            if await onetrust_btn.is_visible(timeout=2000):
+                await onetrust_btn.click()
+                print("    [Cookies] Accepted via OneTrust")
+                await asyncio.sleep(0.5)
+                return
     except Exception:
         pass
 
@@ -114,7 +116,10 @@ async def get_main_frame(page: Page) -> Optional[Page | Frame]:
     Otherwise, it returns the original page object.
     """
     try:
-        iframe_locator = page.locator("#app")
+        app_sel = get_selector('fb_match_page', 'app_iframe')
+        if not app_sel:
+            app_sel = '#app'  # Ultimate fallback
+        iframe_locator = page.locator(app_sel)
         if await iframe_locator.count() > 0:
             iframe_element = await iframe_locator.element_handle()
             frame = await iframe_element.content_frame()

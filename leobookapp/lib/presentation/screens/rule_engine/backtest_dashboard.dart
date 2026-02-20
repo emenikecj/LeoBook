@@ -41,15 +41,20 @@ class _BacktestDashboardState extends State<BacktestDashboard> {
   Future<void> _refreshResults() async {
     if (_currentConfig == null) return;
     try {
+      if (mounted) setState(() => _isLoading = true);
       // We load the CSV produced by the Python script
       final results = await _leoService.getBacktestResults(
         _currentConfig!.name,
       );
-      setState(() {
-        _results = results;
-      });
+      if (mounted) {
+        setState(() {
+          _results = results;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       debugPrint("Error loading results: $e");
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -95,111 +100,188 @@ class _BacktestDashboardState extends State<BacktestDashboard> {
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.backgroundDark : Colors.white,
-      appBar: isDesktop
-          ? null
-          : AppBar(
-              title: const Text('Backtest Dashboard'),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.settings),
-                  onPressed: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RuleEditorScreen(),
-                      ),
-                    );
-                    _loadInitialData();
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  onPressed: _refreshResults,
-                ),
-              ],
-            ),
+      // Removed standard AppBar, using SliverAppBar below
+
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(isDesktop ? 32 : 16),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1000),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (isDesktop) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          : CustomScrollView(
+              slivers: [
+                _buildSliverAppBar(isDesktop, isDark),
+                SliverPadding(
+                  padding: EdgeInsets.all(isDesktop ? 32 : 16),
+                  sliver: SliverToBoxAdapter(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1000),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            if (isDesktop) ...[
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    "RULE ENGINE",
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.white,
+                                      letterSpacing: -1,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      _buildHeaderAction(
+                                        Icons.settings_outlined,
+                                        "EDITOR",
+                                        () async {
+                                          await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const RuleEditorScreen(),
+                                            ),
+                                          );
+                                          _loadInitialData();
+                                        },
+                                      ),
+                                      const SizedBox(width: 12),
+                                      _buildHeaderAction(
+                                        Icons.refresh,
+                                        "REFRESH",
+                                        _refreshResults,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 32),
+                            ],
+                            _buildSummaryCard(isDesktop),
+                            const SizedBox(height: 32),
                             const Text(
-                              "RULE ENGINE",
+                              "HISTORICAL RESULTS",
                               style: TextStyle(
-                                fontSize: 24,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                                letterSpacing: -1,
-                                fontStyle: FontStyle.italic,
+                                color: AppColors.textGrey,
+                                letterSpacing: 2,
                               ),
                             ),
-                            Row(
-                              children: [
-                                _buildHeaderAction(
-                                  Icons.settings_outlined,
-                                  "EDITOR",
-                                  () async {
-                                    await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const RuleEditorScreen(),
-                                      ),
-                                    );
-                                    _loadInitialData();
-                                  },
-                                ),
-                                const SizedBox(width: 12),
-                                _buildHeaderAction(
-                                  Icons.refresh,
-                                  "REFRESH",
-                                  _refreshResults,
-                                ),
-                              ],
-                            ),
+                            const SizedBox(height: 16),
+                            if (isDesktop)
+                              _buildResultsGrid()
+                            else
+                              _buildResultsList(),
                           ],
                         ),
-                        const SizedBox(height: 32),
-                      ],
-                      _buildSummaryCard(isDesktop),
-                      const SizedBox(height: 32),
-                      const Text(
-                        "HISTORICAL RESULTS",
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textGrey,
-                          letterSpacing: 2,
-                        ),
                       ),
-                      const SizedBox(height: 16),
-                      if (isDesktop)
-                        _buildResultsGrid()
-                      else
-                        _buildResultsList(),
-                    ],
+                    ),
                   ),
+                ),
+                // Add some padding at the bottom so content isn't hidden behind FAB
+                const SliverToBoxAdapter(child: SizedBox(height: 80)),
+              ],
+            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 16.0),
+        child: FloatingActionButton.extended(
+          onPressed: _runBacktest,
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          label: const Text(
+            "RUN BACKTEST",
+            style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+          ),
+          icon: const Icon(Icons.play_arrow_rounded),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSliverAppBar(bool isDesktop, bool isDark) {
+    if (isDesktop) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+    return SliverAppBar(
+      expandedHeight: 120.0,
+      floating: false,
+      pinned: true,
+      backgroundColor: isDark ? AppColors.backgroundDark : Colors.white,
+      surfaceTintColor: Colors.transparent,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.settings),
+          onPressed: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const RuleEditorScreen(),
+              ),
+            );
+            _loadInitialData();
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          onPressed: _refreshResults,
+        ),
+      ],
+      flexibleSpace: FlexibleSpaceBar(
+        titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "RULE ENGINE",
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                color: AppColors.primary.withValues(alpha: 0.8),
+                letterSpacing: 2,
+              ),
+            ),
+            const Text(
+              "Dashboard",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ],
+        ),
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.15),
+                    AppColors.backgroundDark,
+                  ],
                 ),
               ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _runBacktest,
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        label: const Text(
-          "RUN BACKTEST",
-          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+            Positioned(
+              right: -20,
+              top: -20,
+              child: Icon(
+                Icons.analytics,
+                size: 120,
+                color: Colors.white.withValues(alpha: 0.05),
+              ),
+            ),
+          ],
         ),
-        icon: const Icon(Icons.play_arrow_rounded),
       ),
     );
   }
