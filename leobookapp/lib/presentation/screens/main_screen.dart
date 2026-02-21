@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';
-import 'package:leobookapp/core/theme/liquid_glass_theme.dart';
+
 import 'package:leobookapp/core/constants/responsive_constants.dart';
 import 'package:leobookapp/presentation/screens/home_screen.dart';
 import 'package:leobookapp/presentation/screens/account_screen.dart';
@@ -102,96 +102,8 @@ class _MainScreenState extends State<MainScreen> {
             return Scaffold(
               extendBody: true,
               body: bodyArea,
-              bottomNavigationBar: isDesktop
-                  ? null
-                  : Container(
-                      color: Colors.transparent,
-                      margin: EdgeInsets.symmetric(
-                        horizontal: Responsive.sp(context, 20),
-                        vertical: Responsive.sp(context, 14),
-                      ),
-                      child: ClipRRect(
-                        borderRadius:
-                            BorderRadius.circular(Responsive.sp(context, 40)),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(
-                            sigmaX: LiquidGlassTheme.blurRadiusMedium,
-                            sigmaY: LiquidGlassTheme.blurRadiusMedium,
-                          ),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: Responsive.sp(context, 12),
-                              vertical: Responsive.sp(context, 4),
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? AppColors.cardDark.withValues(alpha: 0.35)
-                                  : Colors.white.withValues(alpha: 0.35),
-                              borderRadius: BorderRadius.circular(
-                                  Responsive.sp(context, 40)),
-                              border: Border.all(
-                                color: LiquidGlassTheme.glassBorder(
-                                  Theme.of(context).brightness,
-                                ),
-                                width: 0.5,
-                              ),
-                            ),
-                            child: BottomNavigationBar(
-                              currentIndex: _currentIndex,
-                              onTap: (index) {
-                                setState(() => _currentIndex = index);
-                                HapticFeedback.lightImpact();
-                              },
-                              backgroundColor: Colors.transparent,
-                              elevation: 0,
-                              type: BottomNavigationBarType.fixed,
-                              selectedItemColor: AppColors.primary,
-                              unselectedItemColor: Colors.white38,
-                              showSelectedLabels: true,
-                              showUnselectedLabels: true,
-                              selectedFontSize: Responsive.sp(context, 7),
-                              unselectedFontSize: Responsive.sp(context, 7),
-                              selectedLabelStyle: TextStyle(
-                                fontSize: Responsive.sp(context, 7),
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.5,
-                              ),
-                              unselectedLabelStyle: TextStyle(
-                                fontSize: Responsive.sp(context, 7),
-                                color: Colors
-                                    .transparent, // Hidden but occupies space
-                              ),
-                              items: [
-                                _buildNavItem(
-                                  Icons.home_rounded,
-                                  Icons.home_outlined,
-                                  0,
-                                  "HOME",
-                                ),
-                                _buildNavItem(
-                                  Icons.science_rounded,
-                                  Icons.science_outlined,
-                                  1,
-                                  "RULES",
-                                ),
-                                _buildNavItem(
-                                  Icons.emoji_events_rounded,
-                                  Icons.emoji_events_outlined,
-                                  2,
-                                  "TOP",
-                                ),
-                                _buildNavItem(
-                                  Icons.person_rounded,
-                                  Icons.person_outline_rounded,
-                                  3,
-                                  "PROFILE",
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+              bottomNavigationBar:
+                  isDesktop ? null : _buildFloatingNavBar(isDark),
             );
           },
         );
@@ -199,42 +111,145 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  BottomNavigationBarItem _buildNavItem(
-    IconData activeIcon,
-    IconData inactiveIcon,
-    int index,
-    String label,
-  ) {
-    final isSelected = _currentIndex == index;
-    final iconSize = Responsive.sp(context, 16);
-    return BottomNavigationBarItem(
-      icon: Container(
-        padding: EdgeInsets.all(Responsive.sp(context, 5)),
-        decoration: const BoxDecoration(
-          color: Colors.transparent,
-          shape: BoxShape.circle,
-        ),
-        child: AnimatedScale(
-          scale: isSelected ? 1.0 : 0.85,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          child: Icon(inactiveIcon, size: iconSize),
-        ),
+  Widget _buildFloatingNavBar(bool isDark) {
+    return Container(
+      height: Responsive.sp(context, 48),
+      margin: EdgeInsets.fromLTRB(
+        Responsive.sp(context, 16),
+        0,
+        Responsive.sp(context, 16),
+        Responsive.sp(context, 24), // Lifted off the bottom
       ),
-      activeIcon: AnimatedScale(
-        scale: 1.0,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-        child: Container(
-          padding: EdgeInsets.all(Responsive.sp(context, 5)),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(Responsive.sp(context, 24)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF162130).withValues(alpha: 0.85) // Deep navy
+                  : Colors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(Responsive.sp(context, 24)),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.05),
+                width: 0.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(0, Icons.chat_bubble_rounded, "HOME",
+                    badge: "19"),
+                _buildNavItem(1, Icons.science_rounded, "RULES"),
+                _buildNavItem(2, Icons.emoji_events_rounded, "TOP"),
+                _buildNavItem(3, Icons.person_rounded, "PROFILE"),
+              ],
+            ),
           ),
-          child: Icon(activeIcon, size: iconSize),
         ),
       ),
-      label: label,
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData icon, String label,
+      {String? badge}) {
+    final isSelected = _currentIndex == index;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() => _currentIndex = index);
+        HapticFeedback.lightImpact();
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: Responsive.sp(context, 10)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Responsive.sp(context, 14),
+                    vertical: Responsive.sp(context, 4),
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.primary.withValues(alpha: 0.2)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                            )
+                          ]
+                        : [],
+                  ),
+                  child: Icon(
+                    icon,
+                    size: Responsive.sp(context, 15),
+                    color: isSelected
+                        ? AppColors.primary
+                        : (isDark ? Colors.white54 : Colors.black45),
+                  ),
+                ),
+                if (badge != null)
+                  Positioned(
+                    top: -5,
+                    right: 2,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B82F6), // Blue badge
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: BoxConstraints(
+                        minWidth: Responsive.sp(context, 10),
+                      ),
+                      child: Text(
+                        badge,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: Responsive.sp(context, 5.5),
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            SizedBox(height: Responsive.sp(context, 2)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: Responsive.sp(context, 5.5),
+                fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                color: isSelected
+                    ? AppColors.primary
+                    : (isDark ? Colors.white38 : Colors.black38),
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

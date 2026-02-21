@@ -153,27 +153,103 @@ class _DesktopHomeContentState extends State<DesktopHomeContent>
                 top: Responsive.dp(context, 14),
                 bottom: Responsive.dp(context, 14),
               ),
-              sliver: SliverToBoxAdapter(
-                child: Builder(
-                  builder: (context) {
-                    final index = _tabController.index;
-                    MatchTabType type;
-                    switch (index) {
-                      case 1:
-                        type = MatchTabType.live;
-                        break;
-                      case 2:
-                        type = MatchTabType.finished;
-                        break;
-                      case 3:
-                        type = MatchTabType.scheduled;
-                        break;
-                      default:
-                        type = MatchTabType.all;
+              sliver: Builder(
+                builder: (context) {
+                  final index = _tabController.index;
+                  MatchTabType type;
+                  switch (index) {
+                    case 1:
+                      type = MatchTabType.live;
+                      break;
+                    case 2:
+                      type = MatchTabType.finished;
+                      break;
+                    case 3:
+                      type = MatchTabType.scheduled;
+                      break;
+                    default:
+                      type = MatchTabType.all;
+                  }
+
+                  final items = MatchSorter.getSortedMatches(
+                    widget.state.filteredMatches.cast(),
+                    type,
+                  );
+
+                  if (items.isEmpty) {
+                    return SliverToBoxAdapter(
+                      child: Center(
+                        child: Text(
+                          "No matches found for this category",
+                          style: TextStyle(
+                            color: AppColors.textGrey,
+                            fontSize: Responsive.dp(context, 10),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final List<Widget> sliverItems = [];
+                  List<MatchModel> currentGroupMatches = [];
+
+                  void flushGroup() {
+                    if (currentGroupMatches.isNotEmpty) {
+                      final groupSnapshot =
+                          List<MatchModel>.from(currentGroupMatches);
+                      sliverItems.add(
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            const crossAxisCount = 4;
+                            final spacing = Responsive.dp(context, 12);
+                            final itemWidth = (constraints.maxWidth -
+                                    (spacing * (crossAxisCount - 1))) /
+                                crossAxisCount;
+
+                            return Wrap(
+                              spacing: spacing,
+                              runSpacing: spacing,
+                              children: groupSnapshot
+                                  .map(
+                                    (m) => SizedBox(
+                                      width: itemWidth,
+                                      child: MatchCard(
+                                        match: m,
+                                        showLeagueHeader:
+                                            type != MatchTabType.all,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            );
+                          },
+                        ),
+                      );
+                      sliverItems
+                          .add(SizedBox(height: Responsive.dp(context, 18)));
+                      currentGroupMatches = [];
                     }
-                    return _buildMatchGroupedList(type);
-                  },
-                ),
+                  }
+
+                  for (final item in items) {
+                    if (item is MatchGroupHeader) {
+                      flushGroup();
+                      final key = _sectionKeys.putIfAbsent(
+                          item.title, () => GlobalKey());
+                      sliverItems.add(_buildSectionHeader(item.title, key));
+                    } else if (item is MatchModel) {
+                      currentGroupMatches.add(item);
+                    }
+                  }
+                  flushGroup();
+
+                  return SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) => sliverItems[i],
+                      childCount: sliverItems.length,
+                    ),
+                  );
+                },
               ),
             ),
             const SliverToBoxAdapter(
@@ -206,79 +282,6 @@ class _DesktopHomeContentState extends State<DesktopHomeContent>
         Tab(text: "FINISHED ($_finishedCount)"),
         Tab(text: "SCHEDULED ($_scheduledCount)"),
       ],
-    );
-  }
-
-  Widget _buildMatchGroupedList(MatchTabType type) {
-    final items = MatchSorter.getSortedMatches(
-      widget.state.filteredMatches.cast(),
-      type,
-    );
-
-    if (items.isEmpty) {
-      return Center(
-        child: Text(
-          "No matches found for this category",
-          style: TextStyle(
-            color: AppColors.textGrey,
-            fontSize: Responsive.dp(context, 10),
-          ),
-        ),
-      );
-    }
-
-    final List<Widget> children = [];
-    List<MatchModel> currentGroupMatches = [];
-
-    void flushGroup() {
-      if (currentGroupMatches.isNotEmpty) {
-        final groupSnapshot = List<MatchModel>.from(currentGroupMatches);
-        children.add(
-          LayoutBuilder(
-            builder: (context, constraints) {
-              const crossAxisCount = 4;
-              final spacing = Responsive.dp(context, 12);
-              final itemWidth =
-                  (constraints.maxWidth - (spacing * (crossAxisCount - 1))) /
-                      crossAxisCount;
-
-              return Wrap(
-                spacing: spacing,
-                runSpacing: spacing,
-                children: groupSnapshot
-                    .map(
-                      (m) => SizedBox(
-                        width: itemWidth,
-                        child: MatchCard(
-                          match: m,
-                          showLeagueHeader: type != MatchTabType.all,
-                        ),
-                      ),
-                    )
-                    .toList(),
-              );
-            },
-          ),
-        );
-        children.add(SizedBox(height: Responsive.dp(context, 18)));
-        currentGroupMatches = [];
-      }
-    }
-
-    for (final item in items) {
-      if (item is MatchGroupHeader) {
-        flushGroup();
-        final key = _sectionKeys.putIfAbsent(item.title, () => GlobalKey());
-        children.add(_buildSectionHeader(item.title, key));
-      } else if (item is MatchModel) {
-        currentGroupMatches.add(item);
-      }
-    }
-    flushGroup();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
     );
   }
 

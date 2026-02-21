@@ -255,35 +255,71 @@ class _MobileHomeContentState extends State<MobileHomeContent>
                 horizontal: hp,
                 vertical: Responsive.sp(context, 8),
               ),
-              sliver: SliverToBoxAdapter(
-                child: Builder(
-                  builder: (context) {
-                    final index = _tabController.index;
-                    MatchTabType type;
-                    bool hideLeague = false;
-                    switch (index) {
-                      case 1:
-                        type = MatchTabType.live;
-                        hideLeague = true;
-                        break;
-                      case 2:
-                        type = MatchTabType.finished;
-                        break;
-                      case 3:
-                        type = MatchTabType.scheduled;
-                        break;
-                      default:
-                        type = MatchTabType.all;
-                        hideLeague = true;
-                    }
-                    return _buildMatchColumn(
-                      widget.state.filteredMatches,
-                      type,
-                      isDark,
-                      hideLeagueInfo: hideLeague,
+              sliver: Builder(
+                builder: (context) {
+                  final index = _tabController.index;
+                  MatchTabType type;
+                  bool hideLeague = false;
+                  switch (index) {
+                    case 1:
+                      type = MatchTabType.live;
+                      hideLeague = true;
+                      break;
+                    case 2:
+                      type = MatchTabType.finished;
+                      break;
+                    case 3:
+                      type = MatchTabType.scheduled;
+                      break;
+                    default:
+                      type = MatchTabType.all;
+                      hideLeague = true;
+                  }
+
+                  final sortedItems = MatchSorter.getSortedMatches(
+                      widget.state.filteredMatches.cast(), type);
+
+                  if (sortedItems.isEmpty) {
+                    return SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                            vertical: Responsive.sp(context, 40)),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.sports_soccer_rounded,
+                                size: Responsive.sp(context, 28),
+                                color: isDark ? Colors.white24 : Colors.black12,
+                              ),
+                              SizedBox(height: Responsive.sp(context, 8)),
+                              Text(
+                                "No matches found",
+                                style: TextStyle(
+                                  fontSize: Responsive.sp(context, 10),
+                                  color:
+                                      isDark ? Colors.white38 : Colors.black38,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     );
-                  },
-                ),
+                  }
+
+                  return SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) {
+                        return _buildItem(sortedItems[i], isDark,
+                            hideLeagueInfo: hideLeague);
+                      },
+                      childCount: sortedItems.length,
+                    ),
+                  );
+                },
               ),
             ),
             SliverToBoxAdapter(
@@ -295,50 +331,6 @@ class _MobileHomeContentState extends State<MobileHomeContent>
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildMatchColumn(
-    List<dynamic> matches,
-    MatchTabType type,
-    bool isDark, {
-    bool hideLeagueInfo = false,
-  }) {
-    final sortedItems = MatchSorter.getSortedMatches(matches.cast(), type);
-
-    if (sortedItems.isEmpty) {
-      return Padding(
-        padding: EdgeInsets.symmetric(vertical: Responsive.sp(context, 40)),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.sports_soccer_rounded,
-                size: Responsive.sp(context, 28),
-                color: isDark ? Colors.white24 : Colors.black12,
-              ),
-              SizedBox(height: Responsive.sp(context, 8)),
-              Text(
-                "No matches found",
-                style: TextStyle(
-                  fontSize: Responsive.sp(context, 10),
-                  color: isDark ? Colors.white38 : Colors.black38,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: sortedItems
-          .map((item) =>
-              _buildItem(item, isDark, hideLeagueInfo: hideLeagueInfo))
-          .toList(),
     );
   }
 

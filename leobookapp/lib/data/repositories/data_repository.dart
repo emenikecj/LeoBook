@@ -28,7 +28,7 @@ class DataRepository {
         query = query.eq('date', dateStr);
       }
 
-      final response = await query.order('date', ascending: false).limit(200);
+      final response = await query.order('date', ascending: false).limit(2000);
 
       debugPrint('Loaded ${response.length} predictions from Supabase');
 
@@ -156,7 +156,7 @@ class DataRepository {
         query = query.eq('date', dateStr);
       }
 
-      final response = await query.order('date', ascending: false).limit(200);
+      final response = await query.order('date', ascending: false).limit(5000);
 
       return (response as List).map((row) => MatchModel.fromCsv(row)).toList();
     } catch (e) {
