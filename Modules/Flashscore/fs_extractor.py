@@ -83,7 +83,7 @@ async def extract_all_matches(page: Page, label: str = "Extractor") -> list:
             const timeEl = el.querySelector(sel.match_row_time);
             const linkEl = el.querySelector(sel.event_row_link);
 
-            const isLive = el.classList.contains(sel.live_match_row.replace('.', ''));
+            const isLiveClass = el.classList.contains(sel.live_match_row.replace('.', ''));
             const stageText = stageEl ? stageEl.innerText.trim() : '';
             const stageLower = stageText.toLowerCase();
             const rawTime = timeEl ? timeEl.innerText.trim() : '';
@@ -94,14 +94,21 @@ async def extract_all_matches(page: Page, label: str = "Extractor") -> list:
             let homeScore = homeScoreEl ? homeScoreEl.innerText.trim() : '';
             let awayScore = awayScoreEl ? awayScoreEl.innerText.trim() : '';
 
+            // Content-based live detection fallback: if stage shows a minute number
+            // (e.g. "45", "90+2") or live keywords, treat as live even without CSS class
+            const minutePattern = /^\d+['′+]?$/;
+            const liveStagePattern = /^(\d+['′+]?\s*$|half|break|ht$|pen|extra|et$|\d+\+\d+)/i;
+            const isLiveContent = stageText && liveStagePattern.test(stageText.replace(/\s+/g, ''));
+            const isLive = isLiveClass || isLiveContent;
+
             if (isLive) {
                 status = 'live';
                 minute = stageText.replace(/\s+/g, '');
                 const minLower = minute.toLowerCase();
-                if (minLower.includes('half')) status = 'halftime';
+                if (minLower === 'ht' || minLower.includes('half')) status = 'halftime';
                 else if (minLower.includes('break')) status = 'break';
                 else if (minLower.includes('pen')) { status = 'penalties'; stageDetail = 'Pen'; }
-                else if (minLower.includes('et')) { status = 'extra_time'; stageDetail = 'ET'; }
+                else if (minLower.includes('et') && !minLower.match(/^\d/)) { status = 'extra_time'; stageDetail = 'ET'; }
             } else if (stageLower.includes('postp') || stageLower.includes('pp')) {
                 status = 'postponed'; stageDetail = 'Postp';
                 homeScore = ''; awayScore = '';
