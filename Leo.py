@@ -280,6 +280,81 @@ async def run_utility(args):
         async with async_playwright() as p:
             await live_score_streamer(p)
 
+    elif args.schedule:
+        print("\n  --- LEO: Daily Schedule Scraper ---")
+        async with async_playwright() as p:
+            from Modules.Flashscore.fs_schedule import extract_matches_from_page
+            from Core.Browser.site_helpers import click_next_day, fs_universal_popup_dismissal
+            from Core.Intelligence.selector_manager import SelectorManager
+            from Data.Access.db_helpers import save_schedule_entry, save_team_entry
+            from datetime import datetime as dt, timedelta
+            from zoneinfo import ZoneInfo
+            import asyncio
+            NIGERIA_TZ = ZoneInfo("Africa/Lagos")
+            
+            browser = await p.chromium.launch(
+                headless=True,
+                args=["--disable-dev-shm-usage", "--no-sandbox", "--disable-gpu"]
+            )
+            context = await browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                timezone_id="Africa/Lagos"
+            )
+            page = await context.new_page()
+            
+            try:
+                # Go to flashscore home
+                await page.goto("https://www.flashscore.com/football/", timeout=60000, wait_until="domcontentloaded")
+                await page.wait_for_selector('.sportName.soccer, #live-table', timeout=15000)
+                await fs_universal_popup_dismissal(page, "fs_home_page")
+
+                days_to_scan = 7 if args.refresh else 1
+                print(f"  [Schedule] Scanning {days_to_scan} day(s)...")
+
+                for day_offset in range(days_to_scan):
+                    target_date = dt.now(NIGERIA_TZ) + timedelta(days=day_offset)
+                    target_full = target_date.strftime("%d.%m.%Y")
+                    
+                    if day_offset > 0:
+                        match_row_sel = await SelectorManager.get_selector_auto(page, "fs_home_page", "match_rows")
+                        if not match_row_sel or not await click_next_day(page, match_row_sel):
+                            print(f"  [Schedule] Failed to navigate to day {day_offset}, stopping.")
+                            break
+                        await asyncio.sleep(2)
+                    
+                    print(f"\n--- SCRAPING DATE: {target_full} ---")
+                    await fs_universal_popup_dismissal(page, "fs_home_page")
+                    
+                    try:
+                        scheduled_tab_sel = await SelectorManager.get_selector_auto(page, "fs_home_page", "tab_scheduled")
+                        if scheduled_tab_sel and await page.locator(scheduled_tab_sel).is_visible(timeout=5000):
+                            await page.click(scheduled_tab_sel)
+                            await asyncio.sleep(2.0)
+                    except Exception:
+                        pass
+                    
+                    matches_data = await extract_matches_from_page(page)
+                    print(f"  [Schedule] Extracted {len(matches_data)} matches for {target_full}.")
+                    
+                    # Update dates and save metadata to local CSVs
+                    for m in matches_data:
+                        fixture_id = m.get('fixture_id')
+                        m['date'] = target_full
+                        save_schedule_entry({
+                            'fixture_id': fixture_id, 'date': m.get('date'), 'match_time': m.get('match_time'),
+                            'region_league': m.get('region_league'), 'home_team': m.get('home_team'),
+                            'away_team': m.get('away_team'), 'home_team_id': m.get('home_team_id'),
+                            'away_team_id': m.get('away_team_id'), 'match_status': 'scheduled',
+                            'match_link': m.get('match_link')
+                        })
+                
+                print("\n  [SUCCESS] Schedule scraping complete. Database populated.")
+            except Exception as e:
+                print(f"  [ERROR] Schedule Scraper failed: {e}")
+            finally:
+                if context: await context.close()
+                if browser: await browser.close()
+
     elif args.rule_engine:
         from Core.Intelligence.rule_engine_manager import RuleEngineManager
 
@@ -480,7 +555,7 @@ if __name__ == "__main__":
     # Determine which mode to run
     is_utility = any([args.sync, args.recommend, args.accuracy,
                       args.search_dict, args.review, args.backtest,
-                      args.rule_engine, args.streamer])
+                      args.rule_engine, args.streamer, args.schedule])
     is_granular = args.prologue or args.chapter is not None
 
     try:

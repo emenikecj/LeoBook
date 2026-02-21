@@ -76,6 +76,7 @@ def setup_terminal_logging(args):
         elif args.offline_repredict: prefix = "leo_offline_repredict_session"
         elif args.rule_engine: prefix = "leo_rule_engine_session"
         elif args.streamer: prefix = "leo_streamer_session"
+        elif args.schedule: prefix = "leo_schedule_session"
         elif args.prologue: prefix = "leo_prologue_session"
         elif args.chapter: prefix = f"leo_chapter{args.chapter}_session"
 
@@ -163,6 +164,10 @@ Examples:
                        help='Run offline reprediction using stored data')
     parser.add_argument('--streamer', action='store_true',
                        help='Run the live score streamer independently')
+    parser.add_argument('--schedule', action='store_true',
+                       help='Run the daily schedule scraper independently')
+    parser.add_argument('--refresh', action='store_true',
+                       help='Run multi-day schedule scraping (requires --schedule)')
 
     # --- Rule Engine Management ---
     parser.add_argument('--rule-engine', action='store_true',

@@ -280,35 +280,45 @@ async def _extract_all_matches(page) -> list:
     """
     selectors = SelectorManager.get_all_selectors_for_context("fs_home_page")
 
-    matches = await page.evaluate(r"""(sel) => {
+    result = await page.evaluate(r"""(sel) => {
         const matches = [];
-        const container = document.querySelector(sel.sport_container_soccer) || document.body;
-        if (!container) return [];
-
-        const allElements = container.querySelectorAll(
-            sel.league_header_wrapper + ', ' + sel.match_rows   // updated
-        );
+        const debug = {total_elements: 0, headers: 0, no_id: 0, no_teams: 0, matched: 0};
+        const combinedSel = sel.league_header_wrapper + ', ' + sel.match_rows;
+        let container = document.querySelector(sel.sport_container_soccer);
+        let allElements = container ? container.querySelectorAll(combinedSel) : [];
+        // Mobile layout: .sportName.soccer only wraps a small subset — fall back to full DOM
+        if (allElements.length < 50) {
+            container = document.body;
+            allElements = container.querySelectorAll(combinedSel);
+            debug.fallback = true;
+        }
+        debug.total_elements = allElements.length;
 
         let currentRegion = '';
         let currentLeague = '';
 
         allElements.forEach((el) => {
-            if (el.matches(sel.league_header_wrapper)) {   // updated
-                const catEl = el.querySelector(sel.league_country_text);      // updated
-                const titleEl = el.querySelector(sel.league_title_text);      // updated
+            if (el.matches(sel.league_header_wrapper)) {
+                debug.headers++;
+                const catEl = el.querySelector(sel.league_country_text);
+                const titleEl = el.querySelector(sel.league_title_text);
                 currentRegion = catEl ? catEl.innerText.trim() : '';
                 currentLeague = titleEl ? titleEl.innerText.trim() : '';
                 return;
             }
 
             const rowId = el.getAttribute('id');
-            const cleanId = rowId ? rowId.replace(sel.match_id_prefix, '') : null;   // updated
-            if (!cleanId) return;
+            const cleanId = rowId ? rowId.replace(sel.match_id_prefix, '') : null;
+            if (!cleanId) { debug.no_id++; return; }
 
-            // rest of your original extraction code unchanged...
             const homeNameEl = el.querySelector(sel.match_row_home_team_name);
             const awayNameEl = el.querySelector(sel.match_row_away_team_name);
-            if (!homeNameEl || !awayNameEl) return;
+            if (!homeNameEl || !awayNameEl) {
+                debug.no_teams++;
+                return;
+            }
+
+            debug.matched++;
 
             const homeScoreEl = el.querySelector(sel.live_match_home_score);
             const awayScoreEl = el.querySelector(sel.live_match_away_score);
@@ -376,9 +386,26 @@ async def _extract_all_matches(page) -> list:
                 timestamp: new Date().toISOString()
             });
         });
-        return matches;
+        return {matches, debug};
     }""", selectors)
+
+    matches = result.get('matches', [])
+    debug = result.get('debug', {})
     print(f"   [Streamer] Found {len(matches)} matches.")
+    #print(f"   [Streamer] Debug: {debug}")
+
+    # Status breakdown
+    status_counts = {}
+    for m in matches:
+        s = m.get('status', 'unknown')
+        status_counts[s] = status_counts.get(s, 0) + 1
+    if status_counts:
+        print(f"   [Streamer] Status breakdown: {status_counts}")
+
+    # Sample first 3 for quick sanity check
+    for m in matches[:3]:
+        print(f"   [DEBUG] {m['home_team']} vs {m['away_team']} | status={m['status']} score={m['home_score']}-{m['away_score']} minute={m['minute']} stage={m['stage_detail']} time={m['match_time']}")
+
     return matches or []
 
 
