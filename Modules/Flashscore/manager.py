@@ -362,6 +362,13 @@ async def run_flashscore_schedule_only(playwright: Playwright, refresh: bool = F
 
                         total_deep += 1
 
+                        # Incremental Sync every 5 deep matches to prevent data loss on long runs
+                        if total_deep > 0 and total_deep % 5 == 0:
+                            print(f"\n    [Cloud Sync] Performing incremental deep sync ({total_deep} matches complete)...")
+                            from Data.Access.sync_manager import run_full_sync
+                            await run_full_sync(session_name=f"Deep Extraction Sample {total_deep}")
+                            print(f"    [Cloud Sync] Progress persisted to Supabase.\n")
+
                     except Exception as e:
                         print(f"    [Skip] {label}: {e}")
                         continue
