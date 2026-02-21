@@ -480,127 +480,122 @@ async def live_score_streamer(playwright: Playwright):
     - 60s extraction interval.
     - Robust dropdown + league expansion.
     - Immediate DB + CSV upserts.
+    - RECYCLING: Restarts browser every 3 cycles to prevent memory bloat/crashes.
     """
     print("\n   [Streamer] 🔴 Mobile Live Score Streamer v3.2 starting (Headless, 60s)...")
     log_audit_event("STREAMER_START", "Mobile live score streamer v3.2 initialized (Headless, 60s).")
 
-    browser = None
-    try:
-        # Launch headless Chromium
-        browser = await playwright.chromium.launch(
-            headless=True,
-            args=["--disable-dev-shm-usage", "--no-sandbox"]
-        )
+    RECYCLE_INTERVAL = 3
+    cycle = 0
+    sync = SyncManager()
 
-        # Emulate iPhone 12
-        iphone_12 = playwright.devices['iPhone 12']
-        context = await browser.new_context(
-            **iphone_12,
-            timezone_id="Africa/Lagos"
-        )
-        page = await context.new_page()
-
-        # Initial navigation (wait up to 3 mins)
-        print("   [Streamer] Navigating to Flashscore (Mobile view, up to 3 mins)...")
-        await page.goto(FLASHSCORE_URL, timeout=NAVIGATION_TIMEOUT, wait_until="domcontentloaded")
-        
-        # Target a visible element to ensure page has actual content before proceeding
+    while True:
+        browser = None
+        context = None
         try:
-            sport_sel = SelectorManager.get_selector_strict("fs_home_page", "sport_container")
-            await page.wait_for_selector(sport_sel, timeout=60000)
-        except:
-            print("   [Streamer] Warning: sportName container not found, proceeding anyway...")
-        
-        await asyncio.sleep(2)
-        
-        # Handle cookies/popups
-        await fs_universal_popup_dismissal(page, "fs_home_page")
-        
-        # Ensure ALL tab is active
-        await _click_all_tab(page)
-        
-        # Initial expansion
-        await ensure_content_expanded(page)
+            # 1. Launch/Restart Browser Session
+            print(f"   [Streamer] Starting fresh browser session (Cycle {cycle + 1})...")
+            browser = await playwright.chromium.launch(
+                headless=True,
+                args=["--disable-dev-shm-usage", "--no-sandbox"]
+            )
 
-        EXPANSION_INTERVAL = 5  # re-expand every Nth cycle
+            iphone_12 = playwright.devices['iPhone 12']
+            context = await browser.new_context(
+                **iphone_12,
+                timezone_id="Africa/Lagos"
+            )
+            page = await context.new_page()
 
-        sync = SyncManager()
-        cycle = 0
-
-        while True:
-            cycle += 1
-            _touch_heartbeat()   # now always defined
-            now_ts = dt.now().strftime("%H:%M:%S")
+            # 2. Initial Setup for the Session
+            print("   [Streamer] Navigating to Flashscore (Mobile view, up to 3 mins)...")
+            await page.goto(FLASHSCORE_URL, timeout=NAVIGATION_TIMEOUT, wait_until="domcontentloaded")
             
             try:
-                # Periodic expansion check (every Nth cycle — leagues stay expanded)
-                if cycle % EXPANSION_INTERVAL == 0:
-                    await ensure_content_expanded(page)
+                sport_sel = SelectorManager.get_selector_strict("fs_home_page", "sport_container")
+                await page.wait_for_selector(sport_sel, timeout=60000)
+            except:
+                print("   [Streamer] Warning: sportName container not found, proceeding anyway...")
+            
+            await asyncio.sleep(2)
+            await fs_universal_popup_dismissal(page, "fs_home_page")
+            await _click_all_tab(page)
+            await ensure_content_expanded(page)
 
-                # Extraction
-                all_matches = await _extract_all_matches(page)
-                
-                # Separate by category
-                LIVE_STATUSES = {'live', 'halftime', 'break', 'penalties', 'extra_time'}
-                RESOLVED_STATUSES = {'finished', 'cancelled', 'postponed', 'fro', 'abandoned'}
+            # 3. Inner Loop: Run for N cycles before recycling session
+            session_cycle = 0
+            while session_cycle < RECYCLE_INTERVAL:
+                cycle += 1
+                session_cycle += 1
+                _touch_heartbeat()
+                now_ts = dt.now().strftime("%H:%M:%S")
 
-                live_matches = [m for m in all_matches if m.get('status') in LIVE_STATUSES]
-                resolved_matches = [m for m in all_matches if m.get('status') in RESOLVED_STATUSES]
-                current_live_ids = {m['fixture_id'] for m in live_matches}
-
-                # Save & Sync
-                stale_ids = _purge_stale_live_scores(current_live_ids)
-                if stale_ids:
-                    print(f"   [Streamer] Decision: Purged {len(stale_ids)} stale matches from local state.")
-                
-                if live_matches or resolved_matches:
-                    print(f"   [Streamer] Process: Upserting {len(live_matches)} live entries and {len(resolved_matches)} resolved entries.")
-                    # Update local CSVs
-                    for m in live_matches:
-                        save_live_score_entry(m)
-                    
-                    sched_upd, pred_upd = _propagate_status_updates(live_matches, resolved_matches)
-                    print(f"   [Streamer] Status: Propagation updated {len(sched_upd)} schedule rows and {len(pred_upd)} prediction rows.")
-
-                    # Immediate Supabase Sync
-                    if sync.supabase:
-                        print(f"   [Streamer] Sync: Pushing updates to Supabase...")
-                        if live_matches: await sync.batch_upsert('live_scores', live_matches)
-                        if pred_upd: await sync.batch_upsert('predictions', pred_upd)
-                        if sched_upd: await sync.batch_upsert('schedules', sched_upd)
-                        if stale_ids:
-                            try:
-                                print(f"   [Streamer] Sync: Deleting {len(stale_ids)} stale entries from Supabase.")
-                                sync.supabase.table('live_scores').delete().in_('fixture_id', list(stale_ids)).execute()
-                            except Exception as e:
-                                print(f"   [Streamer] Sync Warning: Supabase deletion failed: {e}")
-
-                    print(f"   [Streamer] Cycle {cycle} complete at {now_ts}. Summary: {len(live_matches)} Live | {len(resolved_matches)} Resolved | {len(all_matches)} Scanned.")
-                else:
-                    # Fallback check
-                    _propagate_status_updates([], [])
-                    print(f"   [Streamer] {now_ts} — No active/resolved matches found (Cycle {cycle}). Fallback check performed.")
-
-            except Exception as e:
-                print(f"   [Streamer] ⚠ Extraction Error in cycle {cycle}: {e}")
-                # Try to recover session
                 try:
-                    print("   [Streamer] Recovery: Reloading page and re-authenticating state...")
-                    await page.reload(wait_until="networkidle")
-                    await fs_universal_popup_dismissal(page, "fs_home_page")
-                    await _click_all_tab(page)
-                except Exception as re:
-                    print(f"   [Streamer] Recovery Failed: {re}")
+                    # Extraction
+                    all_matches = await _extract_all_matches(page)
+                    
+                    LIVE_STATUSES = {'live', 'halftime', 'break', 'penalties', 'extra_time'}
+                    RESOLVED_STATUSES = {'finished', 'cancelled', 'postponed', 'fro', 'abandoned'}
 
-            await asyncio.sleep(STREAM_INTERVAL)
+                    live_matches = [m for m in all_matches if m.get('status') in LIVE_STATUSES]
+                    resolved_matches = [m for m in all_matches if m.get('status') in RESOLVED_STATUSES]
+                    current_live_ids = {m['fixture_id'] for m in live_matches}
 
-    except asyncio.CancelledError:
-        print("   [Streamer] Streamer cancelled.")
-    except Exception as e:
-        print(f"   [Streamer] Fatal error: {e}")
-    finally:
-        if browser:
-            try:
-                await browser.close()
-            except: pass
-        print("   [Streamer] 🔴 Streamer stopped.")
+                    # Save & Sync
+                    stale_ids = _purge_stale_live_scores(current_live_ids)
+                    if stale_ids:
+                        print(f"   [Streamer] Decision: Purged {len(stale_ids)} stale matches from local state.")
+                    
+                    if live_matches or resolved_matches:
+                        print(f"   [Streamer] Process: Upserting {len(live_matches)} live entries and {len(resolved_matches)} resolved entries.")
+                        # Update local CSVs
+                        for m in live_matches:
+                            save_live_score_entry(m)
+                        
+                        sched_upd, pred_upd = _propagate_status_updates(live_matches, resolved_matches)
+                        print(f"   [Streamer] Status: Propagation updated {len(sched_upd)} schedule rows and {len(pred_upd)} prediction rows.")
+
+                        # Immediate Supabase Sync
+                        if sync.supabase:
+                            print(f"   [Streamer] Sync: Pushing updates to Supabase...")
+                            if live_matches: await sync.batch_upsert('live_scores', live_matches)
+                            if pred_upd: await sync.batch_upsert('predictions', pred_upd)
+                            if sched_upd: await sync.batch_upsert('schedules', sched_upd)
+                            if stale_ids:
+                                try:
+                                    print(f"   [Streamer] Sync: Deleting {len(stale_ids)} stale entries from Supabase.")
+                                    sync.supabase.table('live_scores').delete().in_('fixture_id', list(stale_ids)).execute()
+                                except Exception as e:
+                                    print(f"   [Streamer] Sync Warning: Supabase deletion failed: {e}")
+
+                        print(f"   [Streamer] Cycle {cycle} complete at {now_ts}. Summary: {len(live_matches)} Live | {len(resolved_matches)} Resolved | {len(all_matches)} Scanned.")
+                    else:
+                        _propagate_status_updates([], [])
+                        print(f"   [Streamer] {now_ts} — No active/resolved matches found (Cycle {cycle}). Fallback check performed.")
+
+                    # Sleep before next cycle
+                    await asyncio.sleep(STREAM_INTERVAL)
+
+                except Exception as e:
+                    if "Target crashed" in str(e) or "Page crashed" in str(e):
+                        print(f"   [Streamer] 🛑 CRITICAL: Browser process crashed in cycle {cycle}. Recycling session now...")
+                        break # Break inner loop, outer loop will restart browser
+                    else:
+                        print(f"   [Streamer] ⚠ Extraction Error in cycle {cycle}: {e}")
+                        await asyncio.sleep(STREAM_INTERVAL)
+
+            # End of session (either interval reached or crash)
+            print(f"   [Streamer] Recycling browser session (Sessions per interval: {RECYCLE_INTERVAL})...")
+
+        except Exception as e:
+            print(f"   [Streamer] Loop Error: {e}. Retrying in 10s...")
+            await asyncio.sleep(10)
+        finally:
+            if context:
+                try: await context.close()
+                except: pass
+            if browser:
+                try: await browser.close()
+                except: pass
+
+    print("   [Streamer] 🔴 Streamer stopped.")
