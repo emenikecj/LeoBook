@@ -57,6 +57,23 @@ async def process_match_task(match_data: dict, browser: Browser):
         h2h_data = {}
         if await activate_h2h_tab(page):
             try:
+                # Sections: Home Last 5/10, Away Last 5/10, Mutual H2H
+                show_more_selector = ".h2h__section .h2h__showMore"
+                
+                print("    [H2H Expansion] Expanding sections for deep analysis...")
+                for _ in range(2): # Click twice for each to get ~15 matches
+                    buttons = page.locator(show_more_selector)
+                    btn_count = await buttons.count()
+                    for j in range(btn_count):
+                        try:
+                            btn = buttons.nth(j)
+                            if await btn.is_visible():
+                                await btn.click(timeout=5000)
+                                await asyncio.sleep(1.0)
+                        except:
+                            continue
+                
+                await asyncio.sleep(1.5)
                 h2h_data = await retry_extraction(extract_h2h_data, page, match_data['home_team'], match_data['away_team'], "fs_h2h_tab")
 
                 h2h_count = len(h2h_data.get("home_last_10_matches", [])) + len(h2h_data.get("away_last_10_matches", [])) + len(h2h_data.get("head_to_head", []))

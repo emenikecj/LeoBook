@@ -332,6 +332,21 @@ async def run_flashscore_schedule_only(playwright: Playwright, refresh: bool = F
                         # --- H2H ---
                         if await activate_h2h_tab(page):
                             try:
+                                # Expand "Show more" buttons for deeper history
+                                show_more_sel = ".h2h__section .h2h__showMore"
+                                for _ in range(2):
+                                    buttons = page.locator(show_more_sel)
+                                    btn_count = await buttons.count()
+                                    for j in range(btn_count):
+                                        try:
+                                            btn = buttons.nth(j)
+                                            if await btn.is_visible():
+                                                await btn.click(timeout=5000)
+                                                await asyncio.sleep(0.8)
+                                        except:
+                                            continue
+
+                                await asyncio.sleep(1.0)
                                 h2h = await retry_extraction(
                                     extract_h2h_data, page,
                                     match.get('home_team', ''), match.get('away_team', ''),
