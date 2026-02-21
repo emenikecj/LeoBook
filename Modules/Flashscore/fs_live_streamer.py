@@ -386,21 +386,28 @@ async def _extract_all_matches(page) -> list:
 # Tab clicking helpers – MINIMAL CHANGE 2: added fallback
 # ---------------------------------------------------------------------------
 async def _click_all_tab(page) -> bool:
-    """Clicks the ALL tab on the Flashscore football page (default/first tab)."""
+    """Verify the ALL tab is selected; click it only if it isn't."""
     try:
         all_tab_sel = await SelectorManager.get_selector_auto(page, "fs_home_page", "all_tab")
-        if all_tab_sel and await page.locator(all_tab_sel).is_visible(timeout=3000):
-            print(f"   [Streamer] Attempting to click 'ALL' tab using selector: {all_tab_sel}")
-            # Use force=True to bypass pointer interception and visible=True to ensure it's there
-            await page.click(all_tab_sel, timeout=3000)
-            await asyncio.sleep(2.0)
-            print("   [Streamer] 'ALL' tab click action dispatched.")
-            return True
-        else:
-            print("   [Streamer] 'ALL' tab already selected.")
-            return True
+        if not all_tab_sel:
+            return True  # no selector — likely fine by default
+
+        tab = page.locator(all_tab_sel)
+        if not await tab.is_visible(timeout=3000):
+            return True  # tab not visible — page may not use tabs
+
+        # Check if already selected (Flashscore adds "selected" class)
+        cls = await tab.get_attribute("class") or ""
+        if "selected" in cls:
+            return True  # already active, nothing to do
+
+        # Not selected — click to activate
+        print(f"   [Streamer] ALL tab not selected, clicking...")
+        await page.click(all_tab_sel, force=True, timeout=3000)
+        await asyncio.sleep(0.5)
+        return True
     except Exception as e:
-        print(f"   [Streamer] Error clicking ALL tab: {e}")
+        print(f"   [Streamer] Error verifying ALL tab: {e}")
     return False
 
 
@@ -409,52 +416,29 @@ async def _click_all_tab(page) -> bool:
 # ---------------------------------------------------------------------------
 async def ensure_content_expanded(page):
     """
-    Robustly expand dropdowns and leagues to ensure all matches are visible.
-    Pattern: Identify -> Expand -> Verify -> Retry.
+    Bulk-expand all collapsed leagues via a single JS call.
+    ~2s instead of ~3min for 347 headers.
     """
-    print("   [Streamer] Running content expansion routine...")
-    
-    # 1. Robust League Expansion (Identify -> Expand -> Verify -> Retry)
     try:
-        header_sel = SelectorManager.get_selector("fs_home_page", "league_header_wrapper")
         down_arrow_sel = SelectorManager.get_selector("fs_home_page", "league_expand_icon_collapsed")
-        up_arrow_sel = SelectorManager.get_selector("fs_home_page", "league_expand_icon_expanded")
-        title_sel = SelectorManager.get_selector("fs_home_page", "league_title_text")
-        
-        league_headers = await page.locator(header_sel).all()
-        total = len(league_headers)
-        expanded_count = 0
-        
-        for i, header_locator in enumerate(league_headers):
-            # Identify League Name
-            league_name = "Unknown League"
-            try:
-                name_el = header_locator.locator(title_sel).first
-                if await name_el.count() > 0:
-                    league_name = (await name_el.inner_text()).strip()
-            except: pass
 
-            # Step 1: Detect Collapsed State
-            is_collapsed = await header_locator.locator(down_arrow_sel).count() > 0
-            if is_collapsed:
-                print(f"   -> [{i+1}/{total}] {league_name}: Expanding...")
-                try:
-                    # Step 2: Expand via Icon Click (Primary)
-                    await header_locator.locator(down_arrow_sel).first.click(force=True, timeout=3000)
-                    await asyncio.sleep(.5)
-                    if await header_locator.locator(up_arrow_sel).count() > 0:
-                        print(f"   -> [{i+1}/{total}] {league_name}: Expanded successfully.")
-                        expanded_count += 1
-                except Exception as click_err:
-                    print(f"      -> {league_name}: Expansion failed: {click_err}")
-            
-        if expanded_count > 0:
-            print(f"   [Streamer] Expansion session complete. {expanded_count} leagues processed.")
+        expanded = await page.evaluate(r"""(arrowSel) => {
+            const arrows = document.querySelectorAll(arrowSel);
+            let count = 0;
+            arrows.forEach(a => {
+                const header = a.closest('[class*="event__header"]') || a.parentElement;
+                if (header) { header.click(); count++; }
+            });
+            return count;
+        }""", down_arrow_sel)
+
+        if expanded > 0:
+            await asyncio.sleep(1.0)  # single settle wait
+            print(f"   [Streamer] Bulk-expanded {expanded} leagues.")
         else:
-            print(f"   [Streamer] All {total} leagues already expanded.")
-            
+            print(f"   [Streamer] All leagues already expanded.")
     except Exception as e:
-        print(f"   [Streamer] Expansion routine warning: {e}")
+        print(f"   [Streamer] Expansion warning: {e}")
 
     return True
 
@@ -500,7 +484,7 @@ async def live_score_streamer(playwright: Playwright):
         except:
             print("   [Streamer] Warning: sportName container not found, proceeding anyway...")
         
-        await asyncio.sleep(5)
+        await asyncio.sleep(2)
         
         # Handle cookies/popups
         await fs_universal_popup_dismissal(page, "fs_home_page")
@@ -511,6 +495,8 @@ async def live_score_streamer(playwright: Playwright):
         # Initial expansion
         await ensure_content_expanded(page)
 
+        EXPANSION_INTERVAL = 5  # re-expand every Nth cycle
+
         sync = SyncManager()
         cycle = 0
 
@@ -520,8 +506,9 @@ async def live_score_streamer(playwright: Playwright):
             now_ts = dt.now().strftime("%H:%M:%S")
             
             try:
-                # Periodic expansion check (every cycle to be safe)
-                await ensure_content_expanded(page)
+                # Periodic expansion check (every Nth cycle — leagues stay expanded)
+                if cycle % EXPANSION_INTERVAL == 0:
+                    await ensure_content_expanded(page)
 
                 # Extraction
                 all_matches = await _extract_all_matches(page)
