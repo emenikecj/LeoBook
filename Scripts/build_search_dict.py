@@ -12,6 +12,7 @@ import re
 import unicodedata
 import uuid
 from collections import defaultdict
+from Core.Intelligence.aigo_suite import AIGOSuite
 from supabase import create_client
 from dotenv import load_dotenv
 
@@ -334,6 +335,7 @@ def find_best_match_league(input_name: str, country: str, existing_leagues: dict
     return new_id, True
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=2.0, use_aigo=False)
 def main():
     if not os.path.exists(CSV_FILE):
         print(f"Error: {CSV_FILE} not found.")

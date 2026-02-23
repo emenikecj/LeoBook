@@ -9,28 +9,11 @@ Handles matching predictions.csv data with extracted Football.com matches using 
 """
 
 import csv
-import difflib
-from typing import List, Dict, Optional, Any
-from datetime import datetime, timedelta
-
+from datetime import datetime
+from typing import List, Dict, Optional
 from pathlib import Path
 from Data.Access.db_helpers import PREDICTIONS_CSV, update_prediction_status
-# Import LLM matcher conditionally
-try:
-    import Core.Intelligence.llm_matcher as llm_module
-    HAS_LLM = True
-except ImportError:
-    llm_module = None
-    HAS_LLM = False
-    print("  [Matcher] Warning: LLM dependencies not found. Falling back to simple fuzzy matching.")
-
-# Import RapidFuzz for faster and more accurate fuzzy matching
-try:
-    from rapidfuzz import fuzz, process
-    HAS_RAPIDFUZZ = True
-except ImportError:
-    HAS_RAPIDFUZZ = False
-    print("  [Matcher] Warning: RapidFuzz not found. Falling back to difflib.")
+from Core.Intelligence.unified_matcher import UnifiedBatchMatcher
 
 
 async def filter_pending_predictions() -> List[Dict]:
@@ -47,48 +30,7 @@ async def filter_pending_predictions() -> List[Dict]:
     return pending_predictions
 
 
-def normalize_team_name(name: str) -> str:
-    """Basic normalization: lower, strip, remove common suffixes/prefixes."""
-    if not name:
-        return ""
-    name = name.lower().strip()
-    # Remove common suffixes like FC, AFC, CF, etc. and Brazilian state abbreviations
-    suffixes = [
-        'fc', 'afc', 'cf', 'sc', 'ac', 'club', 'united', 'city', 'athletic', 'fb',
-        'sp', 'rj', 'mg', 'rs', 'pr', 'ba', 'ce', 'pe', 'go', 'sc', 'pb', 'rn', 'al', 'se', 'mt', 'ms', 'pa', 'am'
-    ]
-    for suffix in suffixes:
-        if name.endswith(' ' + suffix):
-            name = name[:-len(suffix)-1].strip()
-        elif name.endswith(' ' + suffix + ')'): # handle (SP)
-             name = name[:-len(suffix)-2].strip()
-        elif name == suffix:
-            name = ""
-    return name
 
-
-def calculate_similarity(str1: str, str2: str) -> float:
-    """Calculate similarity using RapidFuzz (token_set_ratio) or fallback to difflib."""
-    if not str1 or not str2:
-        return 0.0
-    norm1 = normalize_team_name(str1)
-    norm2 = normalize_team_name(str2)
-    if HAS_RAPIDFUZZ:
-        try:
-            from rapidfuzz import fuzz
-            return fuzz.token_set_ratio(norm1, norm2) / 100.0
-        except ImportError:
-            return difflib.SequenceMatcher(None, norm1, norm2).ratio()
-    else:
-        return difflib.SequenceMatcher(None, norm1, norm2).ratio()
-
-
-def build_match_string(region_league: str, home: str, away: str, date: str, time: str) -> str:
-    """
-    Build a canonical full match string for holistic comparison:
-    "Region - League: Home Team vs Away Team - Date - Time"
-    """
-    return f"{region_league}: {home} vs {away} - {date} - {time}".strip().lower()
 
 
 def parse_match_datetime(date_str: str, time_str: str, is_site_format: bool = False) -> Optional[datetime]:
@@ -139,7 +81,7 @@ def parse_match_datetime(date_str: str, time_str: str, is_site_format: bool = Fa
             return None
 
 
-from Core.Intelligence.unified_matcher import UnifiedBatchMatcher
+
 
 async def match_predictions_with_site(day_predictions: List[Dict], site_matches: List[Dict]) -> Dict[str, str]:
     """

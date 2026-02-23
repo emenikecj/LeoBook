@@ -21,13 +21,14 @@ load_dotenv()
 from Core.System.lifecycle import (
     log_state, log_audit_state, setup_terminal_logging, parse_args, state
 )
+from Core.Intelligence.aigo_suite import AIGOSuite
 from Core.System.withdrawal_checker import (
     check_triggers, propose_withdrawal, calculate_proposed_amount, get_latest_win,
     check_withdrawal_approval, execute_withdrawal
 )
 from Data.Access.db_helpers import init_csvs, log_audit_event
 from Data.Access.sync_manager import SyncManager, run_full_sync
-from Data.Access.review_outcomes import run_review_process, run_accuracy_generation
+from Data.Access.outcome_reviewer import run_review_process, run_accuracy_generation
 from Data.Access.prediction_accuracy import print_accuracy_report
 from Scripts.enrich_all_schedules import enrich_all_schedules
 from Modules.Flashscore.manager import run_flashscore_analysis, run_flashscore_offline_repredict, run_flashscore_schedule_only
@@ -45,6 +46,7 @@ LOCK_FILE = "leo.lock"
 # PAGE FUNCTIONS — Each is a self-contained async operation
 # ============================================================
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=2.0)
 async def run_prologue_p1(p):
     """Prologue Page 1: Cloud Handshake & Prediction Review."""
     log_state(chapter="Prologue P1", action="Cloud Handshake & Prediction Review")
@@ -67,6 +69,7 @@ async def run_prologue_p1(p):
         log_audit_event("PROLOGUE_P1", f"Failed: {e}", status="failed")
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=3.0)
 async def run_prologue_p2():
     """Prologue Page 2: Metadata Enrichment (schedules, teams, leagues, standings)."""
     log_state(chapter="Prologue P2", action="Metadata Enrichment")
@@ -82,6 +85,7 @@ async def run_prologue_p2():
         log_audit_event("PROLOGUE_P2", f"Failed: {e}", status="failed")
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=2.0)
 async def run_prologue_p3():
     """Prologue Page 3: Accuracy Generation & Final Prologue Sync."""
     log_state(chapter="Prologue P3", action="Accuracy Generation & Final Prologue Sync")
@@ -97,6 +101,7 @@ async def run_prologue_p3():
         log_audit_event("PROLOGUE_P3", f"Failed: {e}", status="failed")
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=3.0)
 async def run_chapter_1_p1(p):
     """Chapter 1 Page 1: Flashscore Extraction & AI Analysis."""
     log_state(chapter="Ch1 P1", action="Flashscore Extraction & Analysis")
@@ -112,6 +117,7 @@ async def run_chapter_1_p1(p):
         log_audit_event("CH1_P1", f"Failed: {e}", status="failed")
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=3.0)
 async def run_chapter_1_p2(p):
     """Chapter 1 Page 2: Odds Harvesting & URL Resolution. Returns session health."""
     log_state(chapter="Ch1 P2", action="Odds Harvesting & URL Resolution")
@@ -130,6 +136,7 @@ async def run_chapter_1_p2(p):
         return False  # Session unhealthy
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=2.0)
 async def run_chapter_1_p3():
     """Chapter 1 Page 3: Final Sync & Recommendation Generation."""
     log_state(chapter="Ch1 P3", action="Final Chapter Sync & Recommendations")
@@ -149,6 +156,7 @@ async def run_chapter_1_p3():
         log_audit_event("CH1_P3", f"Failed: {e}", status="failed")
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=5.0)
 async def run_chapter_2_p1(p):
     """Chapter 2 Page 1: Automated Booking on Football.com."""
     log_state(chapter="Ch2 P1", action="Automated Booking (Football.com)")
@@ -164,6 +172,7 @@ async def run_chapter_2_p1(p):
         log_audit_event("CH2_P1", f"Failed: {e}", status="failed")
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=5.0)
 async def run_chapter_2_p2(p):
     """Chapter 2 Page 2: Funds Balance & Withdrawal Check."""
     log_state(chapter="Ch2 P2", action="Funds & Withdrawal Check")
@@ -191,6 +200,7 @@ async def run_chapter_2_p2(p):
         log_audit_event("CH2_P2", f"Failed: {e}", status="failed")
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=5.0)
 async def run_chapter_3():
     """Chapter 3: Chief Engineer Monitoring & Oversight + Backtest Check."""
     log_state(chapter="Chapter 3", action="Chief Engineer Oversight")
@@ -231,6 +241,7 @@ async def run_chapter_3():
 # UTILITY COMMANDS — Single-shot operations, no cycle loop
 # ============================================================
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=2.0)
 async def run_utility(args):
     """Handle utility commands that don't require the full pipeline."""
     init_csvs()
@@ -385,6 +396,7 @@ async def dispatch(args):
 # MAIN — Full cycle loop (default mode)
 # ============================================================
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=60.0, use_aigo=False)
 async def main():
     """Full cycle: Prologue → Ch1 → Ch2 → Ch3, repeating on CYCLE_WAIT_HOURS."""
     # Singleton Check
@@ -464,6 +476,7 @@ async def main():
         if os.path.exists(LOCK_FILE): os.remove(LOCK_FILE)
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=10.0)
 async def main_offline_repredict():
     """Run offline reprediction."""
     print("    --- LEO: Offline Reprediction Mode ---      ")

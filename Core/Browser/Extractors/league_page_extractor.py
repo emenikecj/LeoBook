@@ -6,7 +6,7 @@
 import asyncio
 from typing import List, Dict, Any
 from playwright.async_api import Page, TimeoutError
-from Core.Intelligence.intelligence import get_selector
+from Core.Intelligence.selector_manager import SelectorManager
 from Core.Browser.site_helpers import fs_universal_popup_dismissal
 
 async def extract_league_match_urls(page: Page, league_url: str, mode: str = "results") -> List[str]:

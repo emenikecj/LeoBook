@@ -1,6 +1,6 @@
 # LeoBook — Technical Master Report
 
-> **Version**: 3.1 · **Last Updated**: 2026-02-19 · **Architecture**: Concurrent Clean Architecture (Sequential + Parallel Pipeline)
+> **Version**: 3.2 · **Last Updated**: 2026-02-23 · **Architecture**: Concurrent Clean Architecture (Sequential + Parallel Pipeline)
 
 ## Table of Contents
 
@@ -21,7 +21,7 @@ LeoBook is a **fully autonomous sports prediction and betting system** comprised
 | **Backend (Leo.py)** | Python 3.12 + Playwright | Autonomous data extraction, AI prediction, odds harvesting, bet placement, withdrawal management, and system health monitoring |
 | **Frontend (leobookapp)** | Flutter/Dart | Elite dashboard with "Telegram-grade" density, liquid glass aesthetics, and proportional scaling |
 
-**Leo.py** is a **pure orchestrator** — it contains zero business logic. All logic lives in the modules it imports. It runs in an infinite loop, executing a cycle every 6h. Starting v3.1, the engine uses **Concurrent Task Execution** to run non-blocking prologue tasks alongside the main chapter pipeline.
+**Leo.py** is a **pure orchestrator** — it contains zero business logic. All logic lives in the modules it imports. It runs in an infinite loop, executing a cycle every 6h. Starting v3.2, the engine uses **Concurrent Task Execution** to run non-blocking prologue tasks alongside the main chapter pipeline, and operates on a drastically simplified, first-principles codebase.
 
 ---
 
@@ -71,7 +71,7 @@ Leo.py orchestrates 3 main chapters sequentially:
 2. **CSV Init**: Create local databases if missing.
 3. **Browser Engine**: Launch Playwright context.
 
-### Per-Cycle Logic (6h Cycle) — Concurrent Engine (v3.1)
+### Per-Cycle Logic (6h Cycle) — Concurrent Engine (v3.2)
 
 Leo.py splits the cycle into three phases: Sequential Prep, Concurrent Execution, and Sequential Oversight.
 

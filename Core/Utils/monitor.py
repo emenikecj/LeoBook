@@ -12,7 +12,7 @@ from typing import Optional
 from playwright.async_api import Page
 
 # Import existing helpers for consistency
-from Data.Access.csv_operations import upsert_entry, _write_csv
+from Data.Access.db_helpers import upsert_entry, _write_csv
 
 # --- CONFIGURATION ---
 DB_DIR = Path("Data/Store")

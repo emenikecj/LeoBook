@@ -22,7 +22,7 @@ from Data.Access.db_helpers import (
 from Core.Utils.utils import log_error_state, capture_debug_snapshot
 # Corrected Imports for Core.Intelligence
 from Core.Intelligence.selector_manager import SelectorManager
-from Core.Intelligence.intelligence import get_selector, get_selector_auto, fb_universal_popup_dismissal as neo_popup_dismissal
+from Core.Intelligence.popup_handler import PopupHandler
 
 from .ui import handle_page_overlays, dismiss_overlays
 from .mapping import find_market_and_outcome
@@ -31,16 +31,17 @@ from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from .slip import force_clear_slip
 from Data.Access.sync_manager import run_full_sync
+from Core.Intelligence.aigo_suite import AIGOSuite
 
 async def ensure_bet_insights_collapsed(page: Page):
     """Ensure the bet insights widget is collapsed to prevent obstruction."""
     try:
-        header_sel = await get_selector_auto(page, "fb_match_page", "bet_insights_header")
+        header_sel = await SelectorManager.get_selector_auto(page, "fb_match_page", "bet_insights_header")
         if not header_sel:
             return
         header = page.locator(header_sel).first
         if await header.count() > 0:
-            arrow_sel = await get_selector_auto(page, "fb_match_page", "bet_insights_arrow")
+            arrow_sel = await SelectorManager.get_selector_auto(page, "fb_match_page", "bet_insights_arrow")
             if arrow_sel:
                 arrow = header.locator(arrow_sel)
                 if await arrow.count() > 0:
@@ -61,9 +62,9 @@ async def check_match_start_time(page: Page) -> bool:
     """Check if the match is within 10 minutes of starting time."""
     try:
         # Get match time using dynamic selector
-        time_sel = await get_selector_auto(page, "fb_match_page", "match_detail_time_elapsed")
+        time_sel = await SelectorManager.get_selector_auto(page, "fb_match_page", "match_detail_time_elapsed")
         if not time_sel:
-            time_sel = await get_selector_auto(page, "fb_match_page", "match_detail_status")
+            time_sel = await SelectorManager.get_selector_auto(page, "fb_match_page", "match_detail_status")
 
         if time_sel:
             if await page.locator(time_sel).count() > 0:
@@ -105,7 +106,7 @@ async def check_match_start_time(page: Page) -> bool:
                     return True
 
         # Fallback: check for live indicators using knowledge.json selector
-        live_sel = await get_selector_auto(page, "fb_match_page", "live_indicator")
+        live_sel = await SelectorManager.get_selector_auto(page, "fb_match_page", "live_indicator")
         if live_sel and await page.locator(live_sel).count() > 0:
             print("    [Time Check] Found live indicator. Match is already in progress. Skipping.")
             return False
@@ -117,88 +118,57 @@ async def check_match_start_time(page: Page) -> bool:
         print(f"    [Time Check] Error checking match time: {e}. Assuming safe to proceed.")
         return True
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=3.0, context_key="fb_match_page", element_key="book_bet_button")
 async def harvest_booking_codes(page: Page, matched_urls: Dict[str, str], day_predictions: List[Dict], target_date: str):
     """
-    Chapter 1C: Odds Selection & Extraction.
-    Follows flowchart: Navigate -> Select -> Book -> Save Code -> Clear Slip.
-    Includes 10-harvest progressive synchronization to Supabase.
+    Chapter 1C: Odds Selection & Extraction with AIGO safety net.
     """
     processed_urls = set()
     harvest_success_count = 0
-
-    # Pre-emptive clear ensuring a fresh start
     await force_clear_slip(page)
 
     for match_id, match_url in matched_urls.items():
         if not match_url or match_url in processed_urls: continue
-        
         pred = next((p for p in day_predictions if str(p.get('fixture_id', '')) == str(match_id)), None)
         if not pred or pred.get('prediction') == 'SKIP': continue
-
-        # Resume: Skip if already harvested or booked in a previous run
-        if pred.get('status') in ('harvested', 'booked', 'added_to_slip'):
-            continue
+        if pred.get('status') in ('harvested', 'booked', 'added_to_slip'): continue
 
         print(f"\n   [Harvest] Processing: {pred['home_team']} vs {pred['away_team']}")
         processed_urls.add(match_url)
 
-        try:
-            # 1. Navigation
-            await page.goto(match_url, wait_until='domcontentloaded', timeout=30000)
-            await asyncio.sleep(3)
-            await neo_popup_dismissal(page, "fb_match_page")
-            await ensure_bet_insights_collapsed(page)
+        # 1. Navigation
+        await page.goto(match_url, wait_until='domcontentloaded', timeout=30000)
+        await asyncio.sleep(3)
+        await PopupHandler().fb_universal_popup_dismissal(page, "fb_match_page")
+        await ensure_bet_insights_collapsed(page)
 
-            # 2. Market/Outcome Logic
-            m_name, o_name = await find_market_and_outcome(pred)
-            if not m_name:
-                print(f"    [Info] No market found for prediction: {pred.get('prediction', 'N/A')}")
-                continue
+        # 2. Market/Outcome Logic
+        m_name, o_name = await find_market_and_outcome(pred)
+        if not m_name: continue
 
-            # 3. Search & Click Outcome
-            bet_added, odds = await find_and_click_outcome(page, m_name, o_name)
+        # 3. Search & Click Outcome
+        bet_added, odds = await find_and_click_outcome(page, m_name, o_name)
+        
+        if bet_added:
+            # 4. Extract Code
+            book_btn_sel = await SelectorManager.get_selector_auto(page, "fb_match_page", "book_bet_button")
+            if book_btn_sel and await page.locator(book_btn_sel).count() > 0:
+                await page.locator(book_btn_sel).first.click(force=True)
+                await asyncio.sleep(2)
+
+                booking_code = await extract_booking_details(page)
+                if booking_code and booking_code != "N/A":
+                    update_prediction_status(match_id, target_date, 'harvested', booking_code=booking_code, odds=str(odds))
+                    site_id = get_site_match_id(target_date, pred['home_team'], pred['away_team'])
+                    update_site_match_status(site_id, 'harvested', booking_code=booking_code, odds=str(odds))
+                    await save_booking_code(target_date, booking_code, page)
+                    harvest_success_count += 1
             
-            if bet_added:
-                # 4. Extract Code (The "Book Single" step)
-                book_btn_sel = await get_selector_auto(page, "fb_match_page", "book_bet_button")
-                if book_btn_sel and await page.locator(book_btn_sel).count() > 0:
-                    print(f"    [Booking] Clicking Book-a-Bet button...")
-                    await page.locator(book_btn_sel).first.scroll_into_view_if_needed()
-                    await page.locator(book_btn_sel).first.click(force=True)
-                    await asyncio.sleep(2)
+            await force_clear_slip(page)
+        else:
+            print(f"    [Error] Could not add outcome '{o_name}'.")
 
-                    booking_code = await extract_booking_details(page)
-                    if booking_code and booking_code != "N/A":
-                        # Save to registries
-                        update_prediction_status(match_id, target_date, 'harvested', booking_code=booking_code, odds=str(odds))
-                        site_id = get_site_match_id(target_date, pred['home_team'], pred['away_team'])
-                        update_site_match_status(site_id, 'harvested', booking_code=booking_code, odds=str(odds))
-                        await save_booking_code(target_date, booking_code, page)
-                        
-                        harvest_success_count += 1
-                        if harvest_success_count % 10 == 0:
-                            print(f"\n    [Harvest Sync] Reached {harvest_success_count} successful harvests. Triggering cloud sync...")
-                            await run_full_sync()
-                
-                # Close Modal if open
-                close_sel = await get_selector_auto(page, "fb_match_page", "modal_close_button")
-                if close_sel and await page.locator(close_sel).count() > 0:
-                    await page.locator(close_sel).first.click()
-                    await asyncio.sleep(1)
-
-                # 5. Force Clear Slip (Crucial step in flowchart)
-                await force_clear_slip(page)
-            else:
-                print(f"    [Error] Could not add outcome '{o_name}' for matching fixture.")
-                update_prediction_status(match_id, target_date, 'failed_harvest')
-
-        except Exception as e:
-            print(f"    [Error] Harvest failed for match {match_id}: {e}")
-            await capture_debug_snapshot(page, f"harvest_fail_{match_id}")
-
-    # Final sync if any new harvests occurred
-    if harvest_success_count > 0 and harvest_success_count % 10 != 0:
-        print(f"\n    [Harvest Sync] Finalizing sync for {harvest_success_count} harvests...")
+    if harvest_success_count > 0:
         await run_full_sync()
 
 async def find_and_click_outcome(page: Page, m_name: str, o_name: str) -> tuple:
@@ -206,8 +176,8 @@ async def find_and_click_outcome(page: Page, m_name: str, o_name: str) -> tuple:
     frame = await get_main_frame(page)
     if not frame: return False, 1.0
 
-    search_sel = await get_selector_auto(page, "fb_match_page", "search_icon")
-    input_sel = await get_selector_auto(page, "fb_match_page", "search_input")
+    search_sel = await SelectorManager.get_selector_auto(page, "fb_match_page", "search_icon")
+    input_sel = await SelectorManager.get_selector_auto(page, "fb_match_page", "search_input")
     
     if not search_sel or not input_sel:
         print(f"    [Error] Missing search/input selectors for market discovery.")
@@ -256,109 +226,55 @@ async def find_and_click_outcome(page: Page, m_name: str, o_name: str) -> tuple:
         
     return False, 1.0
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=3.0, context_key="fb_match_page", element_key="place_bet_button")
 async def finalize_accumulator(page: Page, target_date: str) -> bool:
-    """Navigate to slip, enter stake, and confirm placement."""
+    """Navigate to slip, enter stake, and confirm placement with AIGO safety net."""
     print(f"[Betting] Finalizing accumulator for {target_date}...")
-    try:
-        await dismiss_overlays(page)
-        await handle_page_overlays(page)
-        # Refresh state after dismissals
+    await dismiss_overlays(page)
+    await handle_page_overlays(page)
+    await asyncio.sleep(1)
+    
+    # 1. Open Slip
+    drawer_sel = await SelectorManager.get_selector_auto(page, "fb_match_page", "slip_drawer_container")
+    if not await page.locator(drawer_sel).first.is_visible(timeout=500):
+        trigger_sel = await SelectorManager.get_selector_auto(page, "fb_match_page", "slip_trigger_button")
+        await page.locator(trigger_sel).first.click(force=True)
+        await asyncio.sleep(2)
+
+    # 2. Select Multiple
+    multi_sel = await SelectorManager.get_selector_auto(page, "fb_match_page", "slip_tab_multiple")
+    if multi_sel:
+        await page.locator(multi_sel).first.click(force=True)
         await asyncio.sleep(1)
-        await page.keyboard.press("End")
-        
-        # Check if slip is open
-        drawer_sel = await get_selector_auto(page, "fb_match_page", "slip_drawer_container")
-        is_open = False
-        if drawer_sel:
-             is_open = await page.locator(drawer_sel).first.is_visible(timeout=500)
 
-        if not is_open:
-            trigger_sel = await get_selector_auto(page, "fb_match_page", "slip_trigger_button")
-            if trigger_sel:
-                await page.locator(trigger_sel).first.scroll_into_view_if_needed()
-                if await page.locator(trigger_sel).first.click(force=True):
-                    await asyncio.sleep(3)
-            else:
-                print("    [Betting] Slip trigger selector missing")
+    # 3. Enter Stake
+    stake_sel = await SelectorManager.get_selector_auto(page, "fb_match_page", "stake_input")
+    await page.locator(stake_sel).first.fill("1")
+    await page.keyboard.press("Enter")
+    await asyncio.sleep(1)
 
-        # Ensure 'Multiple' tab is selected for accumulators
-        multi_sel = await get_selector_auto(page, "fb_match_page", "slip_tab_multiple")
-        
-        if multi_sel and await page.locator(multi_sel).count() > 0:
-            if await page.locator(multi_sel).is_visible(timeout=2000):
-                await page.locator(multi_sel).scroll_into_view_if_needed()
-                await page.locator(multi_sel).click(force=True)
-                await asyncio.sleep(1)
+    # 4. Place
+    place_sel = await SelectorManager.get_selector_auto(page, "fb_match_page", "place_bet_button")
+    await page.locator(place_sel).first.click(force=True)
+    await asyncio.sleep(2)
 
-        # Enter Stake
-        stake_sel = await get_selector_auto(page, "fb_match_page", "stake_input")
-        stake_entered = False
-        
-        if stake_sel:
-            try:
-                if await page.locator(stake_sel).count() > 0:
-                    input_field = page.locator(stake_sel).first
-                    await input_field.scroll_into_view_if_needed()
-                    await input_field.click(force=True)
-                    await input_field.fill("1")
-                    await page.keyboard.press("Enter")
-                    print(f"    [Betting] Entered stake with selector: {stake_sel}")
-                    stake_entered = True
-                    await asyncio.sleep(1)
-            except Exception as e:
-                print(f"    [Betting] Stake selector failed: {stake_sel} - {e}")
-
-        if not stake_entered:
-            print("    [Warning] Could not enter stake. Attempting to place anyway.")
-
-        # Place bet
-        place_sel = await get_selector_auto(page, "fb_match_page", "place_bet_button")
-        bet_placed = False
-        
-        if place_sel:
-            try:
-                await page.locator(place_sel).first.scroll_into_view_if_needed()
-                if await page.locator(place_sel).first.click(force=True):
-                    print(f"    [Betting] Clicked place bet with selector: {place_sel}")
-                    bet_placed = True
-                    await asyncio.sleep(2)
-            except Exception as e:
-                print(f"    [Betting] Place bet selector failed: {place_sel} - {e}")
-
-        if not bet_placed:
-            print("    [Betting] Could not place bet")
-            return False
-
-        # Confirm bet
-        confirm_sel = await get_selector_auto(page, "fb_match_page", "confirm_bet_button")
-        
-        if confirm_sel:
-            try:
-                if await page.locator(confirm_sel).count() > 0:
-                    await page.locator(confirm_sel).first.scroll_into_view_if_needed()
-                    await page.locator(confirm_sel).first.click(force=True)
-                    print(f"    [Betting] Confirmed bet with selector: {confirm_sel}")
-                    await asyncio.sleep(3)
-                    
-                    # Extract and save booking code
-                    booking_code = await extract_booking_details(page)
-                    if booking_code and booking_code != "N/A":
-                        await save_booking_code(target_date, booking_code, page)
-                    
-                    print(f"    [Success] Placed for {target_date}")
-                    return True
-            except Exception as e:
-                 print(f"    [Betting] Confirm selector failed: {confirm_sel} - {e}")
-
-        print("    [Betting] Could not confirm bet")
-        return False
-    except Exception as e:
-        await log_error_state(page, "finalize_fatal", e)
-    return False
+    # 5. Confirm
+    confirm_sel = await SelectorManager.get_selector_auto(page, "fb_match_page", "confirm_bet_button")
+    await page.locator(confirm_sel).first.click(force=True)
+    await asyncio.sleep(3)
+    
+    # Validation & Finalize
+    booking_code = await extract_booking_details(page)
+    if booking_code and booking_code != "N/A":
+        await save_booking_code(target_date, booking_code, page)
+        print(f"    [Success] Placed for {target_date}")
+        return True
+    
+    raise ValueError("Failed to obtain booking code after placement.")
 
 async def extract_booking_details(page: Page) -> str:
     """Extract booking code using dynamic selector."""
-    code_sel = await get_selector_auto(page, "fb_match_page", "booking_code_text")
+    code_sel = await SelectorManager.get_selector_auto(page, "fb_match_page", "booking_code_text")
     
     if code_sel:
         try:

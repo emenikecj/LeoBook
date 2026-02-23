@@ -16,6 +16,7 @@ from Data.Access.db_helpers import update_prediction_status
 from Core.Utils.utils import log_error_state, capture_debug_snapshot
 from Core.Intelligence.selector_manager import SelectorManager
 from Core.Intelligence.intelligence import fb_universal_popup_dismissal as neo_popup_dismissal
+from Core.Intelligence.aigo_suite import AIGOSuite
 from .ui import wait_for_condition
 from .mapping import find_market_and_outcome
 from .slip import get_bet_slip_count, force_clear_slip
@@ -189,133 +190,76 @@ def calculate_kelly_stake(balance: float, odds: float, probability: float = 0.60
     return final_stake
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=3.0, context_key="fb_match_page", element_key="betslip_place_bet_button")
 async def place_multi_bet_from_codes(page: Page, harvested_matches: List[Dict], current_balance: float) -> bool:
     """
-    Chapter 2A (Automated Booking):
-    1. Force clear slip.
-    2. Loop up to 12 codes -> Add to slip via URL.
-    3. Verify count.
-    4. Calculate Kelly Stake.
-    5. Place & Confirm.
-    6. Update status in CSVs.
+    Chapter 2A (Automated Booking) with AIGO protection.
     """
     if not harvested_matches:
         print("    [Execute] No harvested matches to place.")
         return False
 
-    final_codes = []
-    # Up to 12 as per v2.7 rules
-    for m in harvested_matches[:12]:
-        code = m.get('booking_code')
-        if code: final_codes.append(m)
-
-    if not final_codes:
-        print("    [Execute] No valid codes found in harvested list.")
-        return False
-
+    final_codes = harvested_matches[:12]
     print(f"\n   [Execute] Starting execution for {len(final_codes)} matches...")
     
-    # 1. Force Clear
     await force_clear_slip(page)
 
-    try:
-        # 2. Add via URL
-        for m in final_codes:
-            code = m.get('booking_code')
-            url = f"https://www.football.com/ng/m?shareCode={code}"
-            print(f"    [Execute] Injecting code {code}...")
-            await page.goto(url, timeout=30000, wait_until='domcontentloaded')
-            await asyncio.sleep(1.5) # Wait for slip to update
+    # 2. Add via URL
+    for m in final_codes:
+        code = m.get('booking_code')
+        if not code: continue
+        url = f"https://www.football.com/ng/m?shareCode={code}"
+        print(f"    [Execute] Injecting code {code}...")
+        await page.goto(url, timeout=30000, wait_until='domcontentloaded')
+        await asyncio.sleep(1.5)
 
-        # 3. Verify Count
-        total_in_slip = await get_bet_slip_count(page)
-        print(f"    [Execute] Verification: {total_in_slip} in slip (Expected {len(final_codes)}).")
-        
-        if total_in_slip < 1:
-            print("    [Execute Error] Slip is empty after injection.")
-            return False
+    # 3. Verify Count
+    total_in_slip = await get_bet_slip_count(page)
+    if total_in_slip < 1:
+        raise ValueError("Slip is empty after injection.")
 
-        # 4. Calculate Stake (Kelly v2.8 — Standard Aggregation)
-        # P_total = Product(p_i) for independent events
-        
-        total_odds = 1.0
-        total_prob = 1.0
-        
-        for m in final_codes:
-            try:
-                m_odds = float(m.get('odds', 1.5))
-                total_odds *= m_odds
-            except:
-                total_odds *= 1.5
-            
-            # Dynamic p from confidence
-            conf = m.get('confidence', 'Medium')
-            p = CONFIDENCE_TO_PROB.get(conf, 0.50)
-            total_prob *= p
-        
-        # Safety clamp for very long accumulators
-        if total_prob < 0.01: 
-            total_prob = 0.01
-            
-        print(f"    [Execute] Total Odds: {total_odds:.2f} | Total Win Prob: {total_prob:.4f}")
-        final_stake = calculate_kelly_stake(current_balance, total_odds, probability=total_prob)
-        print(f"    [Execute] Final Stake: ₦{final_stake} (Balance: ₦{current_balance:.2f})")
+    # 4. Calculate Stake
+    total_odds = 1.0
+    total_prob = 1.0
+    for m in final_codes:
+        total_odds *= float(m.get('odds', 1.5))
+        p = CONFIDENCE_TO_PROB.get(m.get('confidence', 'Medium'), 0.50)
+        total_prob *= p
+    
+    final_stake = calculate_kelly_stake(current_balance, total_odds, probability=max(total_prob, 0.01))
+    print(f"    [Execute] Final Stake: ₦{final_stake}")
 
-        # 5. Place
-        slip_trigger = SelectorManager.get_selector_strict("fb_match_page", "slip_trigger_button")
-        btn = page.locator(slip_trigger).first
-        if await btn.count() > 0:
-            await btn.scroll_into_view_if_needed()
-            await btn.click(force=True)
-            # Wait for slip container
-            slip_sel = SelectorManager.get_selector_strict("fb_match_page", "slip_drawer_container")
-            await page.wait_for_selector(slip_sel, state="visible", timeout=15000)
-            await asyncio.sleep(1)
-        else:
-            print("    [Execute Error] Could not find slip trigger.")
-            return False
+    # 5. Open Slip Drawer
+    slip_trigger = SelectorManager.get_selector_strict("fb_match_page", "slip_trigger_button")
+    await page.locator(slip_trigger).first.click()
+    slip_sel = SelectorManager.get_selector_strict("fb_match_page", "slip_drawer_container")
+    await page.wait_for_selector(slip_sel, state="visible", timeout=15000)
 
-        amount_input = SelectorManager.get_selector_strict("fb_match_page", "betslip_stake_input")
-        if amount_input:
-            await page.locator(amount_input).first.scroll_into_view_if_needed()
-            await page.locator(amount_input).first.click(force=True)
-            await page.locator(amount_input).first.fill(str(final_stake))
-        else:
-            print("    [Execute Error] Stake input selector missing.")
-            return False
-        await asyncio.sleep(1)
+    # 6. Fill Stake
+    amount_input = SelectorManager.get_selector_strict("fb_match_page", "betslip_stake_input")
+    await page.locator(amount_input).first.fill(str(final_stake))
+    await asyncio.sleep(1)
 
-        place_btn = SelectorManager.get_selector_strict("fb_match_page", "betslip_place_bet_button")
-        btn = page.locator(place_btn).first
-        if await btn.count() > 0 and await btn.is_enabled():
-            await btn.scroll_into_view_if_needed()
-            await btn.click(force=True)
-            
-            # --- CONFIRMATION ---
-            await asyncio.sleep(2)
-            from ..navigator import extract_balance
-            new_balance = await extract_balance(page)
-            
-            if new_balance < (current_balance - (final_stake * 0.9)):
-                print(f"    [Execute Success] Multi-bet placed! New Balance: ₦{new_balance:.2f}")
-                
-                # Update Statuses
-                from Data.Access.db_helpers import update_site_match_status, update_prediction_status, log_audit_event
-                for m in final_codes:
-                    update_site_match_status(m['site_match_id'], status='booked')
-                    if m.get('fixture_id'):
-                        update_prediction_status(m['fixture_id'], m['date'], 'booked')
-                
-                log_audit_event("BET_PLACEMENT", f"Multi-bet ({len(final_codes)} matches) placed.", current_balance, new_balance, float(final_stake))
-                return True
-            else:
-                 print("    [Execute Error] Balance did not decrease. Placement failed.")
-                 return False
-        else:
-             print("    [Execute Error] Place button not enabled.")
-             return False
+    # 7. Place and Confirm
+    place_btn = SelectorManager.get_selector_strict("fb_match_page", "betslip_place_bet_button")
+    await page.locator(place_btn).first.click(force=True)
+    await asyncio.sleep(3)
+    
+    # 8. Success Check
+    from ..navigator import extract_balance
+    new_balance = await extract_balance(page)
+    if new_balance >= (current_balance - (final_stake * 0.5)):
+        raise ValueError("Balance did not decrease sufficiently. Placement likely failed.")
 
-    except Exception as e:
-        print(f"    [Execute Error] Critical failure: {e}")
-        return False
+    print(f"    [Execute Success] Multi-bet placed! New Balance: ₦{new_balance:.2f}")
+    
+    # Update Statuses
+    from Data.Access.db_helpers import update_site_match_status, update_prediction_status, log_audit_event
+    for m in final_codes:
+        update_site_match_status(m['site_match_id'], status='booked')
+        if m.get('fixture_id'):
+            update_prediction_status(m['fixture_id'], m['date'], 'booked')
+    
+    log_audit_event("BET_PLACEMENT", f"Multi-bet ({len(final_codes)} matches) placed.", current_balance, new_balance, float(final_stake))
+    return True
 

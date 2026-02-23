@@ -27,6 +27,8 @@ from Data.Access.sync_manager import SyncManager
 from Core.Browser.site_helpers import fs_universal_popup_dismissal
 from Core.Utils.constants import NAVIGATION_TIMEOUT, WAIT_FOR_LOAD_STATE_TIMEOUT
 from Core.Intelligence.selector_manager import SelectorManager
+from Core.Intelligence.aigo_suite import AIGOSuite
+from Modules.Flashscore.fs_extractor import extract_all_matches, expand_all_leagues as ensure_content_expanded
 
 STREAM_INTERVAL = 60  # seconds
 FLASHSCORE_URL = "https://www.flashscore.com/football/"
@@ -65,27 +67,8 @@ def _write_csv(path, rows, fieldnames):
 # ---------------------------------------------------------------------------
 # Status propagation: update schedules + predictions when matches go live/finish
 # ---------------------------------------------------------------------------
-def _compute_outcome_correct(prediction_str, home_score, away_score):
-    """Check if a prediction was correct given the final score."""
-    try:
-        hs = int(home_score)
-        aws = int(away_score)
-    except (ValueError, TypeError):
-        return ''
-    p = (prediction_str or '').lower()
-    if 'home win' in p:
-        return 'True' if hs > aws else 'False'
-    if 'away win' in p:
-        return 'True' if aws > hs else 'False'
-    if 'draw' in p:
-        return 'True' if hs == aws else 'False'
-    if 'over 2.5' in p:
-        return 'True' if (hs + aws) > 2 else 'False'
-    if 'under 2.5' in p:
-        return 'True' if (hs + aws) < 3 else 'False'
-    if 'btts' in p or 'both teams to score' in p:
-        return 'True' if hs > 0 and aws > 0 else 'False'
-    return ''
+# Logic moved to Data.Access.db_helpers.evaluate_market_outcome
+from Data.Access.db_helpers import evaluate_market_outcome
 
 
 def _is_streamer_alive() -> bool:
@@ -215,10 +198,12 @@ def _propagate_status_updates(live_matches: list, resolved_matches: list = None)
                 if rm.get('stage_detail'):
                     row['stage_detail'] = rm['stage_detail']
                 if terminal_status not in NO_SCORE_STATUSES:
-                    oc = _compute_outcome_correct(
+                    oc = evaluate_market_outcome(
                         row.get('prediction', ''),
                         row.get('home_score', ''),
-                        row.get('away_score', '')
+                        row.get('away_score', ''),
+                        row.get('home_team', ''),
+                        row.get('away_team', '')
                     )
                     if oc:
                         row['outcome_correct'] = oc
@@ -232,10 +217,12 @@ def _propagate_status_updates(live_matches: list, resolved_matches: list = None)
                 match_start = dt.fromisoformat(f"{date_val}T{time_val}:00")
                 if now > match_start + timedelta(minutes=150):
                     row['status'] = 'finished'
-                    oc = _compute_outcome_correct(
+                    oc = evaluate_market_outcome(
                         row.get('prediction', ''),
                         row.get('home_score', ''),
-                        row.get('away_score', '')
+                        row.get('away_score', ''),
+                        row.get('home_team', ''),
+                        row.get('away_team', '')
                     )
                     if oc:
                         row['outcome_correct'] = oc
@@ -274,139 +261,7 @@ def _purge_stale_live_scores(current_live_ids: set):
 # ---------------------------------------------------------------------------
 # Flashscore ALL tab extraction – only 4 selector keys updated
 # ---------------------------------------------------------------------------
-async def _extract_all_matches(page) -> list:
-    """
-    Extracts ALL matches from the ALL tab — the single source of truth.
-    """
-    selectors = SelectorManager.get_all_selectors_for_context("fs_home_page")
-
-    result = await page.evaluate(r"""(sel) => {
-        const matches = [];
-        const debug = {total_elements: 0, headers: 0, no_id: 0, no_teams: 0, matched: 0};
-        const combinedSel = sel.league_header_wrapper + ', ' + sel.match_rows;
-        let container = document.querySelector(sel.sport_container_soccer);
-        let allElements = container ? container.querySelectorAll(combinedSel) : [];
-        // Mobile layout: .sportName.soccer only wraps a small subset — fall back to full DOM
-        if (allElements.length < 50) {
-            container = document.body;
-            allElements = container.querySelectorAll(combinedSel);
-            debug.fallback = true;
-        }
-        debug.total_elements = allElements.length;
-
-        let currentRegion = '';
-        let currentLeague = '';
-
-        allElements.forEach((el) => {
-            if (el.matches(sel.league_header_wrapper)) {
-                debug.headers++;
-                const catEl = el.querySelector(sel.league_country_text);
-                const titleEl = el.querySelector(sel.league_title_text);
-                currentRegion = catEl ? catEl.innerText.trim() : '';
-                currentLeague = titleEl ? titleEl.innerText.trim() : '';
-                return;
-            }
-
-            const rowId = el.getAttribute('id');
-            const cleanId = rowId ? rowId.replace(sel.match_id_prefix, '') : null;
-            if (!cleanId) { debug.no_id++; return; }
-
-            const homeNameEl = el.querySelector(sel.match_row_home_team_name);
-            const awayNameEl = el.querySelector(sel.match_row_away_team_name);
-            if (!homeNameEl || !awayNameEl) {
-                debug.no_teams++;
-                return;
-            }
-
-            debug.matched++;
-
-            const homeScoreEl = el.querySelector(sel.live_match_home_score);
-            const awayScoreEl = el.querySelector(sel.live_match_away_score);
-            const stageEl = el.querySelector(sel.live_match_stage_block);
-            const timeEl = el.querySelector(sel.match_row_time);
-            const linkEl = el.querySelector(sel.event_row_link);
-
-            const isLive = el.classList.contains(sel.live_match_row.replace('.', ''));
-            const stageText = stageEl ? stageEl.innerText.trim() : '';
-            const stageLower = stageText.toLowerCase();
-            const rawTime = timeEl ? timeEl.innerText.trim() : '';
-
-            let status = 'scheduled';
-            let stageDetail = '';
-            let minute = '';
-            let homeScore = homeScoreEl ? homeScoreEl.innerText.trim() : '';
-            let awayScore = awayScoreEl ? awayScoreEl.innerText.trim() : '';
-
-            if (isLive) {
-                status = 'live';
-                minute = stageText.replace(/\s+/g, '');
-                const minLower = minute.toLowerCase();
-                if (minLower.includes('half')) status = 'halftime';
-                else if (minLower.includes('break')) status = 'break';
-                else if (minLower.includes('pen')) { status = 'penalties'; stageDetail = 'Pen'; }
-                else if (minLower.includes('et')) { status = 'extra_time'; stageDetail = 'ET'; }
-            } else if (stageLower.includes('postp') || stageLower.includes('pp')) {
-                status = 'postponed'; stageDetail = 'Postp';
-                homeScore = ''; awayScore = '';
-            } else if (stageLower.includes('canc')) {
-                status = 'cancelled'; stageDetail = 'Canc';
-                homeScore = ''; awayScore = '';
-            } else if (stageLower.includes('abn') || stageLower.includes('abd')) {
-                status = 'cancelled'; stageDetail = 'Abn';
-                homeScore = ''; awayScore = '';
-            } else if (stageLower.includes('fro') || stageLower.includes('susp')) {
-                status = 'fro'; stageDetail = 'FRO';
-                homeScore = ''; awayScore = '';
-            } else if (homeScoreEl && awayScoreEl) {
-                const scoreState = homeScoreEl.getAttribute('data-state');
-                if (scoreState === sel.score_final_state || stageLower.includes('fin') || stageLower === '') {
-                    status = 'finished';
-                    if (stageLower.includes('pen')) stageDetail = 'Pen';
-                    else if (stageLower.includes('aet') || stageLower.includes('et')) stageDetail = 'AET';
-                    else if (stageLower.includes('wo') || stageLower.includes('w.o')) stageDetail = 'WO';
-                }
-            }
-
-            const regionLeague = currentRegion
-                ? currentRegion + ' - ' + currentLeague
-                : currentLeague || 'Unknown';
-
-            matches.push({
-                fixture_id: cleanId,
-                home_team: homeNameEl.innerText.trim(),
-                away_team: awayNameEl.innerText.trim(),
-                home_score: homeScore,
-                away_score: awayScore,
-                minute: minute,
-                status: status,
-                stage_detail: stageDetail,
-                region_league: regionLeague,
-                match_link: linkEl ? linkEl.getAttribute('href') : '',
-                match_time: rawTime,
-                timestamp: new Date().toISOString()
-            });
-        });
-        return {matches, debug};
-    }""", selectors)
-
-    matches = result.get('matches', [])
-    debug = result.get('debug', {})
-    print(f"   [Streamer] Found {len(matches)} matches.")
-    #print(f"   [Streamer] Debug: {debug}")
-
-    # Status breakdown
-    status_counts = {}
-    for m in matches:
-        s = m.get('status', 'unknown')
-        status_counts[s] = status_counts.get(s, 0) + 1
-    if status_counts:
-        print(f"   [Streamer] Status breakdown: {status_counts}")
-
-    # Sample first 3 for quick sanity check
-    #for m in matches[:3]:
-        #print(f"   [DEBUG] {m['home_team']} vs {m['away_team']} | status={m['status']} score={m['home_score']}-{m['away_score']} minute={m['minute']} stage={m['stage_detail']} time={m['match_time']}")
-
-    return matches or []
+# Logic consolidated into Modules.Flashscore.fs_extractor
 
 
 # ---------------------------------------------------------------------------
@@ -441,38 +296,13 @@ async def _click_all_tab(page) -> bool:
 # ---------------------------------------------------------------------------
 # ensure_content_expanded – MINIMAL CHANGE 3: added smart league expansion
 # ---------------------------------------------------------------------------
-async def ensure_content_expanded(page):
-    """
-    Bulk-expand all collapsed leagues via a single JS call.
-    ~2s instead of ~3min for 347 headers.
-    """
-    try:
-        down_arrow_sel = SelectorManager.get_selector("fs_home_page", "league_expand_icon_collapsed")
-
-        expanded = await page.evaluate(r"""(arrowSel) => {
-            const arrows = document.querySelectorAll(arrowSel);
-            let count = 0;
-            arrows.forEach(a => {
-                const header = a.closest('[class*="event__header"]') || a.parentElement;
-                if (header) { header.click(); count++; }
-            });
-            return count;
-        }""", down_arrow_sel)
-
-        if expanded > 0:
-            await asyncio.sleep(1.0)  # single settle wait
-            print(f"   [Streamer] Bulk-expanded {expanded} leagues.")
-        else:
-            print(f"   [Streamer] All leagues already expanded.")
-    except Exception as e:
-        print(f"   [Streamer] Expansion warning: {e}")
-
-    return True
+# Logic consolidated into Modules.Flashscore.fs_extractor.expand_all_leagues
 
 
 # ---------------------------------------------------------------------------
 # Main streaming loop (unchanged except _touch_heartbeat is now guaranteed)
 # ---------------------------------------------------------------------------
+@AIGOSuite.aigo_retry(max_retries=2, delay=30.0, use_aigo=False)
 async def live_score_streamer(playwright: Playwright):
     """
     Main streaming loop v3.2 (Mobile Optimized).
@@ -532,7 +362,7 @@ async def live_score_streamer(playwright: Playwright):
 
                 try:
                     # Extraction
-                    all_matches = await _extract_all_matches(page)
+                    all_matches = await extract_all_matches(page, label="Streamer")
                     
                     LIVE_STATUSES = {'live', 'halftime', 'break', 'penalties', 'extra_time'}
                     RESOLVED_STATUSES = {'finished', 'cancelled', 'postponed', 'fro', 'abandoned'}

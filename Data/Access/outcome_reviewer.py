@@ -17,8 +17,8 @@ import pytz
 from datetime import datetime as dt, timedelta
 from typing import List, Dict, Any, Optional
 
-from .health_monitor import HealthMonitor
 from playwright.async_api import Playwright
+from Core.Intelligence.aigo_suite import AIGOSuite
 
 
 # --- CONFIGURATION ---
@@ -38,12 +38,12 @@ COMPATIBLE_MODELS = ["2.5", "2.6"]  # Compatible with these model versions
 
 # --- IMPORTS ---
 from .db_helpers import (
-    PREDICTIONS_CSV, SCHEDULES_CSV, TEAMS_CSV, REGION_LEAGUE_CSV, 
-    FB_MATCHES_CSV, files_and_headers, save_team_entry, save_region_league_entry
+    PREDICTIONS_CSV, SCHEDULES_CSV, TEAMS_CSV, REGION_LEAGUE_CSV, ACCURACY_REPORTS_CSV,
+    FB_MATCHES_CSV, files_and_headers, save_team_entry, save_region_league_entry,
+    evaluate_market_outcome, upsert_entry, log_audit_event
 )
-from .csv_operations import upsert_entry, _read_csv, _write_csv
 from .sync_manager import SyncManager
-from Core.Intelligence.intelligence import get_selector_auto, get_selector
+from Core.Intelligence.selector_manager import SelectorManager
 from Core.Utils.constants import NAVIGATION_TIMEOUT
 
 
@@ -186,18 +186,19 @@ def save_single_outcome(match_data: Dict, new_status: str):
                         row['actual_score'] = f"{match_data['home_score']}-{match_data['away_score']}"
 
                     if new_status in ['reviewed', 'finished']:
-                        from .review_outcomes import evaluate_prediction as final_eval
                         prediction = row.get('prediction', '')
                         actual_score = row.get('actual_score', '')
+                        home_team = row.get('home_team', '')
+                        away_team = row.get('away_team', '')
                         
                         try:
-                            # Robust score parsing: handle "3-1", "3 - 1", "3-1-AET", etc.
+                            # Robust score parsing
                             import re
                             score_match = re.match(r'(\d+)\s*-\s*(\d+)', actual_score or '')
                             if score_match:
                                 h_core, a_core = score_match.group(1), score_match.group(2)
-                                is_correct = final_eval(prediction, h_core, a_core)
-                                row['outcome_correct'] = str(is_correct)
+                                res = evaluate_market_outcome(prediction, h_core, a_core, home_team, away_team)
+                                row['outcome_correct'] = res if res else '0'
                                 
                                 # Immediate Sync (Real-time update)
                                 print(f"      [Cloud] Immediate sync for {target_id}...")
@@ -219,7 +220,7 @@ def save_single_outcome(match_data: Dict, new_status: str):
             if os.path.exists(temp_file):
                 os.remove(temp_file)
     except Exception as e:
-        HealthMonitor.log_error("csv_save_error", f"Failed to save CSV: {e}", "high")
+        print(f"    [Health] csv_save_error (high): Failed to save CSV: {e}")
         print(f"    [File Error] Failed to write CSV: {e}")
 
 def sync_schedules_to_predictions():
@@ -272,10 +273,10 @@ def _sync_outcome_to_site_registry(fixture_id: str, match_data: Dict):
         home_team = match_data.get('home_team', '')
         away_team = match_data.get('away_team', '')
         
-        is_correct = evaluate_prediction(prediction, actual_score, home_team, away_team)
-        if is_correct is None: return
+        res = evaluate_market_outcome(prediction, actual_score, "", home_team, away_team)
+        if not res: return
         
-        outcome_status = "WON" if is_correct else "LOST"
+        outcome_status = "WON" if res == '1' else "LOST"
         
         # 2. Update site registry
         rows = _read_csv(FB_MATCHES_CSV)
@@ -381,7 +382,7 @@ async def get_final_score(page):
     """
     try:
         # Check Status
-        status_selector = get_selector("fs_match_page", "meta_match_status") or "div.fixedHeaderDuel__detailStatus"
+        status_selector = SelectorManager.get_selector("fs_match_page", "meta_match_status") or "div.fixedHeaderDuel__detailStatus"
         try:
             status_text = await page.locator(status_selector).first.inner_text(timeout=30000)
             # Check for ARCHIVED or INVALID links (Flashscore 404 or Error pages)
@@ -407,8 +408,8 @@ async def get_final_score(page):
             return "NOT_FINISHED"
 
         # Extract Score (With AIGO-style fallback)
-        home_score_sel = get_selector("fs_match_page", "header_score_home") or "div.detailScore__wrapper > span:nth-child(1)"
-        away_score_sel = get_selector("fs_match_page", "header_score_away") or "div.detailScore__wrapper > span:nth-child(3)"
+        home_score_sel = SelectorManager.get_selector("fs_match_page", "header_score_home") or "div.detailScore__wrapper > span:nth-child(1)"
+        away_score_sel = SelectorManager.get_selector("fs_match_page", "header_score_away") or "div.detailScore__wrapper > span:nth-child(3)"
 
         try:
             # Use shorter timeout for score extraction to prevent hanging
@@ -448,7 +449,7 @@ async def get_final_score(page):
         return "Error"
 
     except Exception as e:
-        HealthMonitor.log_error("score_extraction_error", f"Failed to extract score: {e}", "medium")
+        print(f"    [Health] score_extraction_error (medium): Failed to extract score: {e}")
         return "Error"
 
 
@@ -479,6 +480,7 @@ def update_region_league_url(region_league: str, url: str):
     upsert_entry(REGION_LEAGUE_CSV, entry, files_and_headers[REGION_LEAGUE_CSV], 'region_league_id')
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=5.0)
 async def run_review_process(p: Optional[Playwright] = None):
     """
     Orchestrates the outcome review process (Offline version with Browser Fallback).
@@ -528,5 +530,91 @@ async def run_review_process(p: Optional[Playwright] = None):
 
     except Exception as e:
         print(f"   [CRITICAL] Outcome review failed: {e}")
+
+
+async def run_accuracy_generation():
+    """
+    Aggregates performance metrics from predictions.csv for the last 24h.
+    Logs to audit_log.csv and upserts to Supabase 'accuracy_reports'.
+    """
+    import uuid
+    if not os.path.exists(PREDICTIONS_CSV):
+        return
+
+    print("\n   [ACCURACY] Generating performance metrics (Last 24h)...")
+    try:
+        df = pd.read_csv(PREDICTIONS_CSV, dtype=str).fillna('')
+        if df.empty:
+            print("   [ACCURACY] No predictions found.")
+            return
+
+        # 1. Date Filter (Last 24h)
+        lagos_tz = pytz.timezone('Africa/Lagos')
+        now_lagos = dt.now(lagos_tz)
+        yesterday_lagos = now_lagos - timedelta(days=1)
+
+        def parse_updated(ts):
+            try:
+                dt_obj = pd.to_datetime(ts)
+                if dt_obj.tzinfo is None:
+                    return lagos_tz.localize(dt_obj)
+                return dt_obj.astimezone(lagos_tz)
+            except:
+                return pd.NaT
+
+        df['updated_dt'] = df['last_updated'].apply(parse_updated)
+        df_24h = df[(df['updated_dt'] >= yesterday_lagos) & (df['status'].isin(['reviewed', 'finished']))].copy()
+
+        if df_24h.empty:
+            print("   [ACCURACY] No predictions reviewed in the last 24h.")
+            return
+
+        # 2. Aggregates
+        volume = len(df_24h)
+        correct_count = (df_24h['outcome_correct'] == '1').sum()
+        win_rate = (correct_count / volume) * 100 if volume > 0 else 0
+
+        # Return Calculation
+        total_return = 0
+        for _, row in df_24h.iterrows():
+            try:
+                odds = float(row.get('odds', 0))
+                if odds <= 0: odds = 2.0
+                if row['outcome_correct'] == '1':
+                    total_return += (odds - 1)
+                else:
+                    total_return -= 1
+            except:
+                pass
+        
+        return_pct = (total_return / volume) * 100 if volume > 0 else 0
+
+        # 3. Persistence
+        report_id = str(uuid.uuid4())[:8]
+        report_row = {
+            'report_id': report_id,
+            'timestamp': now_lagos.isoformat(),
+            'volume': str(volume),
+            'win_rate': f"{win_rate:.2f}",
+            'return_pct': f"{return_pct:.2f}",
+            'period': 'last_24h',
+            'last_updated': now_lagos.isoformat()
+        }
+        
+        upsert_entry(ACCURACY_REPORTS_CSV, report_row, files_and_headers[ACCURACY_REPORTS_CSV], 'report_id')
+        log_audit_event('ACCURACY_REPORT', f"Metrics: Vol={volume}, WR={win_rate:.1f}%, ROI={return_pct:.1f}%")
+
+        # 4. Sync
+        sync = SyncManager()
+        if sync.supabase:
+            await sync.batch_upsert('accuracy_reports', [report_row])
+
+    except Exception as e:
+        print(f"   [ACCURACY ERROR] {e}")
+
+
+async def start_review():
+    """Legacy entry point."""
+    await run_review_process()
 
 

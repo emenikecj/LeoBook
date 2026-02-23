@@ -28,6 +28,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from Core.Intelligence.aigo_suite import AIGOSuite
 from typing import Dict, List, Optional
 from datetime import datetime
 import pandas as pd
@@ -465,6 +466,7 @@ async def resolve_metadata_gaps(df: pd.DataFrame, sync_manager: SyncManager) -> 
 
 # ...
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=5.0)
 async def enrich_all_schedules(limit: Optional[int] = None, dry_run: bool = False,
                                 extract_standings: bool = False,
                                 backfill_predictions: bool = False,

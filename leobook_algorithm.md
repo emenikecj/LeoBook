@@ -1,6 +1,6 @@
-# LeoBook v3.1 Algorithm & Codebase Reference
+# LeoBook v3.2 Algorithm & Codebase Reference
 
-> **Version**: 3.1 · **Last Updated**: 2026-02-19 · **Architecture**: Concurrent Clean Architecture (Sequential + Parallel Pipeline)
+> **Version**: 3.2 · **Last Updated**: 2026-02-23 · **Architecture**: Concurrent Clean Architecture (Sequential + Parallel Pipeline)
 
 This document maps the **execution flow** of [Leo.py](Leo.py) to specific files and functions.
 
@@ -11,7 +11,7 @@ This document maps the **execution flow** of [Leo.py](Leo.py) to specific files 
 Leo.py is a **pure orchestrator**. It runs an infinite `while True` loop, splitting the cycle into three phases:
 
 ```
-Leo.py (Orchestrator) v3.1
+Leo.py (Orchestrator) v3.2
 ├── Phase 1 (Sequential Prerequisite):
 │   └── Cloud Sync → Outcome Review → Accuracy report
 ├── Phase 2 (Concurrent Group):
@@ -44,7 +44,7 @@ Runs in parallel with the main cycle via `asyncio.create_task()`.
 ## AI Prediction Pipeline (Chapter 1)
 
 1. **Discovery**: [fs_schedule.py](Modules/Flashscore/fs_schedule.py) extracts fixture IDs.
-   - **v3.1 Robustness**: Implements 2-tier header expansion retry (JS bulk + Locator fallback) to ensure 100% fixture visibility.
+   - **v3.2 Robustness**: Implements 2-tier header expansion retry (JS bulk + Locator fallback) to ensure 100% fixture visibility.
 2. **Analysis**: [fs_processor.py](Modules/Flashscore/fs_processor.py) collects H2H and Standings data.
 3. **Core Engine**: [intelligence.py](Core/Intelligence/intelligence.py) `make_prediction()`
    - **ML Model**: [ml_model.py](Core/Intelligence/ml_model.py) matches patterns against 10k+ historical matches.

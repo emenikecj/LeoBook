@@ -3,7 +3,7 @@
 **Developer**: Matterialless LLC
 **Chief Engineer**: Emenike Chinenye James
 **Powered by**: Grok 4.1 & Gemini 3
-**Architecture**: Concurrent Clean Architecture v3.1 (Sequential + Parallel Pipeline)
+**Architecture**: Concurrent Clean Architecture v3.2 (Sequential + Parallel Pipeline)
 
 ---
 
@@ -22,7 +22,7 @@ For the complete file inventory and step-by-step execution trace, see [LeoBook_T
 
 ---
 
-## System Architecture (v3.1 Concurrent)
+## System Architecture (v3.2 Concurrent)
 
 ```
 Leo.py (Orchestrator)
@@ -34,8 +34,9 @@ Leo.py (Orchestrator)
 └── Live Streamer: Background 60s LIVE score streaming → status propagation
 ```
 
-### Key Innovations (v3.1)
+### Key Innovations (v3.2)
 - **Concurrent Pipeline**: Prologue enrichment runs alongside Chapter 1 predictions, reducing cycle time by ~30%.
+- **First-Principles Cleanup**: Stripped 12+ dead files and unified popup/selector architectures for a minimalist, ultra-fast codebase.
 - **End-to-End Resumability**: Every step (Harvesting, Booking, Enrichment) uses persistent status checks to skip already-processed items on restart.
 - **Robust Scrapers**: 2-tier header expansion retry logic (JS + Locator) in Flashscore scrapers.
 

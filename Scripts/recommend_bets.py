@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 import json
 from dotenv import load_dotenv
 from supabase import create_client, Client
+from Core.Intelligence.aigo_suite import AIGOSuite
 
 # Handle Windows terminal encoding for emojis
 if sys.stdout.encoding != 'utf-8':
@@ -77,6 +78,7 @@ def calculate_market_reliability(predictions):
             
     return reliability
 
+@AIGOSuite.aigo_retry(max_retries=3, delay=1.0, use_aigo=False)
 def get_recommendations(target_date=None, show_all_upcoming=False, **kwargs):
     all_predictions = load_data()
     if not all_predictions:

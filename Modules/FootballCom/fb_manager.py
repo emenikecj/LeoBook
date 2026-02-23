@@ -20,6 +20,7 @@ from .navigator import load_or_create_session, extract_balance
 from Core.Utils.utils import log_error_state
 from Core.Utils.monitor import PageMonitor
 from Core.System.lifecycle import log_state
+from Core.Intelligence.aigo_suite import AIGOSuite
 
 
 async def _create_session(playwright: Playwright):
@@ -37,6 +38,7 @@ async def _create_session(playwright: Playwright):
     return context, page, current_balance
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=5.0)
 async def run_odds_harvesting(playwright: Playwright):
     """
     Chapter 1 Page 2: Odds Discovery & URL Resolution.
@@ -93,6 +95,7 @@ async def run_odds_harvesting(playwright: Playwright):
                 except: pass
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=5.0)
 async def run_automated_booking(playwright: Playwright):
     """
     Chapter 2 Page 1: Automated Booking.

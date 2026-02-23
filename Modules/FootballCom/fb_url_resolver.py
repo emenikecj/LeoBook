@@ -4,8 +4,8 @@
 # Functions: match_flash_to_fb(), resolve_urls(), get_harvested_matches_for_date()
 
 from playwright.async_api import Page
-from fuzzywuzzy import fuzz
 import asyncio
+from datetime import datetime
 from typing import List, Dict
 
 from Data.Access.db_helpers import (
@@ -16,17 +16,9 @@ from Data.Access.sync_manager import run_full_sync
 from .navigator import navigate_to_schedule, select_target_date
 from .extractor import extract_league_matches
 from .match_resolver import GrokMatcher
-from Core.System.search_dict import fuzzy_search
 
 # Initialize Matcher (Singleton-ish)
 matcher = GrokMatcher()
-
-def match_flash_to_fb(flash_name: str):
-    """best canonical name for Football.com lookup using the dictionary."""
-    matches = fuzzy_search(flash_name, top_k=3, max_dist=3)
-    if matches:
-        return matches[0]["name"]  # best canonical name for Football.com lookup
-    return None
 
 async def resolve_urls(page: Page, target_date: str) -> dict:
     """

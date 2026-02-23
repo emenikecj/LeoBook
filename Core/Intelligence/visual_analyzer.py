@@ -22,14 +22,13 @@ from ..Utils.utils import LOG_DIR
 
 
 # Import sub-modules
-from .html_utils import clean_html_content
-from .selector_mapping import map_visuals_to_selectors
-from .selector_utils import simplify_selectors
+from .utils import clean_html_content
+from .selector_manager import map_visuals_to_selectors, simplify_selectors
 
 # --- Vision Integration ---
 
 async def get_visual_ui_analysis(page: Any, context_key: str = "unknown") -> str:
-    from .api_manager import grok_api_call
+    from .api_manager import unified_api_call
     import os
 
     print(f"    [VISION] Loading UI/UX analysis from logged screenshot for '{context_key}'...")
@@ -88,7 +87,7 @@ async def get_visual_ui_analysis(page: Any, context_key: str = "unknown") -> str
         Include: Position, Repetition, State.
         Be exhaustive. Do not summarize.
         """
-        response = await grok_api_call(
+        response = await unified_api_call(
             [prompt, image_data],
             generation_config={"temperature": 0.1}
         )
@@ -232,10 +231,10 @@ class VisualAnalyzer:
         full_prompt = prompt + prompt_tail
 
         try:
-            from .api_manager import gemini_api_call_with_rotation
-            response = await gemini_api_call_with_rotation(
+            from .api_manager import unified_api_call
+            response = await unified_api_call(
                 full_prompt,
-                generation_config={"response_mime_type": "application/json"}
+                generation_config={"temperature": 0.1, "response_mime_type": "application/json"}
             )
             # Fix for JSON Decode Errors
             from .utils import clean_json_response

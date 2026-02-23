@@ -17,7 +17,7 @@ Traditional bots break when a button's ID changes. AIGO does not. Instead of rel
 When the `InteractionEngine` is asked to perform any browser action (e.g., "Click the Home Team Win button"), it follows this AIGO-managed cascade:
 
 ### Phase 0: Context Discovery
-- **Module**: `selector_manager.py`, `selector_mapping.py`
+- **Module**: `selector_manager.py`
 - **Logic**: Looks up the target element in `knowledge.json` — the CSS selector knowledge base. If a known-good selector exists and was recently validated, it's used immediately.
 - **Speed**: Sub-millisecond lookup, zero API calls.
 
@@ -82,9 +82,9 @@ AIGO is **not called directly** by Leo.py. Instead, it's woven into every browse
 | **Prologue P1** | `outcome_reviewer.py` | Score extraction from Flashscore match pages |
 | **Prologue P2** | `enrich_all_schedules.py` | Team ID, crest, and standings extraction |
 | **Ch1 P1** | `fs_processor.py` | H2H tab navigation, data extraction |
-| **Ch1 P2** | `navigator_aigo.py`, `booking_code.py` | Football.com navigation, odds selection |
-| **Ch2 P1** | `slip_aigo.py`, `placement.py` | Bet slip interactions, code injection |
-| **Ch2 P2** | `balance_extractor_aigo.py`, `withdrawal.py` | Balance reading, withdrawal execution |
+| **Ch1 P2** | `navigator.py`, `booking_code.py` | Football.com navigation, odds selection |
+| **Ch2 P1** | `slip.py`, `placement.py` | Bet slip interactions, code injection |
+| **Ch2 P2** | `withdrawal.py` | Balance reading, withdrawal execution |
 
 ---
 

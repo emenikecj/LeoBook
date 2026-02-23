@@ -16,11 +16,12 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 from collections import defaultdict
+from Core.Intelligence.aigo_suite import AIGOSuite
 
 from Core.Intelligence.rule_engine_manager import RuleEngineManager
 from Core.Intelligence.learning_engine import LearningEngine
 from Data.Access.db_helpers import get_all_schedules, get_standings
-from Data.Access.prediction_evaluator import evaluate_prediction
+from Data.Access.db_helpers import evaluate_market_outcome as evaluate_prediction
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "Data" / "Store"
@@ -106,6 +107,7 @@ def _parse_date(date_str: str) -> Optional[datetime]:
     return None
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=5.0)
 async def run_progressive_backtest(
     engine_id: str,
     start_date: str,
@@ -123,7 +125,7 @@ async def run_progressive_backtest(
     Returns summary dict with accuracy stats.
     """
     from Core.Intelligence.rule_engine_manager import RuleEngineManager
-    from Core.Intelligence.model import RuleEngine
+    from Core.Intelligence.rule_engine import RuleEngine
 
     engine = RuleEngineManager.get_engine(engine_id)
     if not engine:

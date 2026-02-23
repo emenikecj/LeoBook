@@ -20,9 +20,117 @@ USAGE PATTERNS:
 """
 
 import os
+import re
+import json
+import asyncio
 from typing import Dict, Any, Optional
 
 from .selector_db import load_knowledge, save_knowledge, knowledge_db
+from .api_manager import unified_api_call
+from .utils import clean_json_response
+from .prompts import get_keys_for_context, BASE_MAPPING_INSTRUCTIONS
+
+# ==============================================================================
+# 1. SELECTOR AI MAPPING & SIMPLIFICATION (Merged from mapping & utils)
+# ==============================================================================
+
+async def map_visuals_to_selectors(
+    ui_visual_context: str, html_content: str, context_key: Optional[str] = None
+) -> Optional[Dict[str, str]]:
+    """Map visual UI elements to CSS selectors using AI with dynamic context-aware keys"""
+    ctx = context_key or "shared"
+    target_keys = get_keys_for_context(ctx)
+    keys_str = json.dumps(target_keys, indent=2)
+
+    prompt = f"{BASE_MAPPING_INSTRUCTIONS}\n\n### MANDATORY KEYS FOR THIS CONTEXT:\n{keys_str}"
+    prompt_tail = f"\n### INPUT DATA\n--- COMPONENT INVENTORY ---\n{ui_visual_context}\n--- DOCUMENT STRUCTURE ---\n{html_content}\n\nProvide the mapping in JSON format. No separate text or explanation."
+    full_prompt = prompt + prompt_tail
+
+    try:
+        response = await unified_api_call(full_prompt, generation_config={"temperature": 0.1, "response_mime_type": "application/json"})
+        if response and hasattr(response, 'text') and response.text:
+            cleaned_json = clean_json_response(response.text)
+            try: return json.loads(cleaned_json)
+            except json.JSONDecodeError as e: print(f"    [MAPPING ERROR] JSON parsing failed: {e}"); return None
+        else:
+            print(f"    [MAPPING ERROR] AI API returned no text response")
+            return None
+    except Exception as e:
+        print(f"    [MAPPING ERROR] Failed to map visuals to selectors: {e}")
+        return None
+
+def simplify_selectors(selectors: Dict[str, str], html_content: str) -> Dict[str, str]:
+    """Post-process AI-generated selectors to simplify complex ones and make them more robust."""
+    simplified = {}
+    for key, selector in selectors.items():
+        if _is_simple_selector(selector):
+            simplified[key] = selector
+            continue
+        
+        simplified_selector = _simplify_complex_selector(selector, html_content, key)
+        if simplified_selector != selector:
+            print(f"    [SELECTOR SIMPLIFIED] '{key}': '{selector}' -> '{simplified_selector}'")
+        else:
+            print(f"    [SELECTOR KEPT] '{key}': '{selector}' (could not simplify)")
+        simplified[key] = simplified_selector
+    return simplified
+
+def _is_simple_selector(selector: str) -> bool:
+    if not selector: return True
+    parts = selector.split()
+    if len(parts) > 3: return False
+    if selector.count('.') > 2: return False
+    if selector.count('>') > 1 or selector.count(' ') > 2: return False
+    if len(selector) > 100: return False
+    return True
+
+def _simplify_complex_selector(selector: str, html_content: str, key: str) -> str:
+    id_match = re.search(r'#[\w-]+', selector)
+    if id_match and html_content.count(id_match.group(0)) == 1:
+        return id_match.group(0)
+
+    for class_match in re.findall(r'\.[\w-]+', selector):
+        if html_content.count(class_match) == 1:
+            return class_match
+
+    k = key.lower()
+    if 'button' in k or 'btn' in k:
+        if 'schedule' in k: return "a[href*='schedule']"
+        if 'login' in k: return "button:has-text('Login')"
+        if 'search' in k: return ".search-button"
+
+    if 'input' in k:
+        if 'mobile' in k or 'phone' in k: return "input[type='tel']"
+        if 'password' in k: return "input[type='password']"
+
+    parts = selector.split()
+    if len(parts) > 1:
+        last_parts = []
+        for part in reversed(parts):
+            if part.strip() and not part in ['>', '+', '~', ':has-text', ':contains']:
+                p = part.strip(')"\'')
+                if p and not p.startswith('('):
+                    last_parts.insert(0, p)
+                    if len(last_parts) >= 2: break
+        if last_parts:
+            candidate = ' '.join(last_parts)
+            if len(candidate) < len(selector) and _is_simple_selector(candidate):
+                return candidate
+
+    if 'full_schedule_button' in key: return "a[href*='schedule']"
+    if 'league_header' in key: return ".league-title"
+    if 'match_rows' in key: return ".match-card"
+    if 'match_url' in key: return ".match-card a"
+
+    if selector.endswith('")') or selector.endswith("')"):
+        clean_parts = [p.strip(')"\'') for p in selector.split() if p.strip(')"\'') and not p.startswith('(') and not p.endswith('(')]
+        if clean_parts: return ' '.join(clean_parts[-2:])
+
+    return selector
+
+# ==============================================================================
+# 2. SELECTOR MANAGER
+# ==============================================================================
 
 
 class SelectorManager:
@@ -42,14 +150,6 @@ class SelectorManager:
         if not selector:
             raise ValueError(f"CRITICAL: Missing strict selector for '{element_key}' in context '{context}'. check knowledge.json")
         return selector
-
-    @staticmethod
-    async def execute_smart_action(page, context_key: str, element_key: str, action_fn, max_retries: int = 3):
-        """
-        Public accessor to the resilient interaction engine.
-        """
-        from .interaction_engine import execute_smart_action
-        return await execute_smart_action(page, context_key, element_key, action_fn, max_retries)
 
     @staticmethod
     async def get_selector_auto(page, context_key: str, element_key: str) -> str:
@@ -80,11 +180,11 @@ class SelectorManager:
             print(
                 f"    [Auto-Heal] Selector '{element_key}' in '{context_key}' invalid/missing. Initiating TARGETED AI repair..."
             )
-            from .intelligence import analyze_page_and_update_selectors
+            from .visual_analyzer import VisualAnalyzer
             
             info = f"Selector '{element_key}' in '{context_key}' invalid/missing."
             # TARGETED: Only ask AI about THIS specific key, not all 155+ keys
-            await analyze_page_and_update_selectors(
+            await VisualAnalyzer.analyze_page_and_update_selectors(
                 page, context_key, force_refresh=True, info=info, target_key=element_key
             )
 
@@ -105,7 +205,7 @@ class SelectorManager:
         Called only when a selector actually fails during use.
         Attempts to find a new selector for the SPECIFIC failed element only.
         """
-        from .intelligence import analyze_page_and_update_selectors
+        from .visual_analyzer import VisualAnalyzer
 
         print(f"    [On-Demand Heal] Selector '{element_key}' failed in '{context_key}'. Attempting TARGETED repair...")
 
@@ -120,7 +220,7 @@ class SelectorManager:
 
             info = f"Selector '{element_key}' failed during use in '{context_key}'. {failure_reason}"
             # TARGETED: Only heal THIS specific key
-            await analyze_page_and_update_selectors(
+            await VisualAnalyzer.analyze_page_and_update_selectors(
                 page, context_key, force_refresh=True, info=info, target_key=element_key
             )
 

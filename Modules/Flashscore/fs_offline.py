@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 from playwright.async_api import Playwright
 from Data.Access.db_helpers import get_all_schedules, get_standings, save_prediction
 from Scripts.recommend_bets import get_recommendations
-from Core.Intelligence.model import RuleEngine
+from Core.Intelligence.rule_engine import RuleEngine
 from Core.Intelligence.rule_config import RuleConfig
 import csv
 import os

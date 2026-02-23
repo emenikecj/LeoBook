@@ -7,7 +7,7 @@ import re
 from playwright.async_api import Page, TimeoutError, ElementHandle
 import re
 from typing import Dict, Any, List
-from Core.Intelligence.intelligence import get_selector_auto, get_selector
+from Core.Intelligence.selector_manager import SelectorManager
 from Core.Browser.site_helpers import fs_universal_popup_dismissal
 import asyncio
 
@@ -17,7 +17,7 @@ async def activate_standings_tab(page: Page) -> bool:
     """
     print("      [Extractor] Activating Standings tab...")
     # Use the CORRECT key 'tab_standings' from 'fs_match_page' as defined in knowledge.json
-    tab_selector = get_selector("fs_match_page", "tab_standings")
+    tab_selector = SelectorManager.get_selector("fs_match_page", "tab_standings")
     
     if not tab_selector:
         print("      [Extractor] Error: 'tab_standings' selector not found in 'fs_match_page' context.")
@@ -76,19 +76,19 @@ async def extract_standings_data(page: Page, context: str = "fs_standings_tab") 
     print("      [Extractor] Extracting Standings tab...")
 
     selectors = {
-        "standings_row": get_selector(context, "standings_row") or ".ui-table__row",
-        "standings_col_rank": get_selector(context, "standings_col_rank") or ".tableCellRank",
-        "standings_col_team_name": get_selector(context, "standings_col_team_name") or ".tableCellParticipant__name",
-        "standings_col_team_link": get_selector(context, "standings_col_team_link") or ".tableCellParticipant__name a",
-        "standings_col_matches_played": get_selector(context, "standings_col_matches_played") or "td:nth-child(3)",
-        "standings_col_wins": get_selector(context, "standings_col_wins") or "td:nth-child(4)",
-        "standings_col_draws": get_selector(context, "standings_col_draws") or "td:nth-child(5)",
-        "standings_col_losses": get_selector(context, "standings_col_losses") or "td:nth-child(6)",
-        "standings_col_goals": get_selector(context, "standings_col_goals") or "td:nth-child(7)",
-        "standings_col_points": get_selector(context, "standings_col_points") or ".tableCellPoints",
-        "standings_col_form": get_selector(context, "standings_col_form") or ".tableCellForm",
-        "meta_breadcrumb_country": get_selector(context, "meta_breadcrumb_country") or ".tournamentHeader__country",
-        "meta_breadcrumb_league": get_selector(context, "meta_breadcrumb_league") or ".tournamentHeader__league a",
+        "standings_row": SelectorManager.get_selector(context, "standings_row") or ".ui-table__row",
+        "standings_col_rank": SelectorManager.get_selector(context, "standings_col_rank") or ".tableCellRank",
+        "standings_col_team_name": SelectorManager.get_selector(context, "standings_col_team_name") or ".tableCellParticipant__name",
+        "standings_col_team_link": SelectorManager.get_selector(context, "standings_col_team_link") or ".tableCellParticipant__name a",
+        "standings_col_matches_played": SelectorManager.get_selector(context, "standings_col_matches_played") or "td:nth-child(3)",
+        "standings_col_wins": SelectorManager.get_selector(context, "standings_col_wins") or "td:nth-child(4)",
+        "standings_col_draws": SelectorManager.get_selector(context, "standings_col_draws") or "td:nth-child(5)",
+        "standings_col_losses": SelectorManager.get_selector(context, "standings_col_losses") or "td:nth-child(6)",
+        "standings_col_goals": SelectorManager.get_selector(context, "standings_col_goals") or "td:nth-child(7)",
+        "standings_col_points": SelectorManager.get_selector(context, "standings_col_points") or ".tableCellPoints",
+        "standings_col_form": SelectorManager.get_selector(context, "standings_col_form") or ".tableCellForm",
+        "meta_breadcrumb_country": SelectorManager.get_selector(context, "meta_breadcrumb_country") or ".tournamentHeader__country",
+        "meta_breadcrumb_league": SelectorManager.get_selector(context, "meta_breadcrumb_league") or ".tournamentHeader__league a",
     }
 
     from Core.Utils.constants import WAIT_FOR_LOAD_STATE_TIMEOUT

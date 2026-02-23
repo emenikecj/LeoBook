@@ -113,7 +113,7 @@ class PageAnalyzer:
         V5: Retries once if confidence < 0.8 before defaulting to fb_global.
         """
         try:
-            from .api_manager import gemini_api_call_with_rotation
+            from .api_manager import unified_api_call
             from .utils import clean_json_response
             
             screenshot_path = "Config/temp_probe.png"
@@ -140,7 +140,7 @@ class PageAnalyzer:
             }}
             """
             
-            response = await gemini_api_call_with_rotation([prompt_v1, image_data])
+            response = await unified_api_call([prompt_v1, image_data], generation_config={"temperature": 0.1, "response_mime_type": "application/json"})
             data = json.loads(clean_json_response(response.text))
             
             ctx = data.get("context_key", "fb_global")
@@ -171,7 +171,7 @@ class PageAnalyzer:
                 }}
                 """
                 
-                retry_response = await gemini_api_call_with_rotation([prompt_v2, image_data])
+                retry_response = await unified_api_call([prompt_v2, image_data], generation_config={"temperature": 0.1, "response_mime_type": "application/json"})
                 retry_data = json.loads(clean_json_response(retry_response.text))
                 
                 ctx_retry = retry_data.get("context_key", "fb_global")

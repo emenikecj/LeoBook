@@ -11,25 +11,17 @@ High-reliability batch matching with your specified models.
 import os
 import json
 import asyncio
-import aiohttp
-import re
+from typing import List, Dict, Optional, Any
 from datetime import datetime
-from typing import List, Dict, Optional
+from .api_manager import unified_api_call
+from .utils import clean_json_response
+from Core.Intelligence.aigo_suite import AIGOSuite
 
 class UnifiedBatchMatcher:
     def __init__(self):
-        self.grok_key = os.getenv("GROK_API_KEY")
-        self.gemini_key = os.getenv("GOOGLE_API_KEY")
-        self.openrouter_key = os.getenv("OPENROUTER_API_KEY")
-        
-        self.timeout = aiohttp.ClientTimeout(total=180)  # 3 min
-        self.max_retries = 3
         self.chunk_size = 8  # Safe for token limits
 
-        self.grok_model = "grok-4-1-fast-reasoning"
-        self.gemini_model = "gemini-3-flash"
-        self.openrouter_model = "google/gemini-2.5-flash"
-
+    @AIGOSuite.aigo_retry(max_retries=2, delay=2.0, use_aigo=False)
     async def match_batch(self, date: str, predictions: List[Dict], site_matches: List[Dict]) -> Dict[str, str]:
         all_results = {}
         predictions = sorted(predictions, key=lambda x: x.get('fixture_id', ''))
@@ -56,41 +48,30 @@ class UnifiedBatchMatcher:
         print(f"  [AI Matcher] Final: {len(all_results)}/{len(predictions)} matched")
         return all_results
 
+    @AIGOSuite.aigo_retry(max_retries=2, delay=2.0)
     async def _process_single_chunk(self, date: str, predictions: List[Dict], site_matches: List[Dict]) -> Dict[str, str]:
         prompt = self._build_improved_prompt(date, predictions, site_matches)
         
-        rotation = [
-            (self._call_grok, "Grok", self.grok_model),
-            (self._call_gemini, "Gemini", self.gemini_model),
-            (self._call_openrouter, "OpenRouter", self.openrouter_model)
-        ]
-        
-        for call_func, model_name, model_id in rotation:
-            if not (model_name == "Grok" and self.grok_key or
-                    model_name == "Gemini" and self.gemini_key or
-                    model_name == "OpenRouter" and self.openrouter_key):
-                print(f"  [AI Skip] {model_name} key missing – skipping")
-                continue
+        try:
+            print(f"    [AI Chunk] Requesting AI Match Resolution...")
+            response = await unified_api_call(
+                prompt,
+                generation_config={"temperature": 0.0, "response_mime_type": "application/json"}
+            )
+            
+            if response and hasattr(response, 'text') and response.text:
+                result = response.text
+                print(f"    [AI Raw Response] {result[:3000]}...")  # Debug
+                parsed = self._robust_parse(result)
+                if parsed is not None:
+                    print(f"    [AI Success] Parsed {len(parsed)} valid matches.")
+                    return parsed
+            
+            print(f"    [AI] No valid response or empty result.")
+        except Exception as e:
+            print(f"    [AI Exception] Chunk matching failed: {e}")
 
-            for attempt in range(1, self.max_retries + 1):
-                try:
-                    print(f"    [AI Chunk] {model_name} ({model_id}) Attempt {attempt}...")
-                    result = await call_func(prompt, model_id)
-                    if result:
-                        print(f"    [AI Raw Response] {result[:3000]}...")  # Debug
-                        parsed = self._robust_parse(result)
-                        if parsed:
-                            print(f"    [AI Success] Parsed {len(parsed)} matches from {model_name}")
-                            return parsed
-                    else:
-                        print(f"    [AI] {model_name} returned empty/null")
-                except Exception as e:
-                    print(f"    [AI Exception] {model_name} attempt {attempt}: {e}")
-                    if attempt < self.max_retries:
-                        await asyncio.sleep(5)
-            print(f"    [AI] {model_name} exhausted retries")
-
-        print("  [AI] All models failed for chunk")
+        print("  [AI] Matching failed for chunk.")
         return {}
 
     def _build_improved_prompt(self, date: str, predictions: List[Dict], site_matches: List[Dict]) -> str:
@@ -131,73 +112,15 @@ RESPONSE: Valid JSON only.
 """
         return prompt
 
-    async def _call_grok(self, prompt: str, model: str) -> Optional[str]:
-        url = "https://api.x.ai/v1/chat/completions"
-        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.grok_key}"}
-        payload = {
-            "messages": [{"role": "user", "content": prompt}],
-            "model": model,
-            "temperature": 0.0,
-            "max_tokens": 2048
-        }
-        return await self._make_api_call(url, headers, payload)
 
-    async def _call_gemini(self, prompt: str, model: str) -> Optional[str]:
-        url = f"https://generativelanguage.googleapis.com/v1/models/{model}:generateContent?key={self.gemini_key}"
-        payload = {"contents": [{"parts": [{"text": prompt}]}]}
-        return await self._make_api_call(url, {}, payload)
-
-    async def _call_openrouter(self, prompt: str, model: str) -> Optional[str]:
-        url = "https://openrouter.ai/api/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self.openrouter_key}",
-            "HTTP-Referer": "https://leo-book.com",
-            "X-Title": "LeoBook Matcher"
-        }
-        payload = {
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.0,
-            "max_tokens": 2048
-        }
-        return await self._make_api_call(url, headers, payload)
-
-    async def _make_api_call(self, url: str, headers: Dict, payload: Dict) -> Optional[str]:
-        async with aiohttp.ClientSession(timeout=self.timeout) as session:
-            try:
-                async with session.post(url, headers=headers, json=payload) as resp:
-                    text = await resp.text()
-                    if resp.status in (200, 201):
-                        data = json.loads(text)
-                        if 'choices' in data and data['choices']:
-                            return data['choices'][0]['message']['content']
-                        elif 'candidates' in data and data['candidates']:
-                            return data['candidates'][0]['content']['parts'][0]['text']
-                    print(f"  [API Error] Status {resp.status} - {text[:200]}...")
-                    return None
-            except Exception as e:
-                print(f"  [API Exception] {e}")
-                return None
 
     def _robust_parse(self, text: str) -> Optional[Dict[str, str]]:
-        text = text.strip()
         if not text:
             return None
 
-        # Strip markdown/code blocks
-        if "```json" in text:
-            text = text.split("```json")[1].split("```")[0].strip()
-        elif "```" in text:
-            text = text.split("```")[1].split("```")[0].strip()
-
-        # Find JSON block
-        start = text.find('{')
-        end = text.rfind('}') + 1
-        if start != -1 and end > start:
-            text = text[start:end]
-
+        cleaned_json = clean_json_response(text)
         try:
-            parsed = json.loads(text)
+            parsed = json.loads(cleaned_json)
             if isinstance(parsed, dict):
                 # Filter invalid entries
                 valid = {k: v for k, v in parsed.items() if k and v and isinstance(v, str) and v.startswith("http")}
@@ -207,9 +130,10 @@ RESPONSE: Valid JSON only.
                     print("  [Parse] Filtered empty/invalid entries – returning {}")
                     return {}
         except json.JSONDecodeError as e:
-            print(f"  [Parse Error] JSON decode failed: {e}")
+            print(f"  [Parse Error] JSON decode failed via clean_json_response: {e}")
 
         # Manual fallback
+        import re
         matches = re.findall(r'"(\w+)":\s*"([^"]+)"', text)
         if matches:
             valid = {k: v for k, v in dict(matches).items() if v.startswith("http")}

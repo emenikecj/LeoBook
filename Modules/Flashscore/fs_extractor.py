@@ -7,8 +7,10 @@
 import asyncio
 from playwright.async_api import Page
 from Core.Intelligence.selector_manager import SelectorManager
+from Core.Intelligence.aigo_suite import AIGOSuite
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=2.0)
 async def expand_all_leagues(page: Page) -> int:
     """Bulk-expand all collapsed leagues via a single JS call."""
     try:
@@ -33,6 +35,7 @@ async def expand_all_leagues(page: Page) -> int:
         return 0
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=3.0, context_key="fs_home_page", element_key="match_rows")
 async def extract_all_matches(page: Page, label: str = "Extractor") -> list:
     """
     Extracts ALL matches from the Flashscore ALL tab.

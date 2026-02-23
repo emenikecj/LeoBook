@@ -22,6 +22,7 @@ from Core.Utils.utils import BatchProcessor
 from Core.Utils.monitor import PageMonitor
 from Core.Intelligence.selector_manager import SelectorManager
 from Core.Utils.constants import NAVIGATION_TIMEOUT, WAIT_FOR_LOAD_STATE_TIMEOUT
+from Core.Intelligence.aigo_suite import AIGOSuite
 
 # Modular Imports
 from .fs_schedule import extract_matches_from_page
@@ -30,6 +31,7 @@ from .fs_offline import run_flashscore_offline_repredict
 
 NIGERIA_TZ = ZoneInfo("Africa/Lagos")
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=5.0)
 async def run_flashscore_analysis(playwright: Playwright):
     """
     Main function to handle Flashscore data extraction and analysis.
@@ -210,6 +212,7 @@ async def run_flashscore_analysis(playwright: Playwright):
     print(f"\n--- Data Extraction & Analysis Complete: {total_cycle_predictions} new predictions found. ---")
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=5.0)
 async def run_flashscore_schedule_only(playwright: Playwright, refresh: bool = False, extract_all: bool = False):
     """
     Schedule-only mode: extract match schedules, save to DB + sync.

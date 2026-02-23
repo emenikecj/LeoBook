@@ -13,12 +13,9 @@ from typing import List, Dict, Any
 from datetime import datetime, timedelta
 import numpy as np
 
-from .learning_engine import LearningEngine
-from .ml_model import MLModel
 from .tag_generator import TagGenerator
 from .goal_predictor import GoalPredictor
 from .betting_markets import BettingMarkets
-
 from .rule_config import RuleConfig
 
 class RuleEngine:
@@ -79,14 +76,13 @@ class RuleEngine:
         home_xg = sum(float(k.replace("3+", "3.5")) * v for k, v in home_dist["goals_scored"].items())
         away_xg = sum(float(k.replace("3+", "3.5")) * v for k, v in away_dist["goals_scored"].items())
 
-        # Prepare ML features
-        ml_features = MLModel.prepare_features(vision_data)
-        ml_prediction = MLModel.predict(ml_features) if ml_features else {"confidence": 0.5, "prediction": "UNKNOWN"}
+        # ML prediction removed in cleanup
+        ml_prediction = {"confidence": 0.5, "prediction": "UNKNOWN"}
 
-        # --- LOAD REGION-SPECIFIC WEIGHTS (engine-aware) ---
-        weights = LearningEngine.load_weights(region_league, engine_id=config.id)
+        # --- WEIGHTS (Dynamic loading removed) ---
+        weights = {} 
 
-        # Weighted rule voting using learned weights
+        # Weighted rule voting using config
         home_score = away_score = draw_score = over25_score = 0
         reasoning = []
 
@@ -192,7 +188,7 @@ class RuleEngine:
         # Format prediction text
         prediction_text = best_prediction["market_prediction"]
         
-        # Confidence Calibration (League Specific)
+        # Confidence Calibration (Manual Fallback)
         confidence_calibration = weights.get("confidence_calibration", {})
         # Map score to category
         raw_conf = best_prediction.get("confidence_score", 0.5)

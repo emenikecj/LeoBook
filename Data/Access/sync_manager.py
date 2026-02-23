@@ -17,6 +17,7 @@ from typing import Dict, List, Any, Optional, Set
 
 from Data.Access.supabase_client import get_supabase_client
 from Data.Access.db_helpers import DB_DIR, files_and_headers
+from Core.Intelligence.aigo_suite import AIGOSuite
 
 logger = logging.getLogger(__name__)
 
@@ -48,23 +49,7 @@ class SyncManager:
         if not self.supabase:
             logger.warning("[!] SyncManager initialized without Supabase connection. Sync disabled.")
 
-    async def _retry_async(self, func, *args, max_retries: int = 3, initial_delay: float = 1.0, **kwargs):
-        """Helper for exponential backoff retries on async operations."""
-        retries = 0
-        while retries < max_retries:
-            try:
-                if asyncio.iscoroutinefunction(func):
-                    return await func(*args, **kwargs)
-                else:
-                    return func(*args, **kwargs)
-            except Exception as e:
-                retries += 1
-                if retries == max_retries:
-                    logger.error(f"      [Retry Fail] Final attempt failed after {max_retries} tries: {e}")
-                    raise e
-                delay = initial_delay * (2 ** (retries - 1))
-                logger.warning(f"      [Retry {retries}/{max_retries}] Transient error: {e}. Retrying in {delay}s...")
-                await asyncio.sleep(delay)
+    # Removed manual _retry_async in favor of universal @aigo_retry decorator
 
     async def sync_on_startup(self):
         """Pull remote changes and push local changes for all configured tables."""
@@ -175,8 +160,7 @@ class SyncManager:
         
         while True:
             try:
-                func = lambda o=offset: self.supabase.table(table_name).select(f"{key_field},last_updated").range(o, o + batch_size - 1).execute()
-                res = await self._retry_async(func)
+                res = self.supabase.table(table_name).select(f"{key_field},last_updated").range(offset, offset + batch_size - 1).execute()
                 
                 rows = res.data
                 if not rows:
@@ -213,8 +197,7 @@ class SyncManager:
         pbar = tqdm(total=len(ids), desc=f"    Pulling {table_name}", unit="row")
         for i in range(0, len(ids), batch_size):
             batch_ids = ids[i:i + batch_size]
-            func = lambda b=batch_ids: self.supabase.table(table_name).select("*").in_(key_field, b).execute()
-            res = await self._retry_async(func)
+            res = self.supabase.table(table_name).select("*").in_(key_field, batch_ids).execute()
             pulled_data.extend(res.data)
             pbar.update(len(batch_ids))
         pbar.close()
@@ -336,8 +319,7 @@ class SyncManager:
             
             for i in range(0, len(deduped), api_batch_size):
                 batch = deduped[i:i + api_batch_size]
-                func = lambda b=batch: self.supabase.table(table_name).upsert(b, on_conflict=conflict_key).execute()
-                await self._retry_async(func)
+                self.supabase.table(table_name).upsert(batch, on_conflict=conflict_key).execute()
                 pbar.update(len(batch))
                 
             pbar.close()
@@ -360,8 +342,7 @@ class SyncManager:
         
         try:
             # Fetch remote sample
-            func = lambda: self.supabase.table(table_name).select("*").in_(key_field, sample_ids).execute()
-            res = await self._retry_async(func)
+            res = self.supabase.table(table_name).select("*").in_(key_field, sample_ids).execute()
             remote_rows = {str(r[key_field]): r for r in res.data}
             
             # Load local sample
@@ -410,8 +391,9 @@ class SyncManager:
         except Exception as e:
             logger.error(f"    [x] Parity verification failed: {e}")
 
+@AIGOSuite.aigo_retry(max_retries=3, delay=2.0, use_aigo=False)
 async def run_full_sync(session_name: str = "Periodic"):
-    """Wrapper to sync ALL tables with audit logging and failure reporting."""
+    """Wrapper to sync ALL tables with audit logging and AIGO protection."""
     from Data.Access.db_helpers import log_audit_event
     manager = SyncManager()
     logger.info(f"Starting global full sync [{session_name}]...")

@@ -6,15 +6,17 @@
 import asyncio # Keep asyncio for async operations
 from typing import Optional # Keep Optional for type hinting
 from playwright.async_api import Page, TimeoutError, Frame # Import Frame
-from Core.Intelligence.intelligence import get_selector
+from Core.Intelligence.selector_manager import SelectorManager
+from Core.Intelligence.aigo_suite import AIGOSuite
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=2.0)
 async def fs_universal_popup_dismissal(page: Page, context: str = "fs_generic"):
     """Universal pop-up dismissal for Flashscore."""
     await accept_cookies_robust(page)
 
     try:
         understand_selectors = [
-            get_selector(context, 'tooltip_i_understand_button'),
+            SelectorManager.get_selector(context, 'tooltip_i_understand_button'),
             "button:has-text('I understand')",
         ]
         for sel in understand_selectors:
@@ -31,7 +33,7 @@ async def fs_universal_popup_dismissal(page: Page, context: str = "fs_generic"):
 async def accept_cookies_robust(page: Page):
     """Handles cookie consent dialogs across different patterns."""
     try:
-        onetrust_sel = get_selector('fs_home_page', 'cookie_accept_onetrust')
+        onetrust_sel = SelectorManager.get_selector('fs_home_page', 'cookie_accept_onetrust')
         if onetrust_sel:
             onetrust_btn = page.locator(onetrust_sel)
             if await onetrust_btn.is_visible(timeout=2000):
@@ -43,7 +45,7 @@ async def accept_cookies_robust(page: Page):
         pass
 
     try:
-        cookie_sel = get_selector('fs_home_page', 'cookie_accept_button')
+        cookie_sel = SelectorManager.get_selector('fs_home_page', 'cookie_accept_button')
         if cookie_sel and await page.locator(cookie_sel).is_visible(timeout=1000):
             await page.locator(cookie_sel).click()
             print(f"    [Cookies] Accepted via AI selector")
@@ -62,11 +64,12 @@ async def accept_cookies_robust(page: Page):
     except Exception:
         pass
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=5.0)
 async def click_next_day(page: Page, match_row_selector: str) -> bool:
     """Clicks the next day button in calendar."""
     print("  [Navigation] Clicking next day...")
     await accept_cookies_robust(page)
-    next_sel = get_selector('fs_home_page', 'next_day_button')
+    next_sel = SelectorManager.get_selector('fs_home_page', 'next_day_button')
     if next_sel:
         try:
             btn = page.locator(next_sel).first
@@ -80,6 +83,7 @@ async def click_next_day(page: Page, match_row_selector: str) -> bool:
     return False
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=3.0)
 async def fb_universal_popup_dismissal(page: Page, context: str = "fb_generic", monitor_forever: bool = False):
     """Universal pop-up dismissal for Football.com - NOW USING MODULAR HANDLER."""
     print(f"[DEBUG] fb_universal_popup_dismissal called with context='{context}', monitor_forever={monitor_forever}")
@@ -116,7 +120,7 @@ async def get_main_frame(page: Page) -> Optional[Page | Frame]:
     Otherwise, it returns the original page object.
     """
     try:
-        app_sel = get_selector('fb_match_page', 'app_iframe')
+        app_sel = SelectorManager.get_selector('fb_match_page', 'app_iframe')
         if not app_sel:
             app_sel = '#app'  # Ultimate fallback
         iframe_locator = page.locator(app_sel)

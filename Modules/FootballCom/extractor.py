@@ -14,14 +14,16 @@ from typing import List, Dict
 from playwright.async_api import Page
 
 from Core.Intelligence.selector_manager import SelectorManager
-from Core.Intelligence.intelligence import get_selector
+
 from Core.Utils.constants import WAIT_FOR_LOAD_STATE_TIMEOUT
 from .navigator import hide_overlays
+from Core.Intelligence.aigo_suite import AIGOSuite
 
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=2.0, context_key="fb_schedule_page", element_key="league_section")
 async def extract_league_matches(page: Page, target_date: str) -> List[Dict]:
-    """Iterates through all league headers, expands them, and extracts matches for a specific date."""
-    print("  [Harvest] Starting 'Expand & Harvest' sequence...")
+    """Iterates leagues and extracts matches with AIGO protection."""
+    print("  [Harvest] Starting protected extraction sequence...")
     await hide_overlays(page)
     all_matches = []
     
@@ -35,140 +37,63 @@ async def extract_league_matches(page: Page, target_date: str) -> List[Dict]:
     time_sel = SelectorManager.get_selector_strict("fb_schedule_page", "match_row_time")
     collapsed_icon_sel = SelectorManager.get_selector_strict("fb_schedule_page", "league_expand_icon_collapsed")
 
-    try:
-        league_headers = await page.locator(league_section_sel).all()
-        print(f"  [Harvest] Found {len(league_headers)} league sections.")
+    league_headers = await page.locator(league_section_sel).all()
+    if not league_headers:
+        raise ValueError("No league sections found on page.")
 
-        for i, header_locator in enumerate(league_headers):
-            try:
-                # 1. Extract League Name
-                league_element = header_locator.locator(league_title_sel).first
-                if await league_element.count() > 0:
-                    league_text = (await league_element.inner_text(timeout=WAIT_FOR_LOAD_STATE_TIMEOUT)).strip().replace('\n', ' - ')
-                else:
-                    fallback_tag = SelectorManager.get_selector_strict("fb_schedule_page", "league_header_fallback_tag")
-                    if fallback_tag and await header_locator.locator(fallback_tag).count() > 0:
-                        league_text = (await header_locator.locator(fallback_tag).first.inner_text()).strip().replace('\n', ' - ')
-                    else:
-                        league_text = f"Unknown League {i+1}"
-                
-                print(f"  -> Processing League {i+1}: {league_text}")
+    for i, header_locator in enumerate(league_headers):
+        # 1. Extract League Name
+        league_element = header_locator.locator(league_title_sel).first
+        if await league_element.count() > 0:
+            league_text = (await league_element.inner_text()).strip().replace('\n', ' - ')
+        else:
+            league_text = f"Unknown League {i+1}"
+        
+        if league_text.startswith("Simulated Reality"): continue
 
-                if league_text.startswith("Simulated Reality League"):
-                     continue
+        # 2. Expansion
+        if await header_locator.locator(collapsed_icon_sel).count() > 0:
+            print(f"    -> {league_text}: Expanding...")
+            await header_locator.click(force=True)
+            await asyncio.sleep(1.5)
 
-                # 2. Expansion Logic
-                is_collapsed = await header_locator.locator(collapsed_icon_sel).count() > 0
-                if is_collapsed:
-                    print(f"    -> {league_text}: Expanding...")
-                    await header_locator.scroll_into_view_if_needed()
-                    await header_locator.click(force=True, timeout=5000)
-                    try:
-                        await page.wait_for_selector(match_card_sel, state="visible", timeout=5000)
-                    except: pass
-                    await asyncio.sleep(1.5)
-                else:
-                    print(f"    -> {league_text}: Already expanded.")
-
-                # 3. Extraction
-                matches_container = await header_locator.evaluate_handle('(el) => el.nextElementSibling')
-                if matches_container:
-                    matches_in_section = await matches_container.evaluate("""(container, args) => {
-                        const { selectors, leagueText } = args;
-                        const results = [];
-                        const cards = container.querySelectorAll(selectors.match_card_sel);
-                        cards.forEach(card => {
-                            const homeEl = card.querySelector(selectors.home_team_sel);
-                            const awayEl = card.querySelector(selectors.away_team_sel);
-                            const timeEl = card.querySelector(selectors.time_sel);
-                            const linkEl = card.querySelector(selectors.match_url_sel) || card.closest('a');
-                            const home = homeEl ? homeEl.innerText.trim() : "";
-                            const away = awayEl ? awayEl.innerText.trim() : "";
-                            if (home && away) {
-                                results.push({ 
-                                    home: home, away: away, 
-                                    time: timeEl ? timeEl.innerText.trim() : "N/A", 
-                                    league: leagueText, 
-                                    url: linkEl ? linkEl.href : "", 
-                                    date: args.targetDate 
-                                });
-                            }
+        # 3. Extraction
+        matches_container = await header_locator.evaluate_handle('(el) => el.nextElementSibling')
+        if matches_container:
+            matches_in_section = await matches_container.evaluate("""(container, args) => {
+                const { selectors, leagueText, targetDate } = args;
+                const results = [];
+                const cards = container.querySelectorAll(selectors.match_card_sel);
+                cards.forEach(card => {
+                    const homeEl = card.querySelector(selectors.home_team_sel);
+                    const awayEl = card.querySelector(selectors.away_team_sel);
+                    const timeEl = card.querySelector(selectors.time_sel);
+                    const linkEl = card.querySelector(selectors.match_url_sel) || card.closest('a');
+                    if (homeEl && awayEl) {
+                        results.push({ 
+                            home: homeEl.innerText.trim(), 
+                            away: awayEl.innerText.trim(), 
+                            time: timeEl ? timeEl.innerText.trim() : "N/A", 
+                            league: leagueText, 
+                            url: linkEl ? linkEl.href : "", 
+                            date: targetDate 
                         });
-                        return results;
-                    }""", {
-                        "selectors": {
-                            "match_card_sel": match_card_sel, "match_url_sel": match_url_sel,
-                            "home_team_sel": home_team_sel, "away_team_sel": away_team_sel,
-                            "time_sel": time_sel
-                        }, 
-                        "leagueText": league_text, "targetDate": target_date
-                    })
-
-                    if matches_in_section:
-                        all_matches.extend(matches_in_section)
-                        print(f"    -> {league_text}: Extracted {len(matches_in_section)} matches.")
-                    else:
-                        print(f"    -> {league_text}: No matches found. Retrying expansion via Title Click...")
-                        # Retry: Click the league title text specifically
-                        try:
-                            title_el = header_locator.locator(league_title_sel).first
-                            if await title_el.is_visible():
-                                await title_el.click(timeout=3000, force=True)
-                            else:
-                                # User requested specific fallback:
-                                print(f"    -> {league_text}: Title selector failed, trying text match...")
-                                await header_locator.get_by_text(league_text, exact=True).first.click(timeout=3000, force=True)
-
-                            await asyncio.sleep(2) # Wait for expansion
-                            
-                            # Re-evaluate matches
-                            matches_in_section_retry = await matches_container.evaluate("""(container, args) => {
-                                const { selectors, leagueText } = args;
-                                const results = [];
-                                const cards = container.querySelectorAll(selectors.match_card_sel);
-                                cards.forEach(card => {
-                                    const homeEl = card.querySelector(selectors.home_team_sel);
-                                    const awayEl = card.querySelector(selectors.away_team_sel);
-                                    const timeEl = card.querySelector(selectors.time_sel);
-                                    const linkEl = card.querySelector(selectors.match_url_sel) || card.closest('a');
-                                    const home = homeEl ? homeEl.innerText.trim() : "";
-                                    const away = awayEl ? awayEl.innerText.trim() : "";
-                                    if (home && away) {
-                                        results.push({ 
-                                            home: home, away: away, 
-                                            time: timeEl ? timeEl.innerText.trim() : "N/A", 
-                                            league: leagueText, 
-                                            url: linkEl ? linkEl.href : "", 
-                                            date: args.targetDate 
-                                        });
-                                    }
-                                });
-                                return results;
-                            }""", {
-                                "selectors": {
-                                    "match_card_sel": match_card_sel, "match_url_sel": match_url_sel,
-                                    "home_team_sel": home_team_sel, "away_team_sel": away_team_sel,
-                                    "time_sel": time_sel
-                                }, 
-                                "leagueText": league_text, "targetDate": target_date
-                            })
-                            
-                            if matches_in_section_retry:
-                                all_matches.extend(matches_in_section_retry)
-                                print(f"    -> {league_text}: Extracted {len(matches_in_section_retry)} matches (Retry Success).")
-                            else:
-                                print(f"    -> {league_text}: Still no matches found after retry.")
-                        except Exception as retry_e:
-                            print(f"    -> {league_text}: Retry failed: {retry_e}")
-
-                # We DON'T close the section to preserve stability
-
-            except Exception as e:
-                print(f"    [Harvest Error] Failed league '{league_text}': {e}")
-    except Exception as e:
-        print(f"  [Harvest] Fatal harvesting error: {e}")
+                    }
+                });
+                return results;
+            }""", {
+                "selectors": {
+                    "match_card_sel": match_card_sel, "match_url_sel": match_url_sel,
+                    "home_team_sel": home_team_sel, "away_team_sel": away_team_sel, "time_sel": time_sel
+                },
+                "leagueText": league_text,
+                "targetDate": target_date
+            })
+            if matches_in_section:
+                all_matches.extend(matches_in_section)
 
     print(f"  [Harvest] Total: {len(all_matches)}")
+    return all_matches
     return all_matches
 
 

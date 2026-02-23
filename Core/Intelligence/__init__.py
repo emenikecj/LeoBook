@@ -13,8 +13,6 @@ This package contains the core intelligence components for LeoBook:
 - Betting Markets: Market-specific math and probability
 """
 
-from .learning_engine import LearningEngine
-from .ml_model import MLModel
 from .rule_engine import RuleEngine
 from .selector_manager import SelectorManager
 from .visual_analyzer import VisualAnalyzer
@@ -23,8 +21,6 @@ from .page_analyzer import PageAnalyzer
 
 __version__ = "2.6.0"
 __all__ = [
-    "LearningEngine",
-    "MLModel",
     "RuleEngine",
     "SelectorManager",
     "VisualAnalyzer",

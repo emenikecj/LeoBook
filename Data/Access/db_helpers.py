@@ -11,12 +11,91 @@ Responsible for saving predictions, schedules, standings, teams, and region-leag
 
 import os
 import csv
+import sys
 from datetime import datetime as dt
 from typing import Dict, Any, List, Optional
 import uuid
 
-from .csv_operations import _read_csv, _append_to_csv, _write_csv, upsert_entry, batch_upsert
-append_to_csv = _append_to_csv # Alias for external use
+# Increase CSV field size limit to handle large strings (e.g. HTML/JSON blobs)
+csv.field_size_limit(sys.maxsize)
+
+
+# ─── Low-level CSV operations (previously csv_operations.py) ───
+
+def _read_csv(filepath: str) -> List[Dict[str, str]]:
+    """Safely reads a CSV file into a list of dictionaries."""
+    if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+        return []
+    try:
+        with open(filepath, 'r', newline='', encoding='utf-8') as f:
+            return list(csv.DictReader(f))
+    except Exception as e:
+        print(f"    [File Error] Could not read {filepath}: {e}")
+        return []
+
+def _append_to_csv(filepath: str, data_row: Dict, fieldnames: List[str]):
+    """Safely appends a single dictionary row to a CSV file."""
+    file_exists = os.path.exists(filepath) and os.path.getsize(filepath) > 0
+    try:
+        with open(filepath, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow(data_row)
+    except Exception as e:
+        print(f"    [File Error] Failed to write to {filepath}: {e}")
+
+append_to_csv = _append_to_csv  # Alias for external use
+
+def _write_csv(filepath: str, data: List[Dict], fieldnames: List[str]):
+    """Safely writes a list of dictionaries to a CSV file, overwriting it."""
+    try:
+        with open(filepath, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
+            writer.writeheader()
+            writer.writerows(data)
+    except Exception as e:
+        print(f"    [File Error] Failed to write to {filepath}: {e}")
+
+def upsert_entry(filepath: str, data_row: Dict, fieldnames: List[str], unique_key: str):
+    """Performs a robust UPSERT (Update or Insert) operation on a CSV file."""
+    unique_id = data_row.get(unique_key)
+    if not unique_id:
+        print(f"    [DB UPSERT Warning] Skipping entry due to missing unique key '{unique_key}'.")
+        return
+
+    all_rows = _read_csv(filepath)
+    updated = False
+    for row in all_rows:
+        if row.get(unique_key) == unique_id:
+            row.update(data_row)
+            updated = True
+            break
+    if not updated:
+        all_rows.append(data_row)
+    _write_csv(filepath, all_rows, fieldnames)
+
+def batch_upsert(filepath: str, data_rows: List[Dict], fieldnames: List[str], unique_key: str):
+    """Batch UPSERT: reads once, updates/inserts all in memory, writes once."""
+    if not data_rows:
+        return
+    all_rows = _read_csv(filepath)
+    index = {}
+    for i, row in enumerate(all_rows):
+        key = row.get(unique_key)
+        if key:
+            index[key] = i
+    new_rows = []
+    for data_row in data_rows:
+        uid = data_row.get(unique_key)
+        if not uid:
+            continue
+        if uid in index:
+            all_rows[index[uid]].update(data_row)
+        else:
+            new_rows.append(data_row)
+    all_rows.extend(new_rows)
+    _write_csv(filepath, all_rows, fieldnames)
 
 # --- Data Store Paths ---
 _current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -418,6 +497,75 @@ def get_standings(region_league: str) -> List[Dict[str, Any]]:
     """Loads standings for a specific league from standings.csv."""
     all_standings = _read_csv(STANDINGS_CSV)
     return [s for s in all_standings if s.get('region_league') == region_league]
+
+def evaluate_market_outcome(prediction: str, home_score: str, away_score: str, home_team: str = "", away_team: str = "") -> Optional[str]:
+    """
+    Unified First-Principles Outcome Evaluator (v3.0).
+    Returns '1' (Correct), '0' (Incorrect), or '' (Unknown/Void).
+    Handles both market types (Over 2.5) and team-specific predictions (Arsenal to win).
+    """
+    import re
+    try:
+        h = int(home_score)
+        a = int(away_score)
+        total = h + a
+    except (ValueError, TypeError):
+        return ''
+
+    p = (prediction or '').strip().lower()
+    h_lower = (home_team or '').strip().lower()
+    a_lower = (away_team or '').strip().lower()
+
+    # 1. Standard Markets (Short Code/Explicit)
+    if p in ("over 2.5", "over 2_5", "over_2.5", "over_2_5"): return '1' if total > 2.5 else '0'
+    if p in ("under 2.5", "under 2_5", "under_2.5", "under_2_5"): return '1' if total < 2.5 else '0'
+    if p in ("btts yes", "btts_yes", "both teams to score yes"): return '1' if h > 0 and a > 0 else '0'
+    if p in ("btts no", "btts_no", "both teams to score no"): return '1' if h == 0 or a == 0 else '0'
+    if p in ("home win", "home_win", "1"): return '1' if h > a else '0'
+    if p in ("away win", "away_win", "2"): return '1' if a > h else '0'
+    if p in ("draw", "x"): return '1' if h == a else '0'
+
+    # 2. "Team to win" / "Team or Draw" (Verbose Patterns)
+    if p.endswith(" to win"):
+        team = p.replace(" to win", "").strip()
+        if team == h_lower: return '1' if h > a else '0'
+        if team == a_lower: return '1' if a > h else '0'
+    
+    if " or draw" in p:
+        team = p.replace(" or draw", "").strip()
+        if team == h_lower or team == '1': return '1' if h >= a else '0'
+        if team == a_lower or team == '2': return '1' if a >= h else '0'
+
+    if p.endswith(" (dnb)"):
+        team = p.replace(" to win (dnb)", "").replace(" (dnb)", "").strip()
+        if h == a: return '' # Void/Refund
+        if team == h_lower: return '1' if h > a else '0'
+        if team == a_lower: return '1' if a > h else '0'
+
+    # 3. Dynamic Regex Patterns (Over/Under X, Team Over X)
+    over_match = re.search(r'over\s+([\d.]+)', p)
+    if over_match:
+        threshold = float(over_match.group(1))
+        if "away" in p: return '1' if a > threshold else '0'
+        if "home" in p: return '1' if h > threshold else '0'
+        return '1' if total > threshold else '0'
+
+    under_match = re.search(r'under\s+([\d.]+)', p)
+    if under_match:
+        threshold = float(under_match.group(1))
+        if "away" in p: return '1' if a < threshold else '0'
+        if "home" in p: return '1' if h < threshold else '0'
+        return '1' if total < threshold else '0'
+
+    # 4. Clean Sheet / No Draw
+    if "clean sheet" in p:
+        team = p.replace(" clean sheet", "").strip()
+        if team == h_lower: return '1' if a == 0 else '0'
+        if team == a_lower: return '1' if h == 0 else '0'
+    
+    if p in ("home or away", "12", "double chance 12"): return '1' if h != a else '0'
+
+    return ''
 
 # To be accessible from other modules, we need to define the headers dict here
 files_and_headers = {

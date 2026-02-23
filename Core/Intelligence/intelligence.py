@@ -1,7 +1,7 @@
 # intelligence.py: intelligence.py: Central AI orchestrator for visual and semantic tasks.
 # Part of LeoBook Core — Intelligence (AI Engine)
 #
-# Functions: analyze_page_and_update_selectors(), attempt_visual_recovery(), get_selector(), get_selector_auto(), get_selector_with_fallback(), extract_league_data(), fb_universal_popup_dismissal(), fb_tooltip_btn()
+# Functions: analyze_page_and_update_selectors(), get_selector(), get_selector_auto(), get_selector_with_fallback(), extract_league_data(), fb_universal_popup_dismissal(), fb_tooltip_btn()
 
 import re
 import json
@@ -17,31 +17,10 @@ from .popup_handler import PopupHandler
 from .page_analyzer import PageAnalyzer
 from .utils import clean_json_response
 
-# Legacy compatibility imports
 from .selector_db import knowledge_db
-from .api_manager import leo_api_call_with_rotation
 
 
-# Legacy compatibility functions - delegate to specialized modules
-async def analyze_page_and_update_selectors(page, context_key: str, force_refresh: bool = False, info: Optional[str] = None, target_key: Optional[str] = None):
-    """Delegate to VisualAnalyzer"""
-    return await VisualAnalyzer.analyze_page_and_update_selectors(page, context_key, force_refresh, info, target_key)
 
-
-async def attempt_visual_recovery(page, context_name: str) -> bool:
-    """Legacy recovery stub - AIGO V5 now handles all self-healing/recovery."""
-    print(f"    [AI RECOVERY] Legacy attempt_visual_recovery called for {context_name}. AIGO V5 should be used instead.")
-    return False
-
-
-def get_selector(context: str, element_key: str) -> str:
-    """Delegate to SelectorManager"""
-    return SelectorManager.get_selector(context, element_key)
-
-
-async def get_selector_auto(page, context_key: str, element_key: str) -> str:
-    """Delegate to SelectorManager"""
-    return await SelectorManager.get_selector_auto(page, context_key, element_key)
 
 
 async def get_selector_with_fallback(page, context_key: str, element_key: str, action_description: str = "") -> str:
@@ -63,7 +42,7 @@ async def get_selector_with_fallback(page, context_key: str, element_key: str, a
     from .selector_manager import SelectorManager
 
     # Get initial selector
-    selector = await get_selector_auto(page, context_key, element_key)
+    selector = await SelectorManager.get_selector_auto(page, context_key, element_key)
     if not selector:
         print(f"    [Selector Fallback] No selector found for '{element_key}' in '{context_key}'")
         return ""
@@ -87,9 +66,7 @@ async def get_selector_with_fallback(page, context_key: str, element_key: str, a
     return healed_selector
 
 
-async def extract_league_data(page, context_key: str = "home_page"):
-    """Delegate to PageAnalyzer"""
-    return await PageAnalyzer.extract_league_data(page, context_key)
+
 
 
 async def fb_universal_popup_dismissal(page: Page, context: str = "fb_generic", html: Optional[str] = None, monitor_interval: int = 0) -> bool:
@@ -122,7 +99,7 @@ async def fb_universal_popup_dismissal(page: Page, context: str = "fb_generic", 
 
             # --- STRATEGY 2: Handle Popups with a standard close button (AI Selector) ---
             # Use non-healing get_selector to avoid expensive auto-heal on an optional element
-            close_sel = get_selector(context, 'top_icon_close')
+            close_sel = SelectorManager.get_selector(context, 'top_icon_close')
             if close_sel and await page.locator(close_sel).count() > 0:
                 btn = page.locator(close_sel).first
                 if await btn.is_visible(timeout=1000):
@@ -169,7 +146,7 @@ async def fb_tooltip_btn(page: Page):
                 return
 
         # Strategy 2: Look for an AI-defined close icon (non-healing to prevent hangs)
-        tooltip_sel = get_selector('fb_match_page', 'tooltip_icon_close')
+        tooltip_sel = SelectorManager.get_selector('fb_match_page', 'tooltip_icon_close')
         if tooltip_sel:
             if await page.locator(tooltip_sel).count() > 0:
                 btn = page.locator(tooltip_sel).first
@@ -186,12 +163,7 @@ async def fb_tooltip_btn(page: Page):
 # Module-level exports for backwards compatibility
 __all__ = [
     'clean_json_response',
-    'analyze_page_and_update_selectors',
-    'attempt_visual_recovery',
-    'get_selector',
-    'get_selector_auto',
     'get_selector_with_fallback',
-    'extract_league_data',
     'fb_universal_popup_dismissal',
     'fb_tooltip_btn',
     'SelectorManager',

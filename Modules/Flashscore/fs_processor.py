@@ -24,7 +24,7 @@ def strip_league_stage(league_name: str):
         return base_league, stage
     return league_name, ""
 from Core.Utils.constants import NAVIGATION_TIMEOUT, WAIT_FOR_LOAD_STATE_TIMEOUT
-from Core.Intelligence.model import RuleEngine
+from Core.Intelligence.rule_engine import RuleEngine
 from .fs_utils import retry_extraction
 
 async def process_match_task(match_data: dict, browser: Browser):

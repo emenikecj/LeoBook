@@ -8,6 +8,7 @@ from datetime import datetime as dt, timedelta
 from pathlib import Path
 from Core.System.lifecycle import state, log_audit_state, log_state
 from Data.Access.db_helpers import log_audit_event
+from Core.Intelligence.aigo_suite import AIGOSuite
 
 # Local state for withdrawals
 pending_withdrawal = {
@@ -91,6 +92,7 @@ async def check_withdrawal_approval() -> bool:
     
     return False
 
+@AIGOSuite.aigo_retry(max_retries=2, delay=5.0)
 async def execute_withdrawal(amount: float):
     """Executes the withdrawal using an isolated browser context (v2.8)."""
     print(f"   [Execute] Starting approved withdrawal for ₦{amount:.2f}...")

@@ -13,7 +13,7 @@ import re
 from playwright.async_api import Page, TimeoutError, ElementHandle
 import re
 from typing import Dict, Any, List
-from Core.Intelligence.intelligence import get_selector_auto, get_selector
+from Core.Intelligence.selector_manager import SelectorManager
 from Data.Access.db_helpers import save_schedule_entry
 from Core.Browser.site_helpers import fs_universal_popup_dismissal
 import asyncio
@@ -24,7 +24,7 @@ async def activate_h2h_tab(page: Page) -> bool:
     """
     print("      [Extractor] Activiting H2H tab...")
     # Use the CORRECT key 'tab_h2h' from 'fs_match_page' as defined in knowledge.json
-    tab_selector = get_selector("fs_match_page", "tab_h2h")
+    tab_selector = SelectorManager.get_selector("fs_match_page", "tab_h2h")
     
     if not tab_selector:
         print("      [Extractor] Error: 'tab_h2h' selector not found in 'fs_match_page' context.")
@@ -59,7 +59,7 @@ async def expand_h2h_sections(page: Page):
     # Text-based selector is often more robust across updates
     show_more_text_sel = "button:has-text('Show more matches'), a:has-text('Show more matches')"
     # CSS selector from knowledge.json as fallback
-    show_more_css_sel = get_selector("fs_h2h_tab", "h2h_show_more_button") or ".h2h__showMore"
+    show_more_css_sel = SelectorManager.get_selector("fs_h2h_tab", "h2h_show_more_button") or ".h2h__showMore"
     
     # Comprehensive selector
     combined_selector = f"{show_more_text_sel}, {show_more_css_sel}"
@@ -112,24 +112,24 @@ async def extract_h2h_data(page: Page, home_team_main: str, away_team_main: str,
 
     # Get ALL selectors from knowledge base matching exact keys from fs_h2h_tab.txt
     selectors = {
-        "h2h_section_home_last_5": get_selector(context, "h2h_section_home_last_5") or ".h2h__section:nth-of-type(1)",
-        "h2h_section_away_last_5": get_selector(context, "h2h_section_away_last_5") or ".h2h__section:nth-of-type(2)",
-        "h2h_section_mutual": get_selector(context, "h2h_section_mutual") or ".h2h__section:nth-of-type(3)",
-        "h2h_section_title": get_selector(context, "h2h_section_title") or ".h2h__sectionHeader",
-        "h2h_row_general": get_selector(context, "h2h_row_general") or ".h2h__row",
-        "h2h_row_link": get_selector(context, "h2h_row_link"),
-        "h2h_row_date": get_selector(context, "h2h_row_date") or ".h2h__date",
-        "h2h_row_league_icon": get_selector(context, "h2h_row_league_icon") or ".h2h__eventIcon",
-        "h2h_row_participant_home": get_selector(context, "h2h_row_participant_home") or ".h2h__homeParticipant",
-        "h2h_row_participant_away": get_selector(context, "h2h_row_participant_away") or ".h2h__awayParticipant",
-        "h2h_row_score_home": get_selector(context, "h2h_row_score_home") or ".h2h__result span:nth-child(1)",
-        "h2h_row_score_away": get_selector(context, "h2h_row_score_away") or ".h2h__result span:nth-child(2)",
-        "h2h_row_win_marker": get_selector(context, "h2h_row_win_marker") or ".fontBold",
-        "h2h_badge_win": get_selector(context, "h2h_badge_win") or ".h2h__icon--win",
-        "h2h_badge_draw": get_selector(context, "h2h_badge_draw") or ".h2h__icon--draw",
-        "h2h_badge_loss": get_selector(context, "h2h_badge_loss") or ".h2h__icon--lost",
-        "meta_breadcrumb_country": get_selector(context, "meta_breadcrumb_country") or ".tournamentHeader__country",
-        "meta_breadcrumb_league": get_selector(context, "meta_breadcrumb_league") or ".tournamentHeader__league a",
+        "h2h_section_home_last_5": SelectorManager.get_selector(context, "h2h_section_home_last_5") or ".h2h__section:nth-of-type(1)",
+        "h2h_section_away_last_5": SelectorManager.get_selector(context, "h2h_section_away_last_5") or ".h2h__section:nth-of-type(2)",
+        "h2h_section_mutual": SelectorManager.get_selector(context, "h2h_section_mutual") or ".h2h__section:nth-of-type(3)",
+        "h2h_section_title": SelectorManager.get_selector(context, "h2h_section_title") or ".h2h__sectionHeader",
+        "h2h_row_general": SelectorManager.get_selector(context, "h2h_row_general") or ".h2h__row",
+        "h2h_row_link": SelectorManager.get_selector(context, "h2h_row_link"),
+        "h2h_row_date": SelectorManager.get_selector(context, "h2h_row_date") or ".h2h__date",
+        "h2h_row_league_icon": SelectorManager.get_selector(context, "h2h_row_league_icon") or ".h2h__eventIcon",
+        "h2h_row_participant_home": SelectorManager.get_selector(context, "h2h_row_participant_home") or ".h2h__homeParticipant",
+        "h2h_row_participant_away": SelectorManager.get_selector(context, "h2h_row_participant_away") or ".h2h__awayParticipant",
+        "h2h_row_score_home": SelectorManager.get_selector(context, "h2h_row_score_home") or ".h2h__result span:nth-child(1)",
+        "h2h_row_score_away": SelectorManager.get_selector(context, "h2h_row_score_away") or ".h2h__result span:nth-child(2)",
+        "h2h_row_win_marker": SelectorManager.get_selector(context, "h2h_row_win_marker") or ".fontBold",
+        "h2h_badge_win": SelectorManager.get_selector(context, "h2h_badge_win") or ".h2h__icon--win",
+        "h2h_badge_draw": SelectorManager.get_selector(context, "h2h_badge_draw") or ".h2h__icon--draw",
+        "h2h_badge_loss": SelectorManager.get_selector(context, "h2h_badge_loss") or ".h2h__icon--lost",
+        "meta_breadcrumb_country": SelectorManager.get_selector(context, "meta_breadcrumb_country") or ".tournamentHeader__country",
+        "meta_breadcrumb_league": SelectorManager.get_selector(context, "meta_breadcrumb_league") or ".tournamentHeader__league a",
     }
 
     from Core.Utils.constants import WAIT_FOR_LOAD_STATE_TIMEOUT
