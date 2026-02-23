@@ -122,6 +122,8 @@ Examples:
   python Leo.py --chapter 1 --page 2       Ch1 P2: Odds Harvesting
   python Leo.py --chapter 1 --page 3       Ch1 P3: Final Sync & Recommendations
   python Leo.py --chapter 2                Full Chapter 2 (Booking & Withdrawal)
+  python Leo.py --chapter 2 --page 1       Ch2 P1: Automated Booking
+  python Leo.py --chapter 2 --page 2       Ch2 P2: Funds & Withdrawal Check
   python Leo.py --chapter 3                Chapter 3: Monitoring & Oversight
   python Leo.py --sync                     Force full cloud sync
   python Leo.py --recommend                Generate and display recommendations only

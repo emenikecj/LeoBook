@@ -131,9 +131,12 @@ cp .env.example .env  # Configure API keys
 python Leo.py              # Full cycle
 python Leo.py --prologue    # Run prologue only
 python Leo.py --chapter 1   # Run chapter 1 only
+python Leo.py --chapter 2 --page 1 # Automated Booking only
+python Leo.py --chapter 2 --page 2 # Withdrawal Check only
 python Leo.py --sync        # Sync only
 python Leo.py --help        # See all 20+ commands
 ```
+
 
 ### Frontend (leobookapp)
 
