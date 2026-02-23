@@ -54,9 +54,33 @@ def save_knowledge():
     try:
         with open(KNOWLEDGE_FILE, "w", encoding="utf-8") as f:
             json.dump(disk_data, f, indent=4)
-        print(f"    [DB] Saved knowledge base ({len(disk_data)} contexts)")
+        # Suppressed print for cleaner logs unless debugging
     except Exception as e:
         print(f"Error saving knowledge: {e}")
+
+
+def log_selector_failure(context: str, key: str, error_msg: str):
+    """
+    LOGS selector failure for future AI context or immediate healing.
+    This allows AIGO to know WHAT failed and WHY when it eventually runs.
+    """
+    import time
+    if "_failures" not in knowledge_db:
+        knowledge_db["_failures"] = {}
+    
+    failure_entry = {
+        "timestamp": time.time(),
+        "error": error_msg,
+        "human_time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+    }
+    
+    # Nested key: context -> key
+    if context not in knowledge_db["_failures"]:
+        knowledge_db["_failures"][context] = {}
+        
+    knowledge_db["_failures"][context][key] = failure_entry
+    save_knowledge()
+    print(f"    [DB] Logged failure for '{key}' in '{context}'")
 
 
 # Initialize on import

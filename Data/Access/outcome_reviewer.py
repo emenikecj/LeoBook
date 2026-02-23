@@ -44,6 +44,7 @@ from .db_helpers import (
 )
 from .sync_manager import SyncManager
 from Core.Intelligence.selector_manager import SelectorManager
+from Core.Intelligence.selector_db import log_selector_failure
 from Core.Utils.constants import NAVIGATION_TIMEOUT
 
 
@@ -426,7 +427,6 @@ async def get_final_score(page):
         except Exception as sel_fail:
             print(f"      [Selector Failure] {sel_fail}. Attempting AIGO healing fallback...")
             # LOG FAILURE FOR HEALING
-            from Core.Intelligence.selector_db import log_selector_failure
             log_selector_failure("fs_match_page", "header_score_home", str(sel_fail))
             
             # Tier 2 Heuristic: Search for team containers and relative score spans
