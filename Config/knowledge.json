@@ -533,6 +533,13 @@
                 "error": "Test error",
                 "human_time": "2026-02-23 07:52:47"
             }
+        },
+        "fs_match_page": {
+            "header_score_home": {
+                "timestamp": 1771830837.7179205,
+                "error": "Locator.inner_text: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\".detailScore__wrapper > span:nth-child(1)\").first\n",
+                "human_time": "2026-02-23 08:13:57"
+            }
         }
     }
 }
