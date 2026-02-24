@@ -3,7 +3,7 @@
 **Developer**: Matterialless LLC
 **Chief Engineer**: Emenike Chinenye James
 **Powered by**: Grok 4.1 & Gemini 3
-**Architecture**: Concurrent Clean Architecture v3.2 (Sequential + Parallel Pipeline)
+**Architecture**: Concurrent Clean Architecture v3.3 (Sequential + Parallel Pipeline)
 
 ---
 
@@ -13,7 +13,7 @@ LeoBook is an **autonomous sports prediction and betting system** with two halve
 
 | Component | Tech | Purpose |
 |-----------|------|---------|
-| `Leo.py` | Python 3.12 + Playwright | Data extraction, AI prediction, odds harvesting, automated bet placement, withdrawal management |
+| `Leo.py` | Python 3.12 + Playwright | Data extraction, rule-based prediction, odds harvesting, automated bet placement, withdrawal management |
 | `leobookapp/` | Flutter/Dart | Elite, cross-platform dashboard with "Telegram-grade" UI density and real-time streaming |
 
 Leo.py is a **pure orchestrator** — zero business logic. All logic lives in the modules it imports. It runs in an infinite cycle (default every 6 hours).
@@ -29,7 +29,7 @@ Leo.py (Orchestrator)
 ├── Phase 1 (Sequential): Cloud Sync → Outcome Review → Accuracy Report
 ├── Phase 2 (Concurrent/Gather):
 │   ├── Stream A: Enrichment → Final Prologue Sync
-│   └── Stream B: Extraction → Prediction → Odds Harvesting → Booking
+│   └── Stream B: Extraction → Adaptive Prediction → Odds Harvesting → Booking
 ├── Phase 3 (Sequential): Chief Engineer Oversight & Withdrawal Management
 └── Live Streamer: Background 60s LIVE score streaming → status propagation
 ```
@@ -38,11 +38,12 @@ Leo.py (Orchestrator)
 - **Concurrent Pipeline**: Prologue enrichment runs alongside Chapter 1 predictions, reducing cycle time by ~30%.
 - **First-Principles Cleanup**: Stripped 12+ dead files and unified popup/selector architectures for a minimalist, ultra-fast codebase.
 - **End-to-End Resumability**: Every step (Harvesting, Booking, Enrichment) uses persistent status checks to skip already-processed items on restart.
+- **Adaptive Learning Feedback**: Rule weights and confidence calibration now evolve after every outcome review, stored in `learning_weights.json` and synced to the cloud.
 - **Robust Scrapers**: 2-tier header expansion retry logic (JS + Locator) in Flashscore scrapers.
 
 ### Core Modules
 
-- **`Core/Intelligence/`** — AI prediction engine (ML model, rule engine, learning engine, AIGO self-healing)
+- **`Core/Intelligence/`** — Intelligence engine (rule-based prediction engine, rule config, AIGO self-healing)
 - **`Core/Browser/`** — Playwright automation and data extractors (H2H, standings, league pages)
 - **`Core/System/`** — Lifecycle, monitoring, withdrawal checker
 - **`Modules/Flashscore/`** — Schedule extraction, match processing, offline reprediction, **live score streaming (v2.1 fix)**
@@ -59,7 +60,7 @@ Five-phase recovery cascade for every browser interaction (~8-18% reach Phase 3)
 1. **Reinforcement Learning** — memory-based strategy selection
 2. **Visual Analysis** — multi-strategy matching (CSS → XPath → text → fuzzy)
 3. **Expert Consultation** — Grok API multimodal analysis (screenshot + DOM → primary + backup paths)
-4. **Self-Healing** — persist AI-discovered selectors to `knowledge.json` for future cycles
+4. **Self-Healing & Evolution** — persist AI-discoveries to `knowledge.json` and update `learning_weights.json` via the outcome review loop.
 
 See [AIGO_Learning_Guide.md](AIGO_Learning_Guide.md) for the full pipeline specification.
 
@@ -152,7 +153,7 @@ flutter run -d chrome  # or: flutter run (mobile)
 
 | Variable | Purpose |
 |----------|---------|
-| `GROK_API_KEY` | xAI Grok API for AIGO expert consultation |
+| `GROK_API_KEY` | xAI Grok API for AIGO (Autonomous Intelligence Guided Operation) & Search Dictionary building |
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_KEY` | Supabase service role key (Python backend, full write access) |
 | `SUPABASE_ANON_KEY` | Supabase anon key (Flutter app, read-only via RLS) |

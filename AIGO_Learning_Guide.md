@@ -1,6 +1,6 @@
 # AIGO: AI-Guided Operation — Self-Healing Framework (v5.0)
 
-> **Version**: 5.0 · **Last Updated**: 2026-02-17 · **LLM Backend**: xAI Grok API (multimodal)
+> **Version**: 5.1 · **Last Updated**: 2026-02-24 · **LLM Backend**: xAI Grok API (multimodal)
 
 AIGO is the **self-healing immune system** of LeoBook. It ensures the automation pipeline never stops — even when target websites (Flashscore, Football.com) change their UI, add popups, rename CSS classes, or deploy entirely new page layouts.
 
@@ -53,9 +53,9 @@ If standard retries fail, the system invokes the **AIGO Expert**:
 Once a path succeeds, AIGO **permanently heals** the codebase:
 - Updates `knowledge.json` via `selector_db.py` (UPSERT operation)
 - Stores the success pattern in `memory_manager.py` for reinforcement learning
-- Updates `learning_weights.json` for long-term strategy optimization
+- **Adaptive Weights**: Triggers `LearningEngine.update_weights()` via the `outcome_reviewer` to refine per-league rule weights based on actual match results. This evolves the "Global" strategy into league-specific optimal configurations.
 
-**Result**: The next time the bot encounters this element, it uses the AI-discovered path immediately — zero retries needed.
+**Result**: The system gets smarter with every match. The next time the bot encounters this league, it uses the adaptive weights for more accurate predictions.
 
 ---
 
@@ -79,8 +79,8 @@ AIGO is **not called directly** by Leo.py. Instead, it's woven into every browse
 
 | Chapter | Module | AIGO Usage |
 |---------|--------|------------|
-| **Prologue P1** | `outcome_reviewer.py` | Score extraction from Flashscore match pages |
-| **Prologue P2** | `enrich_all_schedules.py` | Team ID, crest, and standings extraction |
+| **Prologue P1** | `outcome_reviewer.py` | Score extraction + **Adaptive Weight Feedback Loop** |
+| **Prologue P2** | `lifecycle.py` | Final sync and accuracy reporting |
 | **Ch1 P1** | `fs_processor.py` | H2H tab navigation, data extraction |
 | **Ch1 P2** | `navigator.py`, `booking_code.py` | Football.com navigation, odds selection |
 | **Ch2 P1** | `slip.py`, `placement.py` | Bet slip interactions, code injection |

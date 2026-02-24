@@ -1,6 +1,6 @@
 # Supabase Setup Guide
 
-> **Version**: 3.1 · **Last Updated**: 2026-02-19
+> **Version**: 3.2 · **Last Updated**: 2026-02-24
 
 ## Quick Setup (5 minutes)
 
@@ -96,6 +96,7 @@ Leo.py runs SyncManager automatically:
 | `region_league` | `region_league.csv` | `league_id` | CSV → Supabase |
 | `accuracy_reports` | `accuracy_reports.csv` | `report_id` | CSV → Supabase |
 | `live_scores` | `live_scores.csv` | `fixture_id` | CSV → Supabase (every 60s) |
+| `learning_weights` | `learning_weights.json` | `region_league` | CSV → Supabase (upon weight update) |
 
 ### Sync Frequency per Leo.py Cycle (v3.1)
 1. **Phase 1 (Sequential)**: `sync_on_startup()` — bi-directional merge
@@ -114,7 +115,7 @@ WHERE table_schema = 'public'
 ORDER BY table_name;
 ```
 
-Expected: `predictions`, `schedules`, `standings`, `teams`, `region_league`, `accuracy_reports`, `audit_events`, `live_scores`
+Expected: `predictions`, `schedules`, `standings`, `teams`, `region_league`, `accuracy_reports`, `audit_events`, `live_scores`, `learning_weights`
 
 ### Check Data After First Leo.py Cycle
 ```sql

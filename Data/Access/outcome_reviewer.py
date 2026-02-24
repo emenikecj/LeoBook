@@ -525,6 +525,14 @@ async def run_review_process(p: Optional[Playwright] = None):
         
         if processed_matches:
             print(f"\n   [SUCCESS] Reviewed {len(processed_matches)} match outcomes.")
+            
+            # Update learning weights based on reviewed outcomes
+            try:
+                from Core.Intelligence.learning_engine import LearningEngine
+                updated_weights = LearningEngine.update_weights()
+                print(f"   [Learning] Updated weights for {len(updated_weights)-1} leagues.")
+            except Exception as e:
+                print(f"   [Learning] Weight update skipped: {e}")
         else:
             print("\n   [Info] All predictions still pending.")
 

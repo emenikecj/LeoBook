@@ -1,7 +1,11 @@
 import asyncio
 import os
+from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 from Core.Intelligence.aigo_suite import AIGOSuite
+
+# Load environment variables
+load_dotenv()
 
 async def test_aigo_healing():
     print("\n--- Starting AIGO Smoke Test ---")

@@ -13,6 +13,7 @@ from typing import List, Dict, Any
 from datetime import datetime, timedelta
 import numpy as np
 
+from .learning_engine import LearningEngine
 from .tag_generator import TagGenerator
 from .goal_predictor import GoalPredictor
 from .betting_markets import BettingMarkets
@@ -79,22 +80,22 @@ class RuleEngine:
         # ML prediction removed in cleanup
         ml_prediction = {"confidence": 0.5, "prediction": "UNKNOWN"}
 
-        # --- WEIGHTS (Dynamic loading removed) ---
-        weights = {} 
+        # --- LOAD REGION-SPECIFIC LEARNED WEIGHTS ---
+        weights = LearningEngine.load_weights(region_league)
 
         # Weighted rule voting using config
         home_score = away_score = draw_score = over25_score = 0
         reasoning = []
 
-        # Incorporate xG into voting
+        # Incorporate xG into voting (learned weights with config fallback)
         if home_xg > away_xg + 0.5:
-            home_score += config.xg_advantage
+            home_score += weights.get("xg_advantage", config.xg_advantage)
             reasoning.append(f"{home_team} has xG advantage")
         elif away_xg > home_xg + 0.5:
-            away_score += config.xg_advantage
+            away_score += weights.get("xg_advantage", config.xg_advantage)
             reasoning.append(f"{away_team} has xG advantage")
         elif abs(home_xg - away_xg) < 0.3:
-            draw_score += config.xg_draw
+            draw_score += weights.get("xg_draw", config.xg_draw)
             reasoning.append("Close xG suggests draw")
 
         home_slug = home_team.replace(" ", "_").upper()
@@ -102,45 +103,45 @@ class RuleEngine:
 
         # H2H signals
         if any(t.startswith(f"{home_slug}_WINS_H2H") for t in h2h_tags):
-            home_score += config.h2h_home_win; reasoning.append(f"{home_team} strong in H2H")
+            home_score += weights.get("h2h_home_win", config.h2h_home_win); reasoning.append(f"{home_team} strong in H2H")
         if any(t.startswith(f"{away_slug}_WINS_H2H") for t in h2h_tags):
-            away_score += config.h2h_away_win; reasoning.append(f"{away_team} strong in H2H")
+            away_score += weights.get("h2h_away_win", config.h2h_away_win); reasoning.append(f"{away_team} strong in H2H")
         if any(t.startswith("H2H_D") for t in h2h_tags):
-            draw_score += config.h2h_draw; reasoning.append("H2H suggests Draw")
+            draw_score += weights.get("h2h_draw", config.h2h_draw); reasoning.append("H2H suggests Draw")
         if any(t in h2h_tags for t in ["H2H_O25", "H2H_O25_third"]):
-            over25_score += config.h2h_over25
+            over25_score += weights.get("h2h_over25", config.h2h_over25)
 
         # Standings signals
         if f"{home_slug}_TOP3" in standings_tags and f"{away_slug}_BOTTOM5" in standings_tags:
-            home_score += config.standings_top_vs_bottom; reasoning.append(f"Top ({home_team}) vs Bottom ({away_team})")
+            home_score += weights.get("standings_top_vs_bottom", config.standings_top_vs_bottom); reasoning.append(f"Top ({home_team}) vs Bottom ({away_team})")
         if f"{away_slug}_TOP3" in standings_tags and f"{home_slug}_BOTTOM5" in standings_tags:
-            away_score += config.standings_top_vs_bottom; reasoning.append(f"Top ({away_team}) vs Bottom ({home_team})")
+            away_score += weights.get("standings_top_vs_bottom", config.standings_top_vs_bottom); reasoning.append(f"Top ({away_team}) vs Bottom ({home_team})")
         
-        if f"{home_slug}_TABLE_ADV8+" in standings_tags: home_score += config.standings_table_advantage
-        if f"{away_slug}_TABLE_ADV8+" in standings_tags: away_score += config.standings_table_advantage
+        if f"{home_slug}_TABLE_ADV8+" in standings_tags: home_score += weights.get("standings_table_advantage", config.standings_table_advantage)
+        if f"{away_slug}_TABLE_ADV8+" in standings_tags: away_score += weights.get("standings_table_advantage", config.standings_table_advantage)
         
-        if f"{home_slug}_GD_POS_STRONG" in standings_tags: home_score += config.standings_gd_strong; reasoning.append(f"{home_team} has strong GD")
-        if f"{away_slug}_GD_POS_STRONG" in standings_tags: away_score += config.standings_gd_strong; reasoning.append(f"{away_team} has strong GD")
-        if f"{home_slug}_GD_NEG_WEAK" in standings_tags: away_score += config.standings_gd_weak; reasoning.append(f"{home_team} has weak GD")
-        if f"{away_slug}_GD_NEG_WEAK" in standings_tags: home_score += config.standings_gd_weak; reasoning.append(f"{away_team} has weak GD")
+        if f"{home_slug}_GD_POS_STRONG" in standings_tags: home_score += weights.get("standings_gd_strong", config.standings_gd_strong); reasoning.append(f"{home_team} has strong GD")
+        if f"{away_slug}_GD_POS_STRONG" in standings_tags: away_score += weights.get("standings_gd_strong", config.standings_gd_strong); reasoning.append(f"{away_team} has strong GD")
+        if f"{home_slug}_GD_NEG_WEAK" in standings_tags: away_score += weights.get("standings_gd_weak", config.standings_gd_weak); reasoning.append(f"{home_team} has weak GD")
+        if f"{away_slug}_GD_NEG_WEAK" in standings_tags: home_score += weights.get("standings_gd_weak", config.standings_gd_weak); reasoning.append(f"{away_team} has weak GD")
 
         # Form signals
-        if f"{home_slug}_FORM_S2+" in home_tags: home_score += config.form_score_2plus; over25_score += 2; reasoning.append(f"{home_team} scores 2+ often")
-        if f"{away_slug}_FORM_S2+" in away_tags: away_score += config.form_score_2plus; over25_score += 2; reasoning.append(f"{away_team} scores 2+ often")
-        if f"{home_slug}_FORM_S3+" in home_tags: home_score += config.form_score_3plus; over25_score += 1
-        if f"{away_slug}_FORM_S3+" in away_tags: away_score += config.form_score_3plus; over25_score += 1
+        if f"{home_slug}_FORM_S2+" in home_tags: home_score += weights.get("form_score_2plus", config.form_score_2plus); over25_score += 2; reasoning.append(f"{home_team} scores 2+ often")
+        if f"{away_slug}_FORM_S2+" in away_tags: away_score += weights.get("form_score_2plus", config.form_score_2plus); over25_score += 2; reasoning.append(f"{away_team} scores 2+ often")
+        if f"{home_slug}_FORM_S3+" in home_tags: home_score += weights.get("form_score_3plus", config.form_score_3plus); over25_score += 1
+        if f"{away_slug}_FORM_S3+" in away_tags: away_score += weights.get("form_score_3plus", config.form_score_3plus); over25_score += 1
 
-        if f"{away_slug}_FORM_C2+" in away_tags: home_score += config.form_concede_2plus; over25_score += 2; reasoning.append(f"{away_team} concedes 2+ often")
-        if f"{home_slug}_FORM_C2+" in home_tags: away_score += config.form_concede_2plus; over25_score += 2; reasoning.append(f"{home_team} concedes 2+ often")
+        if f"{away_slug}_FORM_C2+" in away_tags: home_score += weights.get("form_concede_2plus", config.form_concede_2plus); over25_score += 2; reasoning.append(f"{away_team} concedes 2+ often")
+        if f"{home_slug}_FORM_C2+" in home_tags: away_score += weights.get("form_concede_2plus", config.form_concede_2plus); over25_score += 2; reasoning.append(f"{home_team} concedes 2+ often")
 
-        if f"{home_slug}_FORM_SNG" in home_tags: away_score += config.form_no_score; reasoning.append(f"{home_team} fails to score")
-        if f"{away_slug}_FORM_SNG" in away_tags: home_score += config.form_no_score; reasoning.append(f"{away_team} fails to score")
+        if f"{home_slug}_FORM_SNG" in home_tags: away_score += weights.get("form_no_score", config.form_no_score); reasoning.append(f"{home_team} fails to score")
+        if f"{away_slug}_FORM_SNG" in away_tags: home_score += weights.get("form_no_score", config.form_no_score); reasoning.append(f"{away_team} fails to score")
 
-        if f"{home_slug}_FORM_CS" in home_tags: home_score += config.form_clean_sheet; reasoning.append(f"{home_team} has strong defense")
-        if f"{away_slug}_FORM_CS" in away_tags: away_score += config.form_clean_sheet; reasoning.append(f"{away_team} has strong defense")
+        if f"{home_slug}_FORM_CS" in home_tags: home_score += weights.get("form_clean_sheet", config.form_clean_sheet); reasoning.append(f"{home_team} has strong defense")
+        if f"{away_slug}_FORM_CS" in away_tags: away_score += weights.get("form_clean_sheet", config.form_clean_sheet); reasoning.append(f"{away_team} has strong defense")
 
-        if any("vs_top" in t.lower() and "_w" in t.lower() for t in home_tags): home_score += config.form_vs_top_win
-        if any("vs_top" in t.lower() and "_w" in t.lower() for t in away_tags): away_score += config.form_vs_top_win
+        if any("vs_top" in t.lower() and "_w" in t.lower() for t in home_tags): home_score += weights.get("form_vs_top_win", config.form_vs_top_win)
+        if any("vs_top" in t.lower() and "_w" in t.lower() for t in away_tags): away_score += weights.get("form_vs_top_win", config.form_vs_top_win)
 
         # Calculate probabilities
         keys = ["0", "1", "2", "3+"]

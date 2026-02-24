@@ -1,6 +1,6 @@
-# LeoBook v3.2 Algorithm & Codebase Reference
+# LeoBook v3.3 Algorithm & Codebase Reference
 
-> **Version**: 3.2 · **Last Updated**: 2026-02-23 · **Architecture**: Concurrent Clean Architecture (Sequential + Parallel Pipeline)
+> **Version**: 3.3 · **Last Updated**: 2026-02-24 · **Architecture**: Concurrent Clean Architecture (Sequential + Parallel Pipeline)
 
 This document maps the **execution flow** of [Leo.py](Leo.py) to specific files and functions.
 
@@ -11,12 +11,12 @@ This document maps the **execution flow** of [Leo.py](Leo.py) to specific files 
 Leo.py is a **pure orchestrator**. It runs an infinite `while True` loop, splitting the cycle into three phases:
 
 ```
-Leo.py (Orchestrator) v3.2
+Leo.py (Orchestrator) v3.3
 ├── Phase 1 (Sequential Prerequisite):
 │   └── Cloud Sync → Outcome Review → Accuracy report
 ├── Phase 2 (Concurrent Group):
 │   ├── Stream A: Enrichment → Accuracy Generation → Final Sync
-│   └── Stream B: Extraction → Prediction → Odds → Final Sync → Booking
+│   └── Stream B: Extraction → Adaptive Prediction → Odds → Final Sync → Booking
 ├── Phase 3 (Sequential Oversight):
 │   └── Chief Engineer Oversight → Withdrawal Management
 └── Live Streamer: Background Parallel Task (Always-On)
@@ -41,18 +41,31 @@ Runs in parallel with the main cycle via `asyncio.create_task()`.
 
 ---
 
-## AI Prediction Pipeline (Chapter 1)
+## Prediction Pipeline (Chapter 1)
 
 1. **Discovery**: [fs_schedule.py](Modules/Flashscore/fs_schedule.py) extracts fixture IDs.
    - **v3.2 Robustness**: Implements 2-tier header expansion retry (JS bulk + Locator fallback) to ensure 100% fixture visibility.
 2. **Analysis**: [fs_processor.py](Modules/Flashscore/fs_processor.py) collects H2H and Standings data.
-3. **Core Engine**: [intelligence.py](Core/Intelligence/intelligence.py) `make_prediction()`
-   - **ML Model**: [ml_model.py](Core/Intelligence/ml_model.py) matches patterns against 10k+ historical matches.
+3. **Core Engine**: [rule_engine.py](Core/Intelligence/rule_engine.py) `analyze()`
+   - **Rule Logic**: [rule_config.py](Core/Intelligence/rule_config.py) defines the v3.0 logic constraints.
    - **Poisson Predictor**: [goal_predictor.py](Core/Intelligence/goal_predictor.py) handles O/U and BTTS probabilities.
-   - **Rule Engine**: [rule_engine.py](Core/Intelligence/rule_engine.py) filters predictions against v3.0 logic constraints.
 
 ---
 
-## UI Documentation (Flutter v3.0)
+## 5. Adaptive Learning Intelligence
+
+**Objective**: Continuous evolution of prediction rule weights based on historical accuracy.
+
+1. **Feedback Loop**: [outcome_reviewer.py](Data/Access/outcome_reviewer.py) calls `LearningEngine.update_weights()` after every review batch.
+2. **Analysis**: [learning_engine.py](Core/Intelligence/learning_engine.py) matches `predictions.csv` outcomes against the reasoning tags used.
+3. **Weight Evolution**:
+   - Success triggers **positive reinforcement** for specific weights.
+   - Failure triggers **penalty** and weight reduction.
+   - Updates `learning_weights.json` (per-league) and syncs to Supabase.
+4. **Integration**: `RuleEngine.analyze()` loads these adaptive weights via `LearningEngine.load_weights(region_league)`.
+
+---
+
+## 6. UI Documentation (Flutter v3.0)
 
 See [leobookapp/README.md](leobookapp/README.md) for the "Telegram-grade" design specification.

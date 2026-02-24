@@ -22,17 +22,16 @@ Usage:
   python Scripts/enrich_all_schedules.py [--limit N] [--dry-run] [--standings] [--backfill-predictions]
 """
 
-import asyncio
-import csv
-import json
+from typing import Dict, List, Optional, Any
 import os
 import sys
-from pathlib import Path
-from Core.Intelligence.aigo_suite import AIGOSuite
-from typing import Dict, List, Optional
-from datetime import datetime
-import pandas as pd
+import asyncio
+import json
+import logging
 import re
+import pandas as pd
+from datetime import datetime, timedelta
+from pathlib import Path
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -49,6 +48,7 @@ from Core.Browser.Extractors.standings_extractor import extract_standings_data, 
 from Core.Browser.Extractors.league_page_extractor import extract_league_match_urls
 from Modules.Flashscore.fs_utils import retry_extraction
 from Core.Utils.constants import NAVIGATION_TIMEOUT, WAIT_FOR_LOAD_STATE_TIMEOUT
+from Core.Intelligence.aigo_suite import AIGOSuite
 
 # Configuration
 _IS_CODESPACE = bool(os.getenv('CODESPACES') or os.getenv('CODESPACE_NAME'))
@@ -168,7 +168,7 @@ def strip_league_stage(league_name: str):
 
 async def extract_match_enrichment(page, match_url: str, sel: Dict[str, str],
                                     extract_standings: bool = False,
-                                    needs: List[str] = None) -> Optional[Dict]:
+                                    needs: Optional[List[str]] = None) -> Optional[Dict]:
     """
     Extract team IDs, crests, URLs, league info, score, datetime, and optionally standings.
     Targeted extraction based on 'needs'.
@@ -433,6 +433,10 @@ async def resolve_metadata_gaps(df: pd.DataFrame, sync_manager: SyncManager) -> 
     """
     Attempts to resolve missing metadata by merging with the latest data from Supabase.
     """
+    if not sync_manager.supabase:
+        print("  [METADATA] Supabase client not available. Skipping remote resolution.")
+        return df
+    
     print(f"  [METADATA] Attempting to resolve gaps via Supabase merge...")
     
     # Fetch all schedules from Supabase (the source of truth)
@@ -467,6 +471,40 @@ async def resolve_metadata_gaps(df: pd.DataFrame, sync_manager: SyncManager) -> 
 # ...
 
 @AIGOSuite.aigo_retry(max_retries=2, delay=5.0)
+async def _run_prologue_phase(sync_manager: SyncManager, dry_run: bool) -> Dict[str, str]:
+    """Run the prologue phase: cloud handshake and selector loading.
+    
+    Args:
+        sync_manager: Initialized SyncManager instance
+        dry_run: If True, skip actual sync operations
+        
+    Returns:
+        dict: Loaded selectors from knowledge.json
+    """
+    print("=" * 80)
+    print("  PROLOGUE PHASE 1: CLOUD HANDSHAKE & SYNC")
+    print("  Goal: Establish data parity between local CSVs and Supabase.")
+    print("=" * 80)
+
+    if not dry_run:
+        print("[INFO] Initiating Bi-Directional Cloud Handshake...")
+        await sync_manager.sync_on_startup()
+        print("[SUCCESS] Cloud Handshake Complete. Local and Remote systems are in sync.")
+    else:
+        print("[DRY-RUN] Skipping Cloud Handshake.")
+
+    # Load selectors
+    if not KNOWLEDGE_PATH.exists():
+        raise FileNotFoundError(f"Knowledge file not found at {KNOWLEDGE_PATH}")
+
+    with open(KNOWLEDGE_PATH, 'r', encoding='utf-8') as f:
+        knowledge = json.load(f)
+        sel = knowledge.get('fs_match_page', {})
+    
+    print(f"[INFO] Loaded {len(sel)} selectors from knowledge.json (fs_match_page)")
+    return sel
+
+
 async def enrich_all_schedules(limit: Optional[int] = None, dry_run: bool = False,
                                 extract_standings: bool = False,
                                 backfill_predictions: bool = False,
@@ -479,39 +517,22 @@ async def enrich_all_schedules(limit: Optional[int] = None, dry_run: bool = Fals
         dry_run: If True, don't write to CSV files
         extract_standings: If True, also extract standings data
         backfill_predictions: If True, fix region_league/crests in predictions.csv
+        league_page: If True, harvest match URLs from league pages
     """
     print("=" * 80)
     print("  MATCH ENRICHMENT PIPELINE")
     flags = []
     if extract_standings: flags.append("standings")
     if backfill_predictions: flags.append("backfill-predictions")
+    if league_page: flags.append("league-page")
     print(f"  Mode: {' + '.join(flags) if flags else 'Standard'}")
     print(f"  Concurrency: {CONCURRENCY}")
     print(f"  Batch Size: {BATCH_SIZE}")
     print("=" * 80)
-    print("  PROLOGUE PHASE 1: CLOUD HANDSHAKE & SYNC")
-    print("  Goal: Establish data parity between local CSVs and Supabase.")
-    print("=" * 80)
 
     # Initialize Sync Manager
     sync_manager = SyncManager()
-    if not dry_run:
-        print("[INFO] Initiating Bi-Directional Cloud Handshake...")
-        await sync_manager.sync_on_startup()
-        print("[SUCCESS] Cloud Handshake Complete. Local and Remote systems are in sync.")
-    else:
-        print("[DRY-RUN] Skipping Cloud Handshake.")
-
-    # Load selectors
-    if not KNOWLEDGE_PATH.exists():
-        print(f"[ERROR] Knowledge file not found at {KNOWLEDGE_PATH}")
-        return
-
-    with open(KNOWLEDGE_PATH, 'r', encoding='utf-8') as f:
-        knowledge = json.load(f)
-        sel = knowledge.get('fs_match_page', {})
-    
-    print(f"[INFO] Loaded {len(sel)} selectors from knowledge.json (fs_match_page)")
+    sel = typing.cast(Dict[str, str], await _run_prologue_phase(sync_manager, dry_run))
 
     # --- PHASE 0: LEAGUE PAGE HARVESTING (Proactive & Resumable) ---
     if league_page:

@@ -388,3 +388,24 @@ ALTER TABLE public.region_league ADD COLUMN IF NOT EXISTS country TEXT;
 ALTER TABLE public.region_league ADD COLUMN IF NOT EXISTS logo_url TEXT;
 ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS country TEXT;
 ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS city TEXT;
+
+-- =============================================================================
+-- LEARNING WEIGHTS TABLE (Per-League Adaptive Weights)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS public.learning_weights (
+    region_league TEXT PRIMARY KEY,
+    weights JSONB NOT NULL DEFAULT '{}'::jsonb,
+    confidence_calibration JSONB NOT NULL DEFAULT '{"Very High": 0.70, "High": 0.60, "Medium": 0.50, "Low": 0.40}'::jsonb,
+    predictions_analyzed INTEGER DEFAULT 0,
+    last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.learning_weights ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public Read Access LearningWeights" ON public.learning_weights;
+CREATE POLICY "Public Read Access LearningWeights" ON public.learning_weights FOR SELECT USING (true);
+
+DROP TRIGGER IF EXISTS update_learning_weights_last_updated ON public.learning_weights;
+CREATE TRIGGER update_learning_weights_last_updated BEFORE UPDATE ON public.learning_weights FOR EACH ROW EXECUTE PROCEDURE update_last_updated_column();
+
+GRANT SELECT ON public.learning_weights TO anon, authenticated;

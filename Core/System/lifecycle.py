@@ -76,6 +76,7 @@ def setup_terminal_logging(args):
         elif args.offline_repredict: prefix = "leo_offline_repredict_session"
         elif args.rule_engine: prefix = "leo_rule_engine_session"
         elif args.streamer: prefix = "leo_streamer_session"
+        elif args.enrich: prefix = "leo_enrich_session"
         elif args.schedule: prefix = "leo_schedule_session"
         elif args.prologue: prefix = "leo_prologue_session"
         elif args.chapter: prefix = f"leo_chapter{args.chapter}_session"
@@ -113,10 +114,9 @@ def parse_args():
         epilog="""
 Examples:
   python Leo.py                            Full cycle (loop)
-  python Leo.py --prologue                 All prologue pages (P1+P2+P3)
+  python Leo.py --prologue                 All prologue pages (P1+P2)
   python Leo.py --prologue --page 1        Prologue P1: Cloud Handshake & Review
-  python Leo.py --prologue --page 2        Prologue P2: Metadata Enrichment
-  python Leo.py --prologue --page 3        Prologue P3: Accuracy & Sync
+  python Leo.py --prologue --page 2        Prologue P2: Accuracy & Sync
   python Leo.py --chapter 1                Full Chapter 1 (Extraction → Odds → Sync)
   python Leo.py --chapter 1 --page 1       Ch1 P1: Flashscore Extraction & Analysis
   python Leo.py --chapter 1 --page 2       Ch1 P2: Odds Harvesting
@@ -137,6 +137,7 @@ Examples:
   python Leo.py --schedule --refresh       Re-extract schedules starting from today
   python Leo.py --schedule --all           Extract today's schedules + H2H + standings
   python Leo.py --schedule --refresh --all Extract 7 days of schedules + H2H + standings
+  python Leo.py --enrich                   Manual metadata enrichment (gap-fill)
   python Leo.py --rule-engine              Show default rule engine info (combine with --list, --set-default, --backtest)
   python Leo.py --rule-engine --list       List all saved rule engines
   python Leo.py --rule-engine --backtest   Progressive backtest default engine
@@ -147,7 +148,7 @@ Examples:
     )
     # --- Granular Chapter / Page Selection ---
     parser.add_argument('--prologue', action='store_true',
-                       help='Run all Prologue pages (P1+P2+P3)')
+                       help='Run all Prologue pages (P1+P2)')
     parser.add_argument('--chapter', type=int, choices=[1, 2, 3], metavar='N',
                        help='Run a specific chapter (1, 2, or 3)')
     parser.add_argument('--page', type=int, choices=[1, 2, 3], metavar='N',
@@ -176,6 +177,8 @@ Examples:
                        help='Force re-extract from today (use with --schedule)')
     parser.add_argument('--all', action='store_true',
                        help='Also extract H2H + standings per match (use with --schedule)')
+    parser.add_argument('--enrich', action='store_true',
+                       help='Run manual metadata enrichment (gap-fill for historical data)')
 
     # --- Rule Engine Management ---
     parser.add_argument('--rule-engine', action='store_true',

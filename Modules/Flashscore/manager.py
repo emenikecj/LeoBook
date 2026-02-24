@@ -332,6 +332,10 @@ async def run_flashscore_schedule_only(playwright: Playwright, refresh: bool = F
                         await asyncio.sleep(2.0)
                         await fs_universal_popup_dismissal(page, "fs_match_page")
 
+                        # --- JIT Metadata Enrichment (team crests, URLs, league IDs) ---
+                        from .enrich_match_metadata import extract_match_page_metadata
+                        await extract_match_page_metadata(page, match)
+
                         # --- H2H ---
                         if await activate_h2h_tab(page):
                             try:

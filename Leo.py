@@ -17,6 +17,37 @@ nest_asyncio.apply()
 # Load environment variables
 load_dotenv()
 
+def validate_config():
+    """Validate required environment variables and configurations."""
+    required_vars = [
+        'GROK_API_KEY',
+        'GEMINI_API_KEY',
+        'FB_PHONE',
+        'FB_PASSWORD'
+    ]
+    
+    missing = []
+    for var in required_vars:
+        if not os.getenv(var):
+            missing.append(var)
+    
+    if missing:
+        raise ValueError(f"Missing required environment variables: {', '.join(missing)}. Please check your .env file.")
+    
+    # Validate cycle wait hours
+    cycle_hours = os.getenv('LEO_CYCLE_WAIT_HOURS', '6')
+    try:
+        hours = int(cycle_hours)
+        if hours < 1 or hours > 24:
+            raise ValueError("LEO_CYCLE_WAIT_HOURS must be between 1 and 24")
+    except ValueError:
+        raise ValueError("LEO_CYCLE_WAIT_HOURS must be a valid integer")
+    
+    print("[CONFIG] All required environment variables validated.")
+
+# Validate configuration on startup
+validate_config()
+
 # --- Modular Imports (all logic is external) ---
 from Core.System.lifecycle import (
     log_state, log_audit_state, setup_terminal_logging, parse_args, state
@@ -69,36 +100,24 @@ async def run_prologue_p1(p):
         log_audit_event("PROLOGUE_P1", f"Failed: {e}", status="failed")
 
 
-@AIGOSuite.aigo_retry(max_retries=2, delay=3.0)
-async def run_prologue_p2():
-    """Prologue Page 2: Metadata Enrichment (schedules, teams, leagues, standings)."""
-    log_state(chapter="Prologue P2", action="Metadata Enrichment")
-    try:
-        print("\n" + "=" * 60)
-        print("  PROLOGUE PAGE 2: Schedules & Metadata Enrichment")
-        print("=" * 60)
-        await enrich_all_schedules(extract_standings=True, league_page=True)
-        await run_full_sync(session_name="Prologue P2")
-        log_audit_event("PROLOGUE_P2", "Metadata enrichment completed.", status="success")
-    except Exception as e:
-        print(f"  [Error] Prologue Page 2 failed: {e}")
-        log_audit_event("PROLOGUE_P2", f"Failed: {e}", status="failed")
+# Prologue P2 (Metadata Enrichment) REMOVED — now handled JIT in Ch1 P1 and --schedule --all.
+# Use `python Leo.py --enrich` for manual gap-filling if needed.
 
 
 @AIGOSuite.aigo_retry(max_retries=2, delay=2.0)
-async def run_prologue_p3():
-    """Prologue Page 3: Accuracy Generation & Final Prologue Sync."""
-    log_state(chapter="Prologue P3", action="Accuracy Generation & Final Prologue Sync")
+async def run_prologue_p2():
+    """Prologue Page 2: Accuracy Generation & Final Prologue Sync."""
+    log_state(chapter="Prologue P2", action="Accuracy Generation & Final Prologue Sync")
     try:
         print("\n" + "=" * 60)
-        print("  PROLOGUE PAGE 3: Accuracy & Final Prologue Sync")
+        print("  PROLOGUE PAGE 2: Accuracy & Final Prologue Sync")
         print("=" * 60)
         await run_accuracy_generation()
         await run_full_sync(session_name="Prologue Final")
-        log_audit_event("PROLOGUE_P3", "Accuracy generated and Prologue sync completed.", status="success")
+        log_audit_event("PROLOGUE_P2", "Accuracy generated and Prologue sync completed.", status="success")
     except Exception as e:
-        print(f"  [Error] Prologue Page 3 failed: {e}")
-        log_audit_event("PROLOGUE_P3", f"Failed: {e}", status="failed")
+        print(f"  [Error] Prologue Page 2 failed: {e}")
+        log_audit_event("PROLOGUE_P2", f"Failed: {e}", status="failed")
 
 
 @AIGOSuite.aigo_retry(max_retries=2, delay=3.0)
@@ -299,6 +318,11 @@ async def run_utility(args):
         async with async_playwright() as p:
             await run_flashscore_schedule_only(p, refresh=refresh, extract_all=extract_all)
 
+    elif args.enrich:
+        print("\n  --- LEO: Manual Metadata Enrichment ---")
+        await enrich_all_schedules(extract_standings=True, league_page=True)
+        await run_full_sync(session_name="Manual Enrich")
+
     elif args.rule_engine:
         from Core.Intelligence.rule_engine_manager import RuleEngineManager
 
@@ -351,13 +375,10 @@ async def dispatch(args):
                 await run_prologue_p1(p)
             elif args.page == 2:
                 await run_prologue_p2()
-            elif args.page == 3:
-                await run_prologue_p3()
             else:
-                # All prologue pages sequentially
+                # All prologue pages sequentially (P1 + P2)
                 await run_prologue_p1(p)
                 await run_prologue_p2()
-                await run_prologue_p3()
             return
 
         # --- Chapter ---
@@ -431,14 +452,10 @@ async def main():
                     # ── PROLOGUE P1: Sequential (dependency for Chapter 1) ──
                     await run_prologue_p1(p)
 
-                    # ── CONCURRENT: Prologue P2+P3 || Chapter 1→2 ──
+                    # ── CONCURRENT: Prologue P2 || Chapter 1→2 ──
                     print("\n" + "=" * 60)
-                    print("  ⚡ CONCURRENT EXECUTION: Prologue P2+P3 || Chapter 1→2")
+                    print("  ⚡ CONCURRENT EXECUTION: Prologue P2 || Chapter 1→2")
                     print("=" * 60)
-
-                    async def _prologue_p2_p3():
-                        await run_prologue_p2()
-                        await run_prologue_p3()
 
                     async def _chapter_1_2():
                         await run_chapter_1_p1(p)
@@ -454,7 +471,7 @@ async def main():
                             log_audit_event("CH2_SKIPPED", "Skipped: Football.com session failed.", status="skipped")
 
                     await asyncio.gather(
-                        _prologue_p2_p3(),
+                        run_prologue_p2(),
                         _chapter_1_2(),
                         return_exceptions=True
                     )
@@ -501,7 +518,8 @@ if __name__ == "__main__":
     # Determine which mode to run
     is_utility = any([args.sync, args.recommend, args.accuracy,
                       args.search_dict, args.review, args.backtest,
-                      args.rule_engine, args.streamer, args.schedule])
+                      args.rule_engine, args.streamer, args.schedule,
+                      args.enrich])
     is_granular = args.prologue or args.chapter is not None
 
     try:

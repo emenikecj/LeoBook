@@ -12,6 +12,8 @@ nest-asyncio
 fuzzywuzzy
 python-Levenshtein>=0.12.2
 pytz
+psutil
+Pillow
 
 # Supabase sync dependencies
 supabase>=2.0.0

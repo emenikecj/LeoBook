@@ -33,9 +33,8 @@ Every page function (`run_prologue_p1`, `run_chapter_1_p2`, etc.) MUST call `awa
 
 ```
 Prologue P1: Cloud Handshake & Review    → sync_on_startup + review
-Prologue P2: Metadata Enrichment         → enrich + sync
-Prologue P3: Accuracy & Final Sync       → accuracy + sync
-Chapter 1 P1: Flashscore Extraction      → extract + sync
+Prologue P2: Final Sync & Cleanup        → accuracy + sync
+Chapter 1 P1: Flashscore Extraction      → extract + enrich (JIT) + predict (Adaptive) + sync
 Chapter 1 P2: Odds Harvesting            → harvest + sync
 Chapter 1 P3: Final Sync & Recommendations → sync + recommend
 Chapter 2 P1: Automated Booking          → book + sync
@@ -66,7 +65,8 @@ Every Python file MUST have this header format:
 
 - Use `asyncio.gather()` for independent operations
 - Never use `time.sleep()` in async code — use `await asyncio.sleep()`
-- The main cycle uses: `Prologue P1 (sequential) → [P2+P3 || Ch1→Ch2] (concurrent) → Ch3`
+- The main cycle uses: `Prologue P1 (sequential) → [P2 || Ch1→Ch2] (concurrent) → Ch3`
+- **Adaptive Feedback:** The `LearningEngine` must update weights AFTER `outcome_reviewer` completes a batch.
 
 ---
 
@@ -391,6 +391,6 @@ LeoBook/
 
 ---
 
-*Last updated: February 20, 2026*
+*Last updated: February 24, 2026*
 *Authored by: LeoBook Engineering Team*
 
