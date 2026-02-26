@@ -184,7 +184,7 @@ def save_prediction(match_data: Dict[str, Any], prediction_result: Dict[str, Any
     new_row_data = {
         'fixture_id': fixture_id,
         'date': date,
-        'match_time': match_data.get('time', '00:00'),
+        'match_time': match_data.get('match_time') or match_data.get('time', '00:00'),
         'region_league': match_data.get('region_league', 'Unknown'),
         'home_team': match_data.get('home_team', 'Unknown'),
         'away_team': match_data.get('away_team', 'Unknown'),

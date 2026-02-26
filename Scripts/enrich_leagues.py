@@ -133,9 +133,9 @@ async def enrich_single_league(context, league_row: dict, sem: asyncio.Semaphore
             region_league_label = f"{region} - {league_name}"
 
             # --- Incremental write: update region_league.csv ---
-            # Using async lock-protected read-modify-write
             async with CSV_LOCK:
                 all_leagues = _read_csv(REGION_LEAGUE_CSV)
+                updated_league = False
                 for row in all_leagues:
                     if row.get("league_id") == old_league_id:
                         if league_crest and league_crest != "Unknown":
@@ -148,11 +148,16 @@ async def enrich_single_league(context, league_row: dict, sem: asyncio.Semaphore
                             row["league_id"] = new_league_id
                         row["last_updated"] = dt.now().isoformat()
                         row["date_updated"] = dt.now().isoformat()
+                        updated_league = True
                         break
-                _write_csv(REGION_LEAGUE_CSV, all_leagues, files_and_headers[REGION_LEAGUE_CSV])
+                
+                if updated_league:
+                    _write_csv(REGION_LEAGUE_CSV, all_leagues, files_and_headers[REGION_LEAGUE_CSV])
+                    print(f"    [Enrich] [DISK] Updated region_league.csv for {league_name}")
+                else:
+                    print(f"    [Enrich] [DISK] Warning: Could not find league_id {old_league_id} in region_league.csv")
 
             # --- Incremental write: backfill schedules.csv ---
-            match_ids = data.get("match_ids", [])
             if match_ids:
                 async with CSV_LOCK:
                     all_schedules = _read_csv(SCHEDULES_CSV)
@@ -173,6 +178,7 @@ async def enrich_single_league(context, league_row: dict, sem: asyncio.Semaphore
                                 sched_updated += 1
                     if sched_updated:
                         _write_csv(SCHEDULES_CSV, all_schedules, files_and_headers[SCHEDULES_CSV])
+                        print(f"    [Enrich] [DISK] Backfilled {sched_updated} schedules with league_id={new_league_id}")
 
             # --- Incremental write: backfill teams.csv ---
             team_data = data.get("team_data", [])

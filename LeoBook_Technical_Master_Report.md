@@ -1,4 +1,4 @@
-> **Version**: 3.5 · **Last Updated**: 2026-02-26 · **Architecture**: High-Velocity Concurrent Architecture (Shared Locking + Parallel Pipeline)
+> **Version**: 3.5.1 · **Last Updated**: 2026-02-26 · **Architecture**: High-Velocity Concurrent Architecture (Shared Locking + Parallel Pipeline)
 
 ## Table of Contents
 

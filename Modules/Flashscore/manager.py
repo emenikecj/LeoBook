@@ -192,16 +192,23 @@ async def run_flashscore_analysis(playwright: Playwright):
                                 from Data.Access.sync_manager import run_full_sync
                                 await run_full_sync()
 
-                    async def _run_league_enrichment():
-                        """Parallel: visit league pages to fill Unknown metadata."""
+                    async def _run_extra_parallel():
+                        """Parallel: visit league pages + build search dictionary."""
                         try:
                             from Scripts.enrich_leagues import enrich_leagues
-                            await enrich_leagues()
+                            from Scripts.build_search_dict import main as build_search
+                            await asyncio.gather(
+                                enrich_leagues(),
+                                build_search()
+                            )
                         except Exception as e:
-                            print(f"    [Enrich] League enrichment error (non-fatal): {e}")
+                            print(f"    [Parallel] Extra parallel tasks error (non-fatal): {e}")
 
-                    # Run both in parallel — batch uses existing browser, enrichment launches its own
-                    await asyncio.gather(_run_batch_processing(), _run_league_enrichment())
+                    # Run all logic streams in parallel
+                    # Stream A: Batch H2H/Standings
+                    # Stream B: League Enrichment
+                    # Stream C: Search Dictionary Builder
+                    await asyncio.gather(_run_batch_processing(), _run_extra_parallel())
                 else:
                     print("    [Info] No new matches to process.")
 
