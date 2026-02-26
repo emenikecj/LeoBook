@@ -105,7 +105,12 @@ class LLMHealthManager:
             print("  [LLM Health] ⚠ CRITICAL — All LLM providers are offline! User action required.")
 
     async def _ping_one(self, name: str) -> bool:
-        """Send a minimal request to check if the provider responds with 200."""
+        """
+        Send a minimal request to check if the provider is reachable.
+        
+        Returns True (active) for: 200 OK, 429 Rate Limited (provider works, just throttled).
+        Returns False (inactive) for: 401/403 Auth errors, connection failures, timeouts.
+        """
         cfg = self.PROVIDERS[name]
         api_key = os.getenv(cfg["env_key"])
         if not api_key:
@@ -127,7 +132,11 @@ class LLMHealthManager:
                 resp = requests.post(
                     cfg["api_url"], headers=headers, json=payload, timeout=10
                 )
-                return resp.status_code == 200
+                # 200 = working, 429 = working but throttled (still active)
+                if resp.status_code in (200, 429):
+                    return True
+                # 401/403 = auth failure (truly inactive)
+                return False
             except Exception:
                 return False
 

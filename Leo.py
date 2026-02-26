@@ -168,7 +168,7 @@ async def run_chapter_1_p3():
             print("  [AIGO] Sync parity issues detected. Logged for review.")
             log_audit_event("CH1_P3_SYNC", "Sync parity issues detected.", status="partial_failure")
 
-        get_recommendations(save_to_file=True)
+        await get_recommendations(save_to_file=True)
         log_audit_event("CH1_P3", "Final sync and recommendations completed.", status="success")
     except Exception as e:
         print(f"  [Error] Chapter 1 Page 3 failed: {e}")
@@ -272,7 +272,7 @@ async def run_utility(args):
 
     elif args.recommend:
         print("\n  --- LEO: Generate Recommendations ---")
-        get_recommendations(save_to_file=True)
+        await get_recommendations(save_to_file=True)
 
     elif args.accuracy:
         print("\n  --- LEO: Accuracy Report ---")
