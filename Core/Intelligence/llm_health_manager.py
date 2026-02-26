@@ -5,9 +5,13 @@
 # Called by: api_manager.py, build_search_dict.py
 
 """
-Pings Grok and Gemini every 15 minutes to determine which providers are alive.
-Routes LLM calls to the active provider, skipping dead ones instantly.
-If both are down, alerts the user.
+Multi-key aware LLM health manager.
+
+- Grok: single key (GROK_API_KEY)
+- Gemini: supports comma-separated keys (GEMINI_API_KEY=key1,key2,...,key14)
+  Round-robins through active keys to maximize free-tier quota.
+
+Pings every 15 minutes. 429 = active (throttled). 401/403 = dead key.
 """
 
 import os
@@ -22,29 +26,23 @@ PING_INTERVAL = 900  # 15 minutes
 
 
 class LLMHealthManager:
-    """Singleton manager that tracks LLM provider health via periodic pings."""
+    """Singleton manager with multi-key Gemini rotation."""
 
     _instance = None
     _lock = asyncio.Lock()
 
-    # Provider registry
-    PROVIDERS = {
-        "Grok": {
-            "api_url": "https://api.x.ai/v1/chat/completions",
-            "model": "grok-4-1-fast-reasoning",
-            "env_key": "GROK_API_KEY",
-        },
-        "Gemini": {
-            "api_url": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-            "model": "gemini-2.5-flash",
-            "env_key": "GEMINI_API_KEY",
-        },
-    }
+    GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+    GEMINI_MODEL = "gemini-2.5-flash"
+    GROK_API_URL = "https://api.x.ai/v1/chat/completions"
+    GROK_MODEL = "grok-4-latest"
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._status = {}       # {"Grok": True/False, "Gemini": True/False}
+            cls._instance._grok_active = False
+            cls._instance._gemini_keys = []       # All parsed keys
+            cls._instance._gemini_active = []     # Keys that passed ping
+            cls._instance._gemini_index = 0       # Round-robin pointer
             cls._instance._last_ping = 0.0
             cls._instance._initialized = False
         return cls._instance
@@ -56,63 +54,100 @@ class LLMHealthManager:
         now = time.time()
         if not self._initialized or (now - self._last_ping) >= PING_INTERVAL:
             async with self._lock:
-                # Double-check inside lock
                 if not self._initialized or (time.time() - self._last_ping) >= PING_INTERVAL:
                     await self._ping_all()
 
     def get_ordered_providers(self) -> list:
-        """
-        Returns provider names ordered: active ones first, inactive ones last.
-        If no ping has run yet, returns default order ['Grok', 'Gemini'].
-        """
-        if not self._status:
+        """Returns provider names ordered: active first, inactive last."""
+        if not self._initialized:
             return ["Grok", "Gemini"]
 
-        active = [name for name, alive in self._status.items() if alive]
-        inactive = [name for name, alive in self._status.items() if not alive]
+        active = []
+        inactive = []
+        if self._grok_active:
+            active.append("Grok")
+        else:
+            inactive.append("Grok")
+        if self._gemini_active:
+            active.append("Gemini")
+        else:
+            inactive.append("Gemini")
         return active + inactive
 
     def is_provider_active(self, name: str) -> bool:
-        """Check if a specific provider is active."""
-        return self._status.get(name, True)  # Default True if never pinged
+        """Check if a specific provider has at least one active key."""
+        if name == "Grok":
+            return self._grok_active
+        if name == "Gemini":
+            return len(self._gemini_active) > 0
+        return False
 
-    def get_provider_config(self, name: str) -> dict:
-        """Returns full config for a provider including its API key."""
-        base = self.PROVIDERS.get(name, {})
-        return {
-            "name": name,
-            "api_key": os.getenv(base.get("env_key", "")),
-            "api_url": base.get("api_url", ""),
-            "model": base.get("model", ""),
-        }
+    def get_next_gemini_key(self) -> str:
+        """Round-robin through active Gemini keys."""
+        if not self._gemini_active:
+            # Fallback: try all keys
+            if self._gemini_keys:
+                key = self._gemini_keys[self._gemini_index % len(self._gemini_keys)]
+                self._gemini_index += 1
+                return key
+            return ""
+        key = self._gemini_active[self._gemini_index % len(self._gemini_active)]
+        self._gemini_index += 1
+        return key
+
+    def on_gemini_429(self, failed_key: str):
+        """Called when a Gemini key hits 429. Remove from active pool temporarily."""
+        if failed_key in self._gemini_active:
+            self._gemini_active.remove(failed_key)
+            remaining = len(self._gemini_active)
+            print(f"    [LLM Health] Gemini key rotated out (429). {remaining} keys remaining.")
+            if remaining == 0:
+                print(f"    [LLM Health] ⚠ All {len(self._gemini_keys)} Gemini keys exhausted!")
 
     # ── Internals ───────────────────────────────────────────────
 
     async def _ping_all(self):
-        """Ping every provider with a tiny request to check health."""
+        """Ping Grok + all Gemini keys."""
         print("  [LLM Health] Pinging providers...")
-        for name in self.PROVIDERS:
-            alive = await self._ping_one(name)
-            self._status[name] = alive
-            tag = "✓ Active" if alive else "✗ Inactive"
-            print(f"  [LLM Health] {name}: {tag}")
+
+        # Parse Gemini keys
+        raw = os.getenv("GEMINI_API_KEY", "")
+        self._gemini_keys = [k.strip() for k in raw.split(",") if k.strip()]
+
+        # Ping Grok
+        grok_key = os.getenv("GROK_API_KEY", "")
+        self._grok_active = await self._ping_key("Grok", self.GROK_API_URL, self.GROK_MODEL, grok_key) if grok_key else False
+        tag = "✓ Active" if self._grok_active else "✗ Inactive"
+        print(f"  [LLM Health] Grok: {tag}")
+
+        # Ping Gemini keys (sample 3 to avoid wasting quota on ping)
+        if self._gemini_keys:
+            # Test first, middle, and last key as representative sample
+            sample_indices = list({0, len(self._gemini_keys) // 2, len(self._gemini_keys) - 1})
+            sample_results = []
+            for idx in sample_indices:
+                alive = await self._ping_key("Gemini", self.GEMINI_API_URL, self.GEMINI_MODEL, self._gemini_keys[idx])
+                sample_results.append(alive)
+
+            if any(sample_results):
+                # If any sample key works, assume all keys are valid (same account)
+                self._gemini_active = list(self._gemini_keys)
+                print(f"  [LLM Health] Gemini: ✓ Active ({len(self._gemini_keys)} keys loaded)")
+            else:
+                self._gemini_active = []
+                print(f"  [LLM Health] Gemini: ✗ Inactive (all {len(self._gemini_keys)} keys failed)")
+        else:
+            self._gemini_active = []
+            print("  [LLM Health] Gemini: ✗ No keys configured")
 
         self._last_ping = time.time()
         self._initialized = True
 
-        # Alert if all dead
-        if not any(self._status.values()):
+        if not self._grok_active and not self._gemini_active:
             print("  [LLM Health] ⚠ CRITICAL — All LLM providers are offline! User action required.")
 
-    async def _ping_one(self, name: str) -> bool:
-        """
-        Send a minimal request to check if the provider is reachable.
-        
-        Returns True (active) for: 200 OK, 429 Rate Limited (provider works, just throttled).
-        Returns False (inactive) for: 401/403 Auth errors, connection failures, timeouts.
-        """
-        cfg = self.PROVIDERS[name]
-        api_key = os.getenv(cfg["env_key"])
+    async def _ping_key(self, name: str, api_url: str, model: str, api_key: str) -> bool:
+        """Ping a single API key. 200/429 = active, 401/403 = dead."""
         if not api_key:
             return False
 
@@ -121,7 +156,7 @@ class LLMHealthManager:
             "Content-Type": "application/json",
         }
         payload = {
-            "model": cfg["model"],
+            "model": model,
             "messages": [{"role": "user", "content": "ping"}],
             "max_tokens": 5,
             "temperature": 0,
@@ -129,14 +164,8 @@ class LLMHealthManager:
 
         def _do_ping():
             try:
-                resp = requests.post(
-                    cfg["api_url"], headers=headers, json=payload, timeout=10
-                )
-                # 200 = working, 429 = working but throttled (still active)
-                if resp.status_code in (200, 429):
-                    return True
-                # 401/403 = auth failure (truly inactive)
-                return False
+                resp = requests.post(api_url, headers=headers, json=payload, timeout=10)
+                return resp.status_code in (200, 429)
             except Exception:
                 return False
 
