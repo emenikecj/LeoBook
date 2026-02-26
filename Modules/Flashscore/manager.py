@@ -173,6 +173,31 @@ async def run_flashscore_analysis(playwright: Playwright):
                     else:
                         valid_matches.append(m)
 
+                # --- MANDATORY: Enrich ALL unenriched teams/leagues BEFORE predictions ---
+                # (One-shot enrichment gate — prevents browser idle death during match processing)
+                try:
+                    from Scripts.build_search_dict import enrich_batch_teams_search_dict
+                    from Data.Access.db_helpers import TEAMS_CSV
+                    import csv as _csv
+                    unenriched_teams = []
+                    if os.path.exists(TEAMS_CSV):
+                        with open(TEAMS_CSV, 'r', encoding='utf-8') as f:
+                            for row in _csv.DictReader(f):
+                                st = (row.get('search_terms') or '').strip()
+                                abbr = (row.get('abbreviations') or '').strip()
+                                tid = row.get('team_id', '')
+                                tname = row.get('team_name', '')
+                                if tid and tname and (not st or st == '[]' or not abbr or abbr == '[]'):
+                                    unenriched_teams.append({'team_id': tid, 'team_name': tname})
+                    if unenriched_teams:
+                        print(f"\n    [SearchDict Gate] Enriching {len(unenriched_teams)} unenriched teams before predictions...")
+                        await enrich_batch_teams_search_dict(unenriched_teams)
+                        print(f"    [SearchDict Gate] ✓ Team enrichment complete.")
+                    else:
+                        print(f"    [SearchDict Gate] All teams already enriched.")
+                except Exception as e:
+                    print(f"    [SearchDict Gate] Non-fatal error: {e}")
+
                 # --- Batch Processing (Concurrency from .env MAX_CONCURRENCY) ---
                 if valid_matches:
                     print(f"    [Batching] Processing {len(valid_matches)} matches (Concurrency: {MAX_CONCURRENCY})...")

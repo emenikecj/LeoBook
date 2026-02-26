@@ -146,24 +146,8 @@ async def process_match_task(match_data: dict, browser: Browser):
                 away_id=match_data.get('away_team_id', '')
             )
 
-            # 2. Batch-enrich ALL unenriched teams in teams.csv
-            #    (directly scans CSV instead of relying on standings team_ids)
-            import csv as _csv
-            from Data.Access.db_helpers import TEAMS_CSV
-            unenriched_teams = []
-            if os.path.exists(TEAMS_CSV):
-                with open(TEAMS_CSV, 'r', encoding='utf-8') as f:
-                    for row in _csv.DictReader(f):
-                        st = (row.get('search_terms') or '').strip()
-                        abbr = (row.get('abbreviations') or '').strip()
-                        tid = row.get('team_id', '')
-                        tname = row.get('team_name', '')
-                        if tid and tname and (not st or st == '[]' or not abbr or abbr == '[]'):
-                            unenriched_teams.append({'team_id': tid, 'team_name': tname})
-
-            if unenriched_teams:
-                print(f"      [SearchDict Batch] Found {len(unenriched_teams)} unenriched teams in teams.csv")
-                await enrich_batch_teams_search_dict(unenriched_teams)
+            # NOTE: Heavy batch enrichment runs ONCE in manager.py before match loop.
+            # Only per-match lightweight check (2 teams + 1 league) runs here.
 
         except Exception as e:
             print(f"      [SearchDict] Search dict error (non-fatal): {e}")

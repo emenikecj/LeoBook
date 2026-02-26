@@ -724,11 +724,14 @@ async def enrich_batch_teams_search_dict(team_pairs: list, batch_size: int = 10)
             results = await async_query_llm_for_metadata(batch_names, item_type="team")
             updates = {}
             for idx, item in enumerate(results):
-                if idx >= len(batch_names):
-                    break
-                tname = batch_names[idx]
-                tid = batch_id_map.get(tname)
-                if not tid:
+                # Prefer LLM's input_name for mapping; fall back to index
+                input_name = item.get("input_name", "")
+                tid = batch_id_map.get(input_name)
+                tname = input_name or (batch_names[idx] if idx < len(batch_names) else None)
+                if not tid and idx < len(batch_names):
+                    tname = batch_names[idx]
+                    tid = batch_id_map.get(tname)
+                if not tid or not tname:
                     continue
 
                 off_name = item.get("official_name") or tname
