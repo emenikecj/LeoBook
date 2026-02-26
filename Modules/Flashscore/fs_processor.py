@@ -11,6 +11,7 @@ from Core.Browser.Extractors.h2h_extractor import extract_h2h_data, activate_h2h
 from Core.Browser.Extractors.standings_extractor import extract_standings_data, activate_standings_tab
 from Core.Utils.utils import log_error_state
 import re
+import os
 
 def strip_league_stage(league_name: str):
     """Strips ' - Round X' etc. and returns (clean_league, stage)."""
@@ -145,36 +146,24 @@ async def process_match_task(match_data: dict, browser: Browser):
                 away_id=match_data.get('away_team_id', '')
             )
 
-            # 2. Batch-enrich ALL discovered teams from league page + standings + match
-            all_discovered_teams = []
+            # 2. Batch-enrich ALL unenriched teams in teams.csv
+            #    (directly scans CSV instead of relying on standings team_ids)
+            import csv as _csv
+            from Data.Access.db_helpers import TEAMS_CSV
+            unenriched_teams = []
+            if os.path.exists(TEAMS_CSV):
+                with open(TEAMS_CSV, 'r', encoding='utf-8') as f:
+                    for row in _csv.DictReader(f):
+                        st = (row.get('search_terms') or '').strip()
+                        abbr = (row.get('abbreviations') or '').strip()
+                        tid = row.get('team_id', '')
+                        tname = row.get('team_name', '')
+                        if tid and tname and (not st or st == '[]' or not abbr or abbr == '[]'):
+                            unenriched_teams.append({'team_id': tid, 'team_name': tname})
 
-            # Match teams (home + away)
-            ht, ht_id = match_data.get('home_team', ''), match_data.get('home_team_id', '')
-            at, at_id = match_data.get('away_team', ''), match_data.get('away_team_id', '')
-            if ht_id and ht: all_discovered_teams.append({'team_id': ht_id, 'team_name': ht})
-            if at_id and at: all_discovered_teams.append({'team_id': at_id, 'team_name': at})
-
-            # Teams from league page extraction
-            for t in league_inline_result.get('team_data', []):
-                if t.get('team_id') and t.get('name'):
-                    all_discovered_teams.append({'team_id': t['team_id'], 'team_name': t['name']})
-
-            # Teams from standings extraction
-            for s in standings_data:
-                if s.get('team_id') and s.get('team_name'):
-                    all_discovered_teams.append({'team_id': s['team_id'], 'team_name': s['team_name']})
-
-            # Deduplicate by team_id
-            seen_ids = set()
-            unique_teams = []
-            for t in all_discovered_teams:
-                if t['team_id'] not in seen_ids:
-                    seen_ids.add(t['team_id'])
-                    unique_teams.append(t)
-
-            if unique_teams:
-                print(f"      [SearchDict Batch] Discovered {len(unique_teams)} unique teams (match + standings + league page)")
-                await enrich_batch_teams_search_dict(unique_teams)
+            if unenriched_teams:
+                print(f"      [SearchDict Batch] Found {len(unenriched_teams)} unenriched teams in teams.csv")
+                await enrich_batch_teams_search_dict(unenriched_teams)
 
         except Exception as e:
             print(f"      [SearchDict] Search dict error (non-fatal): {e}")
