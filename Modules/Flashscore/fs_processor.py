@@ -56,7 +56,7 @@ async def process_match_task(match_data: dict, browser: Browser):
         h2h_data = {}
         if await activate_h2h_tab(page):
             try:
-                h2h_data = await retry_extraction(extract_h2h_data, page, match_data['home_team'], match_data['away_team'], "fs_h2h_tab")
+                h2h_data = await retry_extraction(extract_h2h_data, page, match_data['home_team'], match_data['away_team'], "fs_h2h_tab", page=page, context_key="fs_h2h_tab", element_key="h2h_match_rows")
 
                 h2h_count = len(h2h_data.get("home_last_10_matches", [])) + len(h2h_data.get("away_last_10_matches", [])) + len(h2h_data.get("head_to_head", []))
                 print(f"      [OK H2H] H2H tab data extracted for {match_label} ({h2h_count} matches found)")
@@ -82,7 +82,7 @@ async def process_match_task(match_data: dict, browser: Browser):
         
         if await activate_standings_tab(page):
             try:
-                standings_result = await retry_extraction(extract_standings_data, page)
+                standings_result = await retry_extraction(extract_standings_data, page, page=page, context_key="fs_standings_tab", element_key="standings_row")
                 standings_data = standings_result.get("standings", [])
                 standings_league = standings_result.get("region_league", "Unknown")
                 if standings_league == "Unknown":

@@ -99,8 +99,8 @@ async def extract_match_page_metadata(page: Page, match_data: dict) -> dict:
         if league_url:
             try:
                 # Navigate to the league page â€” JS injects the season hash into the URL
-                await page.goto(league_url, wait_until='networkidle', timeout=30000)
-                await asyncio.sleep(2.5)  # Allow JS to update URL with season hash
+                await page.goto(league_url, wait_until='domcontentloaded', timeout=30000)
+                await asyncio.sleep(5)  # Allow JS to update URL with season hash
 
                 final_url = page.url
                 if '#/' in final_url:

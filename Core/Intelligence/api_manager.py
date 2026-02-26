@@ -175,25 +175,53 @@ async def gemini_api_call(prompt_content, generation_config=None, **kwargs):
 
 async def unified_api_call(prompt_content, generation_config=None, **kwargs):
     """
-    Unified API call with @aigo_retry (retries) and auto-fallback between providers.
+    Unified API call with adaptive provider routing and auto-fallback.
+    Uses LLMHealthManager to ping providers and route to the active one first.
     """
-    from .aigo_suite import AIGOSuite
-    
-    @AIGOSuite.aigo_retry(max_retries=2, delay=2.0, use_aigo=False)
-    async def _execute_with_fallback():
-        print("    [AI] Attempting with primary model (xAI Grok)...")
-        try:
-            grok_response = await grok_api_call(prompt_content, generation_config, **kwargs)
-            if grok_response and hasattr(grok_response, 'text') and grok_response.text:
-                return grok_response
-        except Exception as e:
-            print(f"    [AI WARNING] Grok failed: {e}. Trying Gemini fallback...")
-        
-        print("    [AI] Attempting fallback with Google Gemini...")
-        gemini_response = await gemini_api_call(prompt_content, generation_config, **kwargs)
-        if gemini_response and hasattr(gemini_response, 'text') and gemini_response.text:
-            return gemini_response
-        
-        raise ValueError("Both AI providers (Grok and Gemini) failed to provide a valid response.")
+    from .llm_health_manager import health_manager
 
-    return await _execute_with_fallback()
+    # Ensure health check has run (pings every 15 min)
+    await health_manager.ensure_initialized()
+    ordered = health_manager.get_ordered_providers()
+
+    call_map = {
+        "Grok": grok_api_call,
+        "Gemini": gemini_api_call,
+    }
+
+    last_error = None
+    for provider_name in ordered:
+        call_fn = call_map.get(provider_name)
+        if not call_fn:
+            continue
+
+        # Skip providers known to be inactive
+        if not health_manager.is_provider_active(provider_name):
+            print(f"    [AI] Skipping {provider_name} (inactive per health check)")
+            continue
+
+        try:
+            print(f"    [AI] Attempting with {provider_name}...")
+            response = await call_fn(prompt_content, generation_config, **kwargs)
+            if response and hasattr(response, 'text') and response.text:
+                return response
+        except Exception as e:
+            last_error = e
+            print(f"    [AI WARNING] {provider_name} failed: {e}")
+
+    # All-inactive fallback: try every provider once as a last resort
+    for provider_name in ordered:
+        if health_manager.is_provider_active(provider_name):
+            continue  # Already tried above
+        call_fn = call_map.get(provider_name)
+        if not call_fn:
+            continue
+        try:
+            print(f"    [AI] Last-resort attempt with {provider_name}...")
+            response = await call_fn(prompt_content, generation_config, **kwargs)
+            if response and hasattr(response, 'text') and response.text:
+                return response
+        except Exception as e:
+            last_error = e
+
+    raise ValueError(f"All AI providers failed. Last error: {last_error}")

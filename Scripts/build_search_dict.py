@@ -193,31 +193,40 @@ def _call_llm(provider: dict, prompt: str) -> list:
 
 def query_llm_for_metadata(items, item_type="team", retries=2):
     """
-    Queries LLM providers in priority order (Grok primary, Gemini secondary).
-    Each provider gets `retries` attempts before falling through to the next.
+    Queries LLM providers in adaptive priority order via LLMHealthManager.
+    Skips providers known to be inactive (e.g. Grok returning 403).
+    Each active provider gets `retries` attempts before falling through.
     """
     if not items:
         return []
 
+    from Core.Intelligence.llm_health_manager import health_manager
+    ordered = health_manager.get_ordered_providers()
+
     prompt = _build_prompt(items, item_type)
 
-    for provider in LLM_PROVIDERS:
+    for provider_name in ordered:
+        provider = health_manager.get_provider_config(provider_name)
         if not provider.get("api_key"):
-            print(f"  [Skip] {provider['name']} — no API key configured.")
+            print(f"  [Skip] {provider_name} — no API key configured.")
+            continue
+
+        if not health_manager.is_provider_active(provider_name):
+            print(f"  [Skip] {provider_name} — inactive per health check.")
             continue
 
         for attempt in range(1, retries + 1):
             try:
-                print(f"  [LLM] {provider['name']} attempt {attempt}/{retries}...")
+                print(f"  [LLM] {provider_name} attempt {attempt}/{retries}...")
                 results = _call_llm(provider, prompt)
                 if results:
-                    print(f"  [LLM] {provider['name']} returned {len(results)} items.")
+                    print(f"  [LLM] {provider_name} returned {len(results)} items.")
                     return results
             except Exception as e:
-                print(f"  [Warning] {provider['name']} attempt {attempt}/{retries} failed: {e}")
+                print(f"  [Warning] {provider_name} attempt {attempt}/{retries} failed: {e}")
                 time.sleep(3 * attempt)
 
-        print(f"  [Fallback] {provider['name']} exhausted. Trying next provider...")
+        print(f"  [Fallback] {provider_name} exhausted. Trying next provider...")
 
     print(f"  [Error] All LLM providers failed for {len(items)} {item_type}(s).")
     return []

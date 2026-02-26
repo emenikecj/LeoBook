@@ -13,7 +13,7 @@ from Core.Browser.site_helpers import fs_universal_popup_dismissal
 from Core.Intelligence.selector_manager import SelectorManager
 from Core.Browser.Extractors.league_page_extractor import extract_league_metadata, extract_league_match_urls
 from Data.Access.db_helpers import (
-    _read_csv, _write_csv, batch_upsert,
+    CSV_LOCK, _read_csv, _write_csv, batch_upsert,
     REGION_LEAGUE_CSV, SCHEDULES_CSV, TEAMS_CSV,
     files_and_headers
 )
@@ -225,8 +225,6 @@ async def enrich_leagues():
     Main entry point: Parallel league enrichment using MAX_CONCURRENCY.
     """
     # 1. Read leagues needing enrichment
-    from Data.Access.db_helpers import _read_csv, _write_csv, REGION_LEAGUE_CSV, SCHEDULES_CSV, TEAMS_CSV, files_and_headers, CSV_LOCK
-    
     all_leagues = _read_csv(REGION_LEAGUE_CSV)
     needs_enrichment = [
         row for row in all_leagues
