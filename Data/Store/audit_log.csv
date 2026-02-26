@@ -1,4 +1,0 @@
-id,timestamp,event_type,description,balance_before,balance_after,stake,status,last_updated
-b8c29cad-0b6e-46ff-adff-a37086839750,2026-02-26T13:19:29+00:00,CYCLE_START,Cycle #1 initiated.,,,,success,1970-01-01T00:00:00+00:00
-b759d2db-56a2-48d2-a949-2b2c34aabdba,2026-02-26T13:19:30+00:00,PROLOGUE_P1,Cloud handshake and prediction review completed.,,,,success,1970-01-01T00:00:00+00:00
-ab8fae17-6a4f-4e6b-bec8-47d973ef73bd,2026-02-26 14:30:52,SYSTEM_SYNC,"Full Chapter Sync (Manual Sync): 12 passed, 0 failed.",,,,success

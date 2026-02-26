@@ -325,7 +325,8 @@ async def live_score_streamer(playwright: Playwright, user_data_dir: str = None)
         try:
             # 1. Launch/Restart Browser Session
             print(f"   [Streamer] Starting fresh browser session (Cycle {cycle + 1})...")
-            iphone_12 = playwright.devices['iPhone 12']
+            iphone_12 = {k: v for k, v in playwright.devices['iPhone 12'].items()
+                         if k != 'default_browser_type'}
             
             if user_data_dir:
                 # Use persistent context for full process isolation

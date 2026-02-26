@@ -145,8 +145,14 @@ async def process_match_task(match_data: dict, browser: Browser):
                 away_id=match_data.get('away_team_id', '')
             )
 
-            # 2. Batch-enrich ALL discovered teams from league page + standings
+            # 2. Batch-enrich ALL discovered teams from league page + standings + match
             all_discovered_teams = []
+
+            # Match teams (home + away)
+            ht, ht_id = match_data.get('home_team', ''), match_data.get('home_team_id', '')
+            at, at_id = match_data.get('away_team', ''), match_data.get('away_team_id', '')
+            if ht_id and ht: all_discovered_teams.append({'team_id': ht_id, 'team_name': ht})
+            if at_id and at: all_discovered_teams.append({'team_id': at_id, 'team_name': at})
 
             # Teams from league page extraction
             for t in league_inline_result.get('team_data', []):
@@ -167,6 +173,7 @@ async def process_match_task(match_data: dict, browser: Browser):
                     unique_teams.append(t)
 
             if unique_teams:
+                print(f"      [SearchDict Batch] Discovered {len(unique_teams)} unique teams (match + standings + league page)")
                 await enrich_batch_teams_search_dict(unique_teams)
 
         except Exception as e:
@@ -236,4 +243,7 @@ async def process_match_task(match_data: dict, browser: Browser):
         return False
     finally:
         await asyncio.sleep(1.0)
-        await context.close()
+        try:
+            await context.close()
+        except Exception:
+            pass  # Context may already be destroyed
