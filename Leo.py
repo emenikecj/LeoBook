@@ -449,11 +449,18 @@ async def main():
         init_csvs()
 
         async with async_playwright() as p:
-            # Spawn live score streamer with its OWN Playwright instance
+            # Spawn live score streamer with its OWN Playwright instance and isolated data dir
             # (prevents browser recycling in streamer from crashing main pipeline)
             async def _isolated_streamer():
                 async with async_playwright() as streamer_pw:
-                    await live_score_streamer(streamer_pw)
+                    # Provide a unique temp user data dir to ensure process isolation
+                    import tempfile
+                    import shutil
+                    temp_dir = tempfile.mkdtemp(prefix="leo_streamer_")
+                    try:
+                        await live_score_streamer(streamer_pw, user_data_dir=temp_dir)
+                    finally:
+                        shutil.rmtree(temp_dir, ignore_errors=True)
 
             streamer_task = asyncio.create_task(_isolated_streamer())
 

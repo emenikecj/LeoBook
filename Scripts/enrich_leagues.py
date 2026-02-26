@@ -369,23 +369,36 @@ async def enrich_league_inline(page, league_url: str, league_id: str, league_nam
     async with CSV_LOCK:
         all_leagues = _read_csv(REGION_LEAGUE_CSV)
         updated = False
+        target_row = None
+        
+        # Find existing row by ID or Name
         for row in all_leagues:
             if row.get("league_id") == league_id:
-                if league_crest and league_crest != "Unknown":
-                    row["league_crest"] = league_crest
-                if region_flag and region_flag != "Unknown":
-                    row["region_flag"] = region_flag
-                if region_url:
-                    row["region_url"] = region_url
-                if new_league_id and new_league_id != league_id:
-                    row["league_id"] = new_league_id
-                row["last_updated"] = dt.now().isoformat()
-                row["date_updated"] = dt.now().isoformat()
-                updated = True
+                target_row = row
                 break
-        if updated:
-            _write_csv(REGION_LEAGUE_CSV, all_leagues, files_and_headers[REGION_LEAGUE_CSV])
-            print(f"    [Enrich Inline] ✓ League '{league_name}' metadata saved")
+            # Fallback: match by name if ID is just a slug
+            row_id = row.get("league_id", "")
+            if row.get("league") == league_name and ("_" in row_id or row_id == "Unknown"):
+                target_row = row
+                print(f"    [Enrich Inline] Healing league ID: {row_id} -> {new_league_id}")
+                break
+
+        if target_row:
+            if league_crest and league_crest != "Unknown":
+                target_row["league_crest"] = league_crest
+            if region_flag and region_flag != "Unknown":
+                target_row["region_flag"] = region_flag
+            if region_url:
+                target_row["region_url"] = region_url
+            if new_league_id and new_league_id != league_id:
+                target_row["league_id"] = new_league_id
+            target_row["last_updated"] = dt.now().isoformat()
+            target_row["date_updated"] = dt.now().isoformat()
+            updated = True
+
+    if updated:
+        _write_csv(REGION_LEAGUE_CSV, all_leagues, files_and_headers[REGION_LEAGUE_CSV])
+        print(f"    [Enrich Inline] ✓ League '{league_name}' metadata saved")
 
     # Backfill schedules.csv
     match_ids = result.get("match_ids", [])

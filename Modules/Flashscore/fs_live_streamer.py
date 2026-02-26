@@ -303,7 +303,7 @@ async def _click_all_tab(page) -> bool:
 # Main streaming loop (unchanged except _touch_heartbeat is now guaranteed)
 # ---------------------------------------------------------------------------
 @AIGOSuite.aigo_retry(max_retries=2, delay=30.0, use_aigo=False)
-async def live_score_streamer(playwright: Playwright):
+async def live_score_streamer(playwright: Playwright, user_data_dir: str = None):
     """
     Main streaming loop v3.2 (Mobile Optimized).
     - Headless browser session with iPhone 12 emulation.
@@ -312,8 +312,8 @@ async def live_score_streamer(playwright: Playwright):
     - Immediate DB + CSV upserts.
     - RECYCLING: Restarts browser every 3 cycles to prevent memory bloat/crashes.
     """
-    print("\n   [Streamer] 🔴 Mobile Live Score Streamer v3.2 starting (Headless, 60s)...")
-    log_audit_event("STREAMER_START", "Mobile live score streamer v3.2 initialized (Headless, 60s).")
+    print(f"\n   [Streamer] 🔴 Mobile Live Score Streamer v3.2 starting (Headless, 60s, isolation={'ON' if user_data_dir else 'OFF'})...")
+    log_audit_event("STREAMER_START", f"Mobile live score streamer v3.2 initialized (Isolation: {bool(user_data_dir)}).")
 
     RECYCLE_INTERVAL = 3
     cycle = 0
@@ -325,17 +325,28 @@ async def live_score_streamer(playwright: Playwright):
         try:
             # 1. Launch/Restart Browser Session
             print(f"   [Streamer] Starting fresh browser session (Cycle {cycle + 1})...")
-            browser = await playwright.chromium.launch(
-                headless=True,
-                args=["--disable-dev-shm-usage", "--no-sandbox"]
-            )
-
             iphone_12 = playwright.devices['iPhone 12']
-            context = await browser.new_context(
-                **iphone_12,
-                timezone_id="Africa/Lagos"
-            )
-            page = await context.new_page()
+            
+            if user_data_dir:
+                # Use persistent context for full process isolation
+                context = await playwright.chromium.launch_persistent_context(
+                    user_data_dir,
+                    headless=True,
+                    args=["--disable-dev-shm-usage", "--no-sandbox"],
+                    **iphone_12,
+                    timezone_id="Africa/Lagos"
+                )
+                page = context.pages[0] if context.pages else await context.new_page()
+            else:
+                browser = await playwright.chromium.launch(
+                    headless=True,
+                    args=["--disable-dev-shm-usage", "--no-sandbox"]
+                )
+                context = await browser.new_context(
+                    **iphone_12,
+                    timezone_id="Africa/Lagos"
+                )
+                page = await context.new_page()
 
             # 2. Initial Setup for the Session
             print("   [Streamer] Navigating to Flashscore (Mobile view, up to 3 mins)...")

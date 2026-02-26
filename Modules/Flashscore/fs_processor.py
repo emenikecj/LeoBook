@@ -172,7 +172,8 @@ async def process_match_task(match_data: dict, browser: Browser):
         except Exception as e:
             print(f"      [SearchDict] Search dict error (non-fatal): {e}")
 
-        # --- Navigate back to match page for prediction ---
+        # --- MANDATORY RULE: Enrichment Complete ---
+        print(f"      [Rule] SearchDict enrichment complete for {match_label} — proceeding to prediction.")
         match_link = match_data.get('match_link', '')
         if match_link:
             try:

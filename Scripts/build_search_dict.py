@@ -374,7 +374,7 @@ def find_best_match_league(input_name: str, country: str, existing_leagues: dict
         if country and existing_country and country.strip().lower() != existing_country:
             continue
 
-        # Exact match
+        # Exact match (Name-based fallback if ID is just a slug or Unknown)
         if norm_input_base == existing_name:
             return league_id, False
 
