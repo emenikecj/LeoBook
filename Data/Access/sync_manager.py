@@ -274,8 +274,9 @@ class SyncManager:
 
                 if v in ('', 'N/A', None, 'None', 'none', 'nan', 'NaN', 'null', 'NULL'):
                     clean[k] = None
-                # Fix: Convert stringified empty arrays to None for Postgres TEXT[] columns
-                elif isinstance(v, str) and v.strip() in ('[]', '[""]', "['']"):
+                # Fix: Convert stringified Python lists to None for Postgres TEXT[] columns
+                # Catches: "[]", "['unknown']", "['val1', 'val2']", etc.
+                elif isinstance(v, str) and re.match(r"^\[.*\]$", v.strip()):
                     clean[k] = None
                 else:
                     val = v

@@ -325,6 +325,7 @@ async def live_score_streamer(playwright: Playwright, user_data_dir: str = None)
     print(f"\n   [Streamer] 🔴 Mobile Live Score Streamer v3.2 starting (Headless, 60s, isolation={'ON' if user_data_dir else 'OFF'})...")
     log_audit_event("STREAMER_START", f"Mobile live score streamer v3.2 initialized (Isolation: {bool(user_data_dir)}).")
 
+    global _last_push_sig
     RECYCLE_INTERVAL = 3
     cycle = 0
     sync = SyncManager()
