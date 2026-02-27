@@ -160,10 +160,10 @@ async def extract_all_matches(page: Page, label: str = "Extractor") -> list:
                 status = 'suspended'; stageDetail = 'Susp'; homeScore = ''; awayScore = '';
             } else if (homeScoreEl && awayScoreEl) {
                 const scoreState = homeScoreEl.getAttribute('data-state');
-                if (scoreState === sel.score_final_state || stageLower.includes('fin') || stageLower === '') {
+                if (scoreState === sel.score_final_state || stageLower.includes('fin') || stageLower.includes('after') || stageLower === '') {
                     status = 'finished';
                     if (stageLower.includes('pen')) stageDetail = 'Pen';
-                    else if (stageLower.includes('aet') || stageLower.includes('et')) stageDetail = 'AET';
+                    else if (stageLower.includes('et')) stageDetail = 'AET';
                     else if (stageLower.includes('wo') || stageLower.includes('w.o')) stageDetail = 'WO';
                 }
             }
