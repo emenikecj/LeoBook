@@ -139,13 +139,20 @@ def _propagate_status_updates(live_matches: list, resolved_matches: list = None)
                     row['stage_detail'] = rm['stage_detail']
                 sched_changed = True
 
-        elif row.get('status', '').lower() == 'live' and fid not in live_ids and not streamer_alive:
+        # Safety Check: Enforce 2.5hr Rule (Gold Rule)
+        # Any match marked 'live' that is > 2.5hr past its start time must be 'finished'
+        if row.get('status', '').lower() == 'live':
             try:
-                match_time_str = f"{row.get('date','2000-01-01')}T{row.get('match_time','00:00')}:00"
-                match_start = dt.fromisoformat(match_time_str)
+                date_val = row.get('date', '2000-01-01')
+                time_val = row.get('match_time', '00:00')
+                match_start = dt.fromisoformat(f"{date_val}T{time_val}:00")
                 if now > match_start + timedelta(minutes=150):
                     row['status'] = 'finished'
                     sched_changed = True
+                    # If it was in live_ids, remove it so it's treated as resolved
+                    if fid in live_ids:
+                        live_ids.remove(fid)
+                        live_matches = [m for m in live_matches if m['fixture_id'] != fid]
             except Exception:
                 pass
 
@@ -210,7 +217,8 @@ def _propagate_status_updates(live_matches: list, resolved_matches: list = None)
                 pred_changed = True
                 pred_updates.append(row)
 
-        elif cur_status == 'live' and fid not in live_ids and not streamer_alive:
+        # Safety Check: Enforce 2.5hr Rule (Gold Rule)
+        if cur_status == 'live':
             try:
                 date_val = row.get('date', '2000-01-01')
                 time_val = row.get('match_time', '00:00')
@@ -227,7 +235,8 @@ def _propagate_status_updates(live_matches: list, resolved_matches: list = None)
                     if oc:
                         row['outcome_correct'] = oc
                     pred_changed = True
-                    pred_updates.append(row)
+                    if fid not in pred_updates:
+                        pred_updates.append(row)
             except Exception:
                 pass
     if pred_changed:

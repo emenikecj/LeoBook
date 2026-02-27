@@ -191,6 +191,9 @@ To prevent data corruption during parallel execution, all shared CSV access MUST
 - **Atomic Operations**: For simple reads or writes, use the `async_read_csv` and `async_write_csv` helpers to ensure atomic access.
 - **Deadlock Avoidance**: Never acquire multiple locks; stick to the single global `CSV_LOCK` for all `Data/Store/` persistence.
 
+### 4.7 Live Status Restriction (2.5hr Rule)
+Only matches within a **2.5-hour window from the scheduled match time** can hold a `LIVE` status. Any match exceeding this threshold MUST be transitioned to `finished` (if no other terminal status is present) by the `fs_live_streamer.py` propagation logic. This ensures UI accuracy and prevents stale live bages.
+
 ---
 
 ## 5. Deployment & Verification

@@ -2,8 +2,8 @@
 
 **Developer**: Matterialless LLC
 **Chief Engineer**: Emenike Chinenye James
-**Powered by**: Grok 4.1 & Gemini 2.5 Flash
-**Architecture**: High-Velocity Concurrent Architecture v3.6 (Per-Match Sequential Pipeline)
+**Powered by**: Grok 4.1 & Multi-Key Gemini Rotation (14 Keys)
+**Architecture**: High-Velocity Concurrent Architecture v3.8 (Distributed LLM Load Balancing)
 
 ---
 
@@ -36,13 +36,9 @@ Leo.py (Orchestrator)
 └── Live Streamer: Background 60s LIVE score streaming → status propagation
 ```
 
-### Key Innovations (v3.6)
-- **Per-Match Sequential Pipeline**: Each match is processed as a complete unit (extract → enrich → search dict → predict) before moving to the next. This ensures 100% data completeness for every single prediction.
-- **Dynamic Concurrency**: `MAX_CONCURRENCY` now controls how many autonomous match worker nodes run in parallel, maximizing hardware utilization.
-- **Shared Data Integrity**: Protected by a global `CSV_LOCK` (Asyncio Lock) in `db_helpers.py` for collision-free parallel persistence.
-- **Incremental Persistence**: Data is written per-item, ensuring zero loss if a cycle is interrupted.
-- **Hash-Based Identity**: URL hash-based `league_id` for 100% collision-free mapping and stable history tracking.
-- **Dual-LLM Fallback**: Logic enrichment now uses Grok as primary and Gemini as secondary fallback for maximum reliability.
+- **Multi-Key/Multi-Model Gemini Rotation**: Adaptive load balancing across 14 free-tier keys with dual exclusive chains (DESCENDING for AIGO intelligence, ASCENDING for SearchDict throughput).
+- **Proportional Scaling System v2.0**: Enhanced pixel-perfect scaling across Web and Android with dynamic viewport detection.
+- **Dual-LLM Intelligent Routing**: Smart failover between Grok and Gemini with per-context model selection.
 
 ### Core Modules
 
@@ -119,8 +115,9 @@ The v3.0 rebuild introduces a **Telegram-inspired high-density aesthetic** optim
 - **Proportional Scaling System** — Custom `Responsive` utility ensures perfect parity between mobile and web without hardcoded pixel values.
 - **Supabase Backend** — Cloud-native data for instant global access.
 - **Liquid Glass UI** — Premium frosted-glass containers with optimized BackdropFilter performance.
-- **4-Tab Match System** — ALL | LIVE | FINISHED | SCHEDULED with automatic 2.5hr status propagation from live streamer.
-- **Live Accuracy Tags** — Real-time performance indicators fed by the backend review pipeline.
+- **Live Data-Driven UI** — Real-time accuracy indicators and team crests dynamically computed from backend match data (no hardcoded stats). 
+- **4-Tab Match System** — ALL | LIVE | FINISHED | SCHEDULED with automatic 2.5hr status propagation and real-time Supabase streaming.
+- **Accuracy Report Cards** — Dynamic computation of per-league accuracy based on historical outcome review tags.
 
 ---
 

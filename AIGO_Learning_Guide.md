@@ -1,6 +1,6 @@
-# AIGO: AI-Guided Operation — Self-Healing Framework (v5.0)
+# AIGO: AI-Guided Operation — Self-Healing Framework (v5.4)
 
-> **Version**: 5.2 · **Last Updated**: 2026-02-26 · **LLM Backend**: xAI Grok API (multimodal)
+> **Version**: 5.4 · **Last Updated**: 2026-02-27 · **LLM Backend**: Multi-Key Gemini Rotation (DESCENDING chain) & xAI Grok API
 
 AIGO is the **self-healing immune system** of LeoBook. It ensures the automation pipeline never stops — even when target websites (Flashscore, Football.com) change their UI, add popups, rename CSS classes, or deploy entirely new page layouts.
 
