@@ -25,19 +25,15 @@ REGION_LEAGUE_CSV = os.path.join("Data", "Store", "region_league.csv")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
-# LLM Provider Configuration (Grok primary, Gemini secondary)
+# LLM Provider Configuration
+# Model chain is dynamic via LLMHealthManager.MODELS_ASCENDING
+# (cheapest first for search-dict bulk enrichment)
 LLM_PROVIDERS = [
     {
         'name': 'Grok',
         'api_key': os.getenv('GROK_API_KEY'),
         'api_url': 'https://api.x.ai/v1/chat/completions',
         'model': 'grok-4-1-fast-reasoning',
-    },
-    {
-        'name': 'Gemini',
-        'api_key': os.getenv('GEMINI_API_KEY'),
-        'api_url': 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-        'model': 'gemini-2.5-flash',
     },
 ]
 BATCH_SIZE = 10
@@ -193,14 +189,16 @@ def _call_llm(provider: dict, prompt: str) -> list:
 
 def query_llm_for_metadata(items, item_type="team", retries=2):
     """
-    Queries LLM providers in adaptive priority order via LLMHealthManager.
-    Supports multi-key Gemini rotation: rotates to next key on 429.
+    Queries LLM providers with ASCENDING model chain (cheapest first).
+    For Gemini: iterates model chain × key rotation.
+    On 429: try next key for same model, then downgrade model.
     """
     if not items:
         return []
 
     from Core.Intelligence.llm_health_manager import health_manager
     ordered = health_manager.get_ordered_providers()
+    model_chain = health_manager.get_model_chain("search_dict")
 
     prompt = _build_prompt(items, item_type)
 
@@ -210,43 +208,45 @@ def query_llm_for_metadata(items, item_type="team", retries=2):
             continue
 
         if provider_name == "Gemini":
-            # Multi-key rotation: try up to 3 different keys on 429
-            max_key_tries = min(3, len(health_manager._gemini_active or health_manager._gemini_keys))
-            for key_attempt in range(max_key_tries):
-                api_key = health_manager.get_next_gemini_key()
-                if not api_key:
-                    break
-                provider = {
-                    "name": "Gemini",
-                    "api_key": api_key,
-                    "api_url": health_manager.GEMINI_API_URL,
-                    "model": health_manager.GEMINI_MODEL,
-                }
-                for attempt in range(1, retries + 1):
-                    try:
-                        key_suffix = api_key[-4:]
-                        print(f"  [LLM] Gemini (key ...{key_suffix}) attempt {attempt}/{retries}...")
-                        results = _call_llm(provider, prompt)
-                        if results:
-                            print(f"  [LLM] Gemini returned {len(results)} items.")
-                            return results
-                    except Exception as e:
-                        err_str = str(e)
-                        if "429" in err_str:
-                            health_manager.on_gemini_429(api_key)
-                            print(f"  [LLM] Gemini key ...{key_suffix} rate-limited, rotating...")
-                            break  # Try next key
-                        elif "403" in err_str:
-                            health_manager.on_gemini_403(api_key)
-                            print(f"  [LLM] Gemini key ...{key_suffix} permanently dead (403), removing...")
-                            break  # Try next key
-                        print(f"  [Warning] Gemini attempt {attempt}/{retries} failed: {e}")
-                        time.sleep(3 * attempt)
-                else:
-                    continue  # All retries exhausted for this key, try next
-                continue  # Key was 429'd, try next key
+            # Model-chain rotation: try each model, exhaust keys per model
+            for model_name in model_chain:
+                max_key_tries = min(3, len(health_manager._gemini_active or health_manager._gemini_keys))
+                for key_attempt in range(max_key_tries):
+                    api_key = health_manager.get_next_gemini_key(model=model_name)
+                    if not api_key:
+                        print(f"  [LLM] All keys exhausted for {model_name}, upgrading model...")
+                        break
+                    provider = {
+                        "name": "Gemini",
+                        "api_key": api_key,
+                        "api_url": health_manager.GEMINI_API_URL,
+                        "model": model_name,
+                    }
+                    for attempt in range(1, retries + 1):
+                        try:
+                            key_suffix = api_key[-4:]
+                            print(f"  [LLM] Gemini {model_name} (key ...{key_suffix}) attempt {attempt}/{retries}...")
+                            results = _call_llm(provider, prompt)
+                            if results:
+                                print(f"  [LLM] Gemini {model_name} returned {len(results)} items.")
+                                return results
+                        except Exception as e:
+                            err_str = str(e)
+                            if "429" in err_str:
+                                health_manager.on_gemini_429(api_key, model=model_name)
+                                print(f"  [LLM] Key ...{key_suffix} rate-limited on {model_name}, rotating...")
+                                break  # Try next key for this model
+                            elif "403" in err_str:
+                                health_manager.on_gemini_403(api_key)
+                                print(f"  [LLM] Key ...{key_suffix} permanently dead (403), removing...")
+                                break  # Try next key
+                            print(f"  [Warning] Gemini {model_name} attempt {attempt}/{retries} failed: {e}")
+                            time.sleep(3 * attempt)
+                    else:
+                        continue
+                    continue
 
-            print(f"  [Fallback] Gemini exhausted. Trying next provider...")
+            print(f"  [Fallback] Gemini exhausted all models. Trying next provider...")
 
         elif provider_name == "Grok":
             grok_key = os.getenv("GROK_API_KEY", "")

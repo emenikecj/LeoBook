@@ -5,13 +5,21 @@
 # Called by: api_manager.py, build_search_dict.py
 
 """
-Multi-key aware LLM health manager.
+Multi-key, multi-model LLM health manager.
 
 - Grok: single key (GROK_API_KEY)
-- Gemini: supports comma-separated keys (GEMINI_API_KEY=key1,key2,...,key14)
-  Round-robins through active keys to maximize free-tier quota.
+- Gemini: comma-separated keys (GEMINI_API_KEY=key1,key2,...,key14)
+  Round-robins through active keys AND models to maximize free-tier quota.
 
-Pings every 15 minutes. 429 = active (throttled). 401/403 = dead key.
+Model Chains (Feb 2026 free-tier rate limits per key):
+  gemini-2.5-pro           5 RPM /  100 RPD  (best reasoning)
+  gemini-3-flash-preview   5 RPM /   20 RPD  (frontier preview)
+  gemini-2.5-flash        10 RPM /  250 RPD  (balanced)
+  gemini-2.0-flash        15 RPM / 1500 RPD  (high throughput)
+  gemini-2.5-flash-lite   15 RPM / 1000 RPD  (cheapest)
+
+DESCENDING = pro-first (AIGO predictions, match analysis)
+ASCENDING  = lite-first (search-dict metadata enrichment)
 """
 
 import os
@@ -26,13 +34,34 @@ PING_INTERVAL = 900  # 15 minutes
 
 
 class LLMHealthManager:
-    """Singleton manager with multi-key Gemini rotation."""
+    """Singleton manager with multi-key, multi-model Gemini rotation."""
 
     _instance = None
     _lock = asyncio.Lock()
 
+    # ── Model Chains ──────────────────────────────────────────
+    # DESCENDING: max intelligence first (AIGO / predictions)
+    # gemini-2.5-flash-lite excluded — reserved for SearchDict
+    MODELS_DESCENDING = [
+        "gemini-2.5-pro",
+        "gemini-3-flash-preview",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+    ]
+
+    # ASCENDING: max throughput first (search-dict / bulk enrichment)
+    # gemini-2.5-pro excluded — reserved for AIGO
+    MODELS_ASCENDING = [
+        "gemini-2.5-flash-lite",
+        "gemini-2.0-flash",
+        "gemini-2.5-flash",
+        "gemini-3-flash-preview",
+    ]
+
+    # Default model for health-check pings (cheapest)
+    PING_MODEL = "gemini-2.5-flash-lite"
+
     GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-    GEMINI_MODEL = "gemini-2.5-flash"
     GROK_API_URL = "https://api.x.ai/v1/chat/completions"
     GROK_MODEL = "grok-4-latest"
 
@@ -45,6 +74,8 @@ class LLMHealthManager:
             cls._instance._gemini_index = 0       # Round-robin pointer
             cls._instance._last_ping = 0.0
             cls._instance._initialized = False
+            # Per-model exhausted keys (model_name -> set of exhausted keys)
+            cls._instance._model_exhausted_keys = {}
         return cls._instance
 
     # ── Public API ──────────────────────────────────────────────
@@ -82,27 +113,61 @@ class LLMHealthManager:
             return len(self._gemini_active) > 0
         return False
 
-    def get_next_gemini_key(self) -> str:
-        """Round-robin through active Gemini keys."""
-        if not self._gemini_active:
-            # Fallback: try all keys
-            if self._gemini_keys:
-                key = self._gemini_keys[self._gemini_index % len(self._gemini_keys)]
-                self._gemini_index += 1
-                return key
+    def get_model_chain(self, context: str = "aigo") -> list:
+        """
+        Returns the model priority chain for the given context.
+        
+        Args:
+            context: "aigo" for DESCENDING (predictions/analysis),
+                     "search_dict" for ASCENDING (bulk enrichment).
+        """
+        if context == "search_dict":
+            return list(self.MODELS_ASCENDING)
+        return list(self.MODELS_DESCENDING)
+
+    def get_next_gemini_key(self, model: str = None) -> str:
+        """
+        Round-robin through active Gemini keys, skipping keys exhausted for
+        the given model.
+        """
+        pool = self._gemini_active if self._gemini_active else self._gemini_keys
+        if not pool:
             return ""
-        key = self._gemini_active[self._gemini_index % len(self._gemini_active)]
+
+        exhausted = self._model_exhausted_keys.get(model, set()) if model else set()
+        available = [k for k in pool if k not in exhausted]
+
+        if not available:
+            # All keys exhausted for this model — return empty to trigger model downgrade
+            return ""
+
+        key = available[self._gemini_index % len(available)]
         self._gemini_index += 1
         return key
 
-    def on_gemini_429(self, failed_key: str):
-        """Called when a Gemini key hits 429. Remove from active pool temporarily."""
-        if failed_key in self._gemini_active:
-            self._gemini_active.remove(failed_key)
-            remaining = len(self._gemini_active)
-            print(f"    [LLM Health] Gemini key rotated out (429). {remaining} keys remaining.")
+    def on_gemini_429(self, failed_key: str, model: str = None):
+        """
+        Called when a Gemini key hits 429 for a specific model.
+        Marks the key as exhausted for that model (not globally).
+        """
+        if model:
+            if model not in self._model_exhausted_keys:
+                self._model_exhausted_keys[model] = set()
+            self._model_exhausted_keys[model].add(failed_key)
+            remaining = len([k for k in (self._gemini_active or self._gemini_keys)
+                           if k not in self._model_exhausted_keys[model]])
+            print(f"    [LLM Health] Key ...{failed_key[-4:]} exhausted for {model}. "
+                  f"{remaining} keys remaining for this model.")
             if remaining == 0:
-                print(f"    [LLM Health] ⚠ All {len(self._gemini_keys)} Gemini keys exhausted!")
+                print(f"    [LLM Health] ⚠ All keys exhausted for {model} — will downgrade model.")
+        else:
+            # Legacy: remove from active pool entirely
+            if failed_key in self._gemini_active:
+                self._gemini_active.remove(failed_key)
+                remaining = len(self._gemini_active)
+                print(f"    [LLM Health] Gemini key rotated out (429). {remaining} keys remaining.")
+                if remaining == 0:
+                    print(f"    [LLM Health] ⚠ All {len(self._gemini_keys)} Gemini keys exhausted!")
 
     def on_gemini_403(self, failed_key: str):
         """Called when a Gemini key hits 403. Permanently remove from ALL pools."""
@@ -113,15 +178,22 @@ class LLMHealthManager:
         print(f"    [LLM Health] Gemini key permanently removed (403 Forbidden). "
               f"{len(self._gemini_active)} active, {len(self._gemini_keys)} total.")
 
+    def reset_model_exhaustion(self):
+        """Reset per-model exhaustion tracking (call at start of each cycle)."""
+        self._model_exhausted_keys.clear()
+
     # ── Internals ───────────────────────────────────────────────
 
     async def _ping_all(self):
-        """Ping Grok + all Gemini keys."""
+        """Ping Grok + sample Gemini keys."""
         print("  [LLM Health] Pinging providers...")
 
         # Parse Gemini keys
         raw = os.getenv("GEMINI_API_KEY", "")
         self._gemini_keys = [k.strip() for k in raw.split(",") if k.strip()]
+
+        # Reset per-model exhaustion on re-ping
+        self._model_exhausted_keys.clear()
 
         # Ping Grok
         grok_key = os.getenv("GROK_API_KEY", "")
@@ -129,19 +201,18 @@ class LLMHealthManager:
         tag = "✓ Active" if self._grok_active else "✗ Inactive"
         print(f"  [LLM Health] Grok: {tag}")
 
-        # Ping Gemini keys (sample 3 to avoid wasting quota on ping)
+        # Ping Gemini keys (sample 3 to avoid wasting quota)
         if self._gemini_keys:
-            # Test first, middle, and last key as representative sample
             sample_indices = list({0, len(self._gemini_keys) // 2, len(self._gemini_keys) - 1})
             sample_results = []
             for idx in sample_indices:
-                alive = await self._ping_key("Gemini", self.GEMINI_API_URL, self.GEMINI_MODEL, self._gemini_keys[idx])
+                alive = await self._ping_key("Gemini", self.GEMINI_API_URL, self.PING_MODEL, self._gemini_keys[idx])
                 sample_results.append(alive)
 
             if any(sample_results):
-                # If any sample key works, assume all keys are valid (same account)
                 self._gemini_active = list(self._gemini_keys)
-                print(f"  [LLM Health] Gemini: ✓ Active ({len(self._gemini_keys)} keys loaded)")
+                print(f"  [LLM Health] Gemini: ✓ Active ({len(self._gemini_keys)} keys, "
+                      f"{len(self.MODELS_DESCENDING)} models available)")
             else:
                 self._gemini_active = []
                 print(f"  [LLM Health] Gemini: ✗ Inactive (all {len(self._gemini_keys)} keys failed)")

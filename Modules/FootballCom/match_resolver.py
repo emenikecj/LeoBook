@@ -17,16 +17,9 @@ except ImportError:
 
 class GrokMatcher:
     def __init__(self):
-        self.api_key = os.getenv("GEMINI_API_KEY")
-        self.use_llm = HAS_GEMINI and bool(self.api_key)
-        
-        if self.use_llm:
-            try:
-                # Initialize new Client
-                self.client = genai.Client(api_key=self.api_key)
-            except Exception as e:
-                print(f"    [GrokMatcher] Failed to initialize GenAI Client: {e}. Falling back to Fuzzy.")
-                self.use_llm = False
+        self.use_llm = HAS_GEMINI
+        if not self.use_llm:
+            print("    [GrokMatcher] google-genai not available. Falling back to Fuzzy.")
 
     async def resolve(self, fs_name: str, fb_matches: List[Dict]) -> Tuple[Optional[Dict], float]:
         """
@@ -64,7 +57,10 @@ class GrokMatcher:
         return best_match, score
 
     async def _llm_resolve(self, fs_name: str, fb_matches: List[Dict], fallback_match, fallback_score) -> Tuple[Optional[Dict], float]:
-        """Call Gemini (google.genai) to pick the best match."""
+        """Call Gemini via LLMHealthManager for multi-key/model rotation."""
+        from Core.Intelligence.llm_health_manager import health_manager
+        await health_manager.ensure_initialized()
+
         candidates = [f"{m.get('home_team')} vs {m.get('away_team')}" for m in fb_matches]
         
         prompt_text = (
@@ -74,27 +70,42 @@ class GrokMatcher:
             f"Options:\n" + "\n".join([f"- {c}" for c in candidates])
         )
         
-        try:
-            # Synchronous call via thread (Playwright async wrapper)
-            import asyncio
-            response = await asyncio.to_thread(
-                self.client.models.generate_content,
-                model="gemini-3-flash", # Using requested faster model
-                contents=prompt_text
-            )
-            
-            answer = response.text.strip().lower() if response.text else ""
-            
-            if "none" in answer or not answer:
+        # Use DESCENDING chain (intelligence-critical task)
+        model_chain = health_manager.get_model_chain("aigo")
+
+        for model_name in model_chain:
+            api_key = health_manager.get_next_gemini_key(model=model_name)
+            if not api_key:
+                continue
+            try:
+                import asyncio
+                client = genai.Client(api_key=api_key)
+                response = await asyncio.to_thread(
+                    client.models.generate_content,
+                    model=model_name,
+                    contents=prompt_text
+                )
+                
+                answer = response.text.strip().lower() if response.text else ""
+                
+                if "none" in answer or not answer:
+                    return fallback_match, fallback_score
+                
+                for i, cand in enumerate(candidates):
+                    if cand.lower() in answer or answer in cand.lower():
+                        return fb_matches[i], 99.0
+                
                 return fallback_match, fallback_score
-            
-            # Find which candidate matched the answer
-            for i, cand in enumerate(candidates):
-                if cand.lower() in answer or answer in cand.lower():
-                    return fb_matches[i], 99.0
-            
-            return fallback_match, fallback_score
-            
-        except Exception as e:
-            print(f"    [GrokMatcher] LLM specific error: {e}")
-            return fallback_match, fallback_score
+                
+            except Exception as e:
+                err_str = str(e)
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    health_manager.on_gemini_429(api_key, model=model_name)
+                    continue  # Try next model
+                elif "403" in err_str:
+                    health_manager.on_gemini_403(api_key)
+                    continue
+                print(f"    [GrokMatcher] LLM error on {model_name}: {e}")
+                break
+
+        return fallback_match, fallback_score

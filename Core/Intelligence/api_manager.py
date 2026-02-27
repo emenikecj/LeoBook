@@ -117,7 +117,7 @@ async def gemini_api_call(prompt_content, generation_config=None, **kwargs):
     """
     Calls Google Gemini API for AI analysis.
     Uses google-genai SDK v1.64+ (Client-based API).
-    Accepts optional api_key kwarg for multi-key rotation.
+    Accepts optional api_key and model kwargs for multi-key/model rotation.
     """
     gemini_api_key = kwargs.get('api_key') or os.getenv("GEMINI_API_KEY", "").split(",")[0].strip()
     if not gemini_api_key:
@@ -177,10 +177,12 @@ async def gemini_api_call(prompt_content, generation_config=None, **kwargs):
 
     gen_config = types.GenerateContentConfig(**config_kwargs) if config_kwargs else None
 
-    # 3. Execute Request
+    # 3. Execute Request — use model from kwargs or default
+    model_name = kwargs.get('model', 'gemini-2.5-flash')
+
     def _make_gemini_request():
         return client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=model_name,
             contents=contents,
             config=gen_config,
         )
@@ -197,14 +199,21 @@ async def gemini_api_call(prompt_content, generation_config=None, **kwargs):
 
 async def unified_api_call(prompt_content, generation_config=None, **kwargs):
     """
-    Unified API call with adaptive provider routing, multi-key Gemini rotation,
-    and auto-fallback. Uses LLMHealthManager for health and key management.
+    Unified API call with adaptive provider routing, multi-model + multi-key
+    Gemini rotation, and auto-fallback.
+    
+    Uses MODELS_DESCENDING chain: tries best model across all keys first,
+    then downgrades model on exhaustion.
     """
     from .llm_health_manager import health_manager
 
     # Ensure health check has run (pings every 15 min)
     await health_manager.ensure_initialized()
     ordered = health_manager.get_ordered_providers()
+
+    # Get model chain for this context (default: AIGO = DESCENDING)
+    context = kwargs.pop('llm_context', 'aigo')
+    model_chain = health_manager.get_model_chain(context)
 
     last_error = None
     for provider_name in ordered:
@@ -214,29 +223,39 @@ async def unified_api_call(prompt_content, generation_config=None, **kwargs):
             continue
 
         if provider_name == "Gemini":
-            # Multi-key rotation: try up to 3 different keys on 429
-            max_key_retries = min(3, len(health_manager._gemini_active or health_manager._gemini_keys))
-            for key_attempt in range(max_key_retries):
-                api_key = health_manager.get_next_gemini_key()
-                if not api_key:
-                    break
-                try:
-                    key_suffix = api_key[-4:]
-                    print(f"    [AI] Attempting Gemini (key ...{key_suffix})...")
-                    response = await gemini_api_call(prompt_content, generation_config, api_key=api_key)
-                    if response and hasattr(response, 'text') and response.text:
-                        return response
-                except Exception as e:
-                    last_error = e
-                    err_str = str(e)
-                    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                        health_manager.on_gemini_429(api_key)
-                        print(f"    [AI] Gemini key ...{key_suffix} rate-limited, rotating...")
-                        await asyncio.sleep(1)
-                        continue
-                    else:
-                        print(f"    [AI WARNING] Gemini failed: {e}")
-                        break  # Non-429 error, don't retry with different key
+            # Model-chain rotation: try each model, exhaust keys per model
+            for model_name in model_chain:
+                # Try up to 3 keys per model before downgrading
+                max_key_tries = min(3, len(health_manager._gemini_active or health_manager._gemini_keys))
+                for key_attempt in range(max_key_tries):
+                    api_key = health_manager.get_next_gemini_key(model=model_name)
+                    if not api_key:
+                        # All keys exhausted for this model — downgrade
+                        print(f"    [AI] All keys exhausted for {model_name}, downgrading...")
+                        break
+                    try:
+                        key_suffix = api_key[-4:]
+                        print(f"    [AI] Attempting Gemini {model_name} (key ...{key_suffix})...")
+                        response = await gemini_api_call(
+                            prompt_content, generation_config,
+                            api_key=api_key, model=model_name
+                        )
+                        if response and hasattr(response, 'text') and response.text:
+                            return response
+                    except Exception as e:
+                        last_error = e
+                        err_str = str(e)
+                        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                            health_manager.on_gemini_429(api_key, model=model_name)
+                            print(f"    [AI] Key ...{key_suffix} rate-limited on {model_name}, rotating...")
+                            await asyncio.sleep(1)
+                            continue
+                        elif "403" in err_str:
+                            health_manager.on_gemini_403(api_key)
+                            continue
+                        else:
+                            print(f"    [AI WARNING] Gemini {model_name} failed: {e}")
+                            break  # Non-rate-limit error, try next model
 
         elif provider_name == "Grok":
             try:
