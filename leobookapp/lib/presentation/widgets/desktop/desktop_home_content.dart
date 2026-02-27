@@ -128,7 +128,7 @@ class _DesktopHomeContentState extends State<DesktopHomeContent>
                     onViewAll: widget.onViewAllPredictions,
                   ),
                   SizedBox(height: Responsive.dp(context, 24)),
-                  const AccuracyReportCard(),
+                  AccuracyReportCard(matches: widget.state.allMatches),
                   SizedBox(height: Responsive.dp(context, 24)),
                 ]),
               ),

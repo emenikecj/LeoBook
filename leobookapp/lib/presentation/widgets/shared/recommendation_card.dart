@@ -13,6 +13,8 @@ import '../../screens/team_screen.dart';
 import '../../screens/league_screen.dart';
 import 'package:leobookapp/core/widgets/glass_container.dart';
 
+import 'package:cached_network_image/cached_network_image.dart';
+
 class RecommendationCard extends StatefulWidget {
   final RecommendationModel recommendation;
 
@@ -251,6 +253,10 @@ class _RecommendationCardState extends State<RecommendationCard> {
   Widget _buildTeamCol(
       BuildContext context, String teamName, String shortName, bool isDark) {
     final logoSize = Responsive.sp(context, 28);
+    // Pick the correct crest URL based on team name
+    final String? crestUrl =
+        (teamName == rec.homeTeam) ? rec.homeCrestUrl : rec.awayCrestUrl;
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -280,15 +286,42 @@ class _RecommendationCardState extends State<RecommendationCard> {
                 width: 0.5,
               ),
             ),
-            child: Center(
-              child: Text(
-                shortName,
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: Responsive.sp(context, 10),
-                  color: AppColors.textGrey.withValues(alpha: 0.5),
-                ),
-              ),
+            child: ClipOval(
+              child: crestUrl != null && crestUrl.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: crestUrl,
+                      fit: BoxFit.contain,
+                      placeholder: (context, url) => Center(
+                        child: Text(
+                          shortName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: Responsive.sp(context, 10),
+                            color: AppColors.textGrey.withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Center(
+                        child: Text(
+                          shortName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: Responsive.sp(context, 10),
+                            color: AppColors.textGrey.withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ),
+                    )
+                  : Center(
+                      child: Text(
+                        shortName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: Responsive.sp(context, 10),
+                          color: AppColors.textGrey.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
             ),
           ),
           SizedBox(height: Responsive.sp(context, 4)),

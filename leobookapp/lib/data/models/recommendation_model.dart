@@ -17,6 +17,8 @@ class RecommendationModel {
   final double marketOdds;
   final double reliabilityScore;
   final String sport;
+  final String? homeCrestUrl;
+  final String? awayCrestUrl;
   final String league;
 
   RecommendationModel({
@@ -34,6 +36,8 @@ class RecommendationModel {
     required this.reliabilityScore,
     required this.league,
     this.sport = 'Football',
+    this.homeCrestUrl,
+    this.awayCrestUrl,
   });
 
   String get homeTeam {
@@ -122,6 +126,8 @@ class RecommendationModel {
               0.0,
       league: league.toString(),
       sport: sport,
+      homeCrestUrl: json['home_crest_url']?.toString(),
+      awayCrestUrl: json['away_crest_url']?.toString(),
     );
   }
 }

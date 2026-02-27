@@ -1,4 +1,4 @@
-// accuracy_report_card.dart: accuracy_report_card.dart: Widget/screen for App — Responsive Widgets.
+// accuracy_report_card.dart: Data-driven accuracy report computed from predictions.
 // Part of LeoBook App — Responsive Widgets
 //
 // Classes: AccuracyReportCard, _LeagueAccuracyGrid, _SectionHeader, _LeagueAccuracy
@@ -6,13 +6,50 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/responsive_constants.dart';
+import '../../../data/models/match_model.dart';
 
 class AccuracyReportCard extends StatelessWidget {
-  const AccuracyReportCard({super.key});
+  final List<MatchModel> matches;
+
+  const AccuracyReportCard({super.key, required this.matches});
 
   @override
   Widget build(BuildContext context) {
     final isDesktop = Responsive.isDesktop(context);
+
+    // Compute accuracy from finished matches with predictions
+    final finished = matches
+        .where((m) =>
+            m.isFinished && m.prediction != null && m.prediction!.isNotEmpty)
+        .toList();
+
+    final accurate = finished.where((m) => m.isPredictionAccurate).length;
+    final totalAccuracy =
+        finished.isNotEmpty ? (accurate / finished.length * 100).round() : 0;
+
+    // Compute per-league accuracy (top 3 leagues by match count)
+    final leagueStats = _computeLeagueAccuracy(finished);
+
+    // Performance label
+    String perfLabel = "AWAITING DATA";
+    Color perfColor = AppColors.textGrey;
+    IconData trendIcon = Icons.remove_rounded;
+
+    if (finished.isNotEmpty) {
+      if (totalAccuracy >= 80) {
+        perfLabel = "HIGH PERFORMANCE";
+        perfColor = AppColors.successGreen;
+        trendIcon = Icons.trending_up_rounded;
+      } else if (totalAccuracy >= 60) {
+        perfLabel = "AVERAGE";
+        perfColor = AppColors.warning;
+        trendIcon = Icons.trending_flat_rounded;
+      } else {
+        perfLabel = "NEEDS IMPROVEMENT";
+        perfColor = AppColors.liveRed;
+        trendIcon = Icons.trending_down_rounded;
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -21,12 +58,12 @@ class AccuracyReportCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _SectionHeader(
-              title: "YESTERDAY'S ACCURACY REPORT",
+              title: "ACCURACY REPORT",
               icon: Icons.check_circle_rounded,
               color: AppColors.successGreen,
             ),
             Text(
-              "24 MATCHES ANALYZED",
+              "${finished.length} MATCHES ANALYZED",
               style: TextStyle(
                 fontSize: Responsive.sp(context, 7),
                 fontWeight: FontWeight.w900,
@@ -52,20 +89,23 @@ class AccuracyReportCard extends StatelessWidget {
                   height: Responsive.sp(context, 80),
                   child: Row(
                     children: [
-                      _buildMainAccuracy(context),
+                      _buildMainAccuracy(context, totalAccuracy, perfLabel,
+                          perfColor, trendIcon),
                       const SizedBox(width: 32),
                       Container(width: 1, color: Colors.white10),
                       const SizedBox(width: 32),
-                      const Expanded(child: _LeagueAccuracyGrid()),
+                      Expanded(
+                          child: _LeagueAccuracyGrid(leagues: leagueStats)),
                     ],
                   ),
                 )
               else
                 Column(
                   children: [
-                    _buildMainAccuracy(context),
+                    _buildMainAccuracy(context, totalAccuracy, perfLabel,
+                        perfColor, trendIcon),
                     SizedBox(height: Responsive.sp(context, 12)),
-                    const _LeagueAccuracyGrid(),
+                    _LeagueAccuracyGrid(leagues: leagueStats),
                   ],
                 ),
             ],
@@ -75,7 +115,47 @@ class AccuracyReportCard extends StatelessWidget {
     );
   }
 
-  Widget _buildMainAccuracy(BuildContext context) {
+  List<_LeagueAccData> _computeLeagueAccuracy(List<MatchModel> finished) {
+    final Map<String, List<MatchModel>> byLeague = {};
+    for (var m in finished) {
+      final league = m.league ?? 'Unknown';
+      // Extract short league name (after colon if present)
+      String shortName = league;
+      if (league.contains(':')) {
+        shortName = league.split(':').last.trim();
+      }
+      byLeague.putIfAbsent(shortName, () => []).add(m);
+    }
+
+    // Sort by match count descending, take top 3
+    final sorted = byLeague.entries.toList()
+      ..sort((a, b) => b.value.length.compareTo(a.value.length));
+
+    final colors = [
+      AppColors.primary,
+      AppColors.warning,
+      AppColors.successGreen
+    ];
+
+    return sorted.take(3).toList().asMap().entries.map((entry) {
+      final i = entry.key;
+      final e = entry.value;
+      final acc = e.value.where((m) => m.isPredictionAccurate).length;
+      final pct = e.value.isNotEmpty ? acc / e.value.length : 0.0;
+      // Truncate league name for display
+      String label = e.key;
+      if (label.length > 12) label = label.substring(0, 12);
+
+      return _LeagueAccData(
+        label: label.toUpperCase(),
+        percentage: pct,
+        color: colors[i % colors.length],
+      );
+    }).toList();
+  }
+
+  Widget _buildMainAccuracy(BuildContext context, int totalAccuracy,
+      String perfLabel, Color perfColor, IconData trendIcon) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -94,7 +174,7 @@ class AccuracyReportCard extends StatelessWidget {
           textBaseline: TextBaseline.alphabetic,
           children: [
             Text(
-              "88",
+              "$totalAccuracy",
               style: TextStyle(
                 fontSize: Responsive.sp(context, 32),
                 fontWeight: FontWeight.w900,
@@ -108,13 +188,13 @@ class AccuracyReportCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: Responsive.sp(context, 14),
                 fontWeight: FontWeight.w700,
-                color: AppColors.successGreen,
+                color: perfColor,
               ),
             ),
             SizedBox(width: Responsive.sp(context, 4)),
             Icon(
-              Icons.trending_up_rounded,
-              color: AppColors.successGreen,
+              trendIcon,
+              color: perfColor,
               size: Responsive.sp(context, 20),
             ),
           ],
@@ -126,15 +206,15 @@ class AccuracyReportCard extends StatelessWidget {
             vertical: Responsive.sp(context, 3),
           ),
           decoration: BoxDecoration(
-            color: AppColors.successGreen.withValues(alpha: 0.1),
+            color: perfColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(Responsive.sp(context, 4)),
           ),
           child: Text(
-            "HIGH PERFORMANCE",
+            perfLabel,
             style: TextStyle(
               fontSize: Responsive.sp(context, 6),
               fontWeight: FontWeight.w900,
-              color: AppColors.successGreen,
+              color: perfColor,
               letterSpacing: 1,
             ),
           ),
@@ -144,41 +224,47 @@ class AccuracyReportCard extends StatelessWidget {
   }
 }
 
+class _LeagueAccData {
+  final String label;
+  final double percentage;
+  final Color color;
+  const _LeagueAccData(
+      {required this.label, required this.percentage, required this.color});
+}
+
 class _LeagueAccuracyGrid extends StatelessWidget {
-  const _LeagueAccuracyGrid();
+  final List<_LeagueAccData> leagues;
+  const _LeagueAccuracyGrid({required this.leagues});
 
   @override
   Widget build(BuildContext context) {
+    if (leagues.isEmpty) {
+      return Center(
+        child: Text(
+          "NO LEAGUE DATA YET",
+          style: TextStyle(
+            fontSize: Responsive.sp(context, 7),
+            color: AppColors.textGrey,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      );
+    }
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: const [
-        Expanded(
-          child: _LeagueAccuracy(
-            label: "EPL",
-            percentage: 0.92,
-            color: AppColors.primary,
-            icon: Icons.sports_soccer_rounded,
-          ),
-        ),
-        SizedBox(width: 8),
-        Expanded(
-          child: _LeagueAccuracy(
-            label: "NBA",
-            percentage: 0.85,
-            color: AppColors.warning,
-            icon: Icons.sports_basketball_rounded,
-          ),
-        ),
-        SizedBox(width: 8),
-        Expanded(
-          child: _LeagueAccuracy(
-            label: "LIGA",
-            percentage: 0.80,
-            color: AppColors.successGreen,
-            icon: Icons.sports_soccer_rounded,
-          ),
-        ),
-      ],
+      children: leagues
+          .map((l) => Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: _LeagueAccuracy(
+                    label: l.label,
+                    percentage: l.percentage,
+                    color: l.color,
+                  ),
+                ),
+              ))
+          .toList(),
     );
   }
 }
@@ -218,13 +304,11 @@ class _LeagueAccuracy extends StatelessWidget {
   final String label;
   final double percentage;
   final Color color;
-  final IconData icon;
 
   const _LeagueAccuracy({
     required this.label,
     required this.percentage,
     required this.color,
-    required this.icon,
   });
 
   @override
@@ -255,7 +339,7 @@ class _LeagueAccuracy extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Icon(icon,
+              Icon(Icons.sports_soccer_rounded,
                   color: color.withValues(alpha: 0.5),
                   size: Responsive.sp(context, 8)),
             ],
@@ -280,7 +364,7 @@ class _LeagueAccuracy extends StatelessWidget {
             ),
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft,
-              widthFactor: percentage,
+              widthFactor: percentage.clamp(0.0, 1.0),
               child: Container(
                 decoration: BoxDecoration(
                   color: color,

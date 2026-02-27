@@ -180,7 +180,7 @@ class _MobileHomeContentState extends State<MobileHomeContent>
                 child: Column(
                   children: [
                     SizedBox(height: Responsive.sp(context, 10)),
-                    const AccuracyReportCard(),
+                    AccuracyReportCard(matches: widget.state.allMatches),
                     SizedBox(height: Responsive.sp(context, 10)),
                   ],
                 ),

@@ -116,25 +116,12 @@ class _MatchCardState extends State<MatchCard> {
                                   width: Responsive.sp(context, 10),
                                   height: Responsive.sp(context, 7),
                                   fit: BoxFit.cover,
-                                  placeholder: (_, __) => Icon(
-                                    Icons.public,
-                                    size: Responsive.sp(context, 8),
-                                    color: AppColors.textGrey
-                                        .withValues(alpha: 0.8),
+                                  placeholder: (_, __) => SizedBox(
+                                    width: Responsive.sp(context, 10),
                                   ),
-                                  errorWidget: (_, __, ___) => Icon(
-                                    Icons.public,
-                                    size: Responsive.sp(context, 8),
-                                    color: AppColors.textGrey
-                                        .withValues(alpha: 0.8),
+                                  errorWidget: (_, __, ___) => SizedBox(
+                                    width: Responsive.sp(context, 10),
                                   ),
-                                )
-                              else
-                                Icon(
-                                  Icons.public,
-                                  size: Responsive.sp(context, 8),
-                                  color:
-                                      AppColors.textGrey.withValues(alpha: 0.8),
                                 ),
                               SizedBox(width: Responsive.sp(context, 3)),
                               Flexible(
