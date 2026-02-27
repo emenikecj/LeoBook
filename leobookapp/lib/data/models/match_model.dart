@@ -156,11 +156,15 @@ class MatchModel {
 
   bool get isFinished {
     final s = status.toLowerCase();
-    // Status-only check — 2.5hr time rule deprecated (v3)
+    // Status-only check — recognizes regular finish, AET, and penalties
     if (s.contains('finish') ||
         s.contains('ft') ||
         s.contains('finished') ||
-        s.contains('full time')) {
+        s.contains('full time') ||
+        s.contains('aet') ||
+        s.contains('pen') ||
+        s.contains('after pen') ||
+        s.contains('after et')) {
       return true;
     }
     return false;
@@ -203,6 +207,8 @@ class MatchModel {
   String get displayStatus {
     final s = status.toLowerCase();
     if (isLive) return "LIVE";
+    if (s.contains('after pen') || s.contains('pen')) return "FT (Pen)";
+    if (s.contains('after et') || s.contains('aet')) return "FT (AET)";
     if (s.contains('finish') || s.contains('ft') || s.contains('finished')) {
       return "FINISHED";
     }
@@ -216,7 +222,7 @@ class MatchModel {
   bool get isPredictionAccurate {
     // Prefer outcome_correct from CSV/Supabase when available
     if (outcomeCorrect != null && outcomeCorrect!.isNotEmpty) {
-      return outcomeCorrect!.toLowerCase() == 'true';
+      return outcomeCorrect == '1';
     }
     // Fallback: compute from scores
     if (homeScore == null || awayScore == null || prediction == null) {
@@ -224,16 +230,96 @@ class MatchModel {
     }
     final hs = int.tryParse(homeScore!) ?? 0;
     final as_ = int.tryParse(awayScore!) ?? 0;
-    final p = prediction!.toLowerCase();
+    final total = hs + as_;
+    final p = prediction!.toLowerCase().trim();
+    final hLower = homeTeam.toLowerCase().trim();
+    final aLower = awayTeam.toLowerCase().trim();
 
-    if (p.contains('home win')) return hs > as_;
-    if (p.contains('away win')) return as_ > hs;
-    if (p.contains('draw')) return hs == as_;
-    if (p.contains('over 2.5')) return (hs + as_) > 2.5;
-    if (p.contains('under 2.5')) return (hs + as_) < 2.5;
-    if (p.contains('btts') || p.contains('both teams to score')) {
+    bool teamIsHome(String t) =>
+        t == hLower || hLower.startsWith(t) || t.startsWith(hLower);
+    bool teamIsAway(String t) =>
+        t == aLower || aLower.startsWith(t) || t.startsWith(aLower);
+
+    // Winner & BTTS
+    final bttsWinRe = RegExp(r'^(.+?)\s+to\s+win\s*&\s*btts\s+yes$');
+    final bttsWinMatch = bttsWinRe.firstMatch(p);
+    if (bttsWinMatch != null) {
+      final team = bttsWinMatch.group(1)!.trim();
+      final btts = hs > 0 && as_ > 0;
+      if (teamIsHome(team)) return hs > as_ && btts;
+      if (teamIsAway(team)) return as_ > hs && btts;
+    }
+
+    // 1X2
+    if (p == 'home win' || p == '1') return hs > as_;
+    if (p == 'away win' || p == '2') return as_ > hs;
+    if (p == 'draw' || p == 'x') return hs == as_;
+    if (p == 'home or away' || p == '12') return hs != as_;
+
+    // Over/Under (standard)
+    if (p.contains('over 2.5')) return total > 2;
+    if (p.contains('under 2.5')) return total < 3;
+    if (p.contains('over 1.5')) return total > 1;
+    if (p.contains('under 1.5')) return total < 2;
+
+    // BTTS
+    if (p == 'btts yes' ||
+        p == 'both teams to score' ||
+        p == 'both teams to score yes') {
       return hs > 0 && as_ > 0;
     }
+    if (p == 'btts no' || p == 'both teams to score no') {
+      return hs == 0 || as_ == 0;
+    }
+
+    // Team to win
+    if (p.endsWith(' to win')) {
+      final team = p.replaceAll(' to win', '').trim();
+      if (teamIsHome(team)) return hs > as_;
+      if (teamIsAway(team)) return as_ > hs;
+    }
+
+    // Team or Draw
+    if (p.contains(' or draw')) {
+      final team = p.replaceAll(' or draw', '').trim();
+      if (teamIsHome(team)) return hs >= as_;
+      if (teamIsAway(team)) return as_ >= hs;
+    }
+
+    // DNB
+    if (p.endsWith(' (dnb)')) {
+      final team =
+          p.replaceAll(' to win (dnb)', '').replaceAll(' (dnb)', '').trim();
+      if (hs == as_) return false; // Void shown as incorrect visually
+      if (teamIsHome(team)) return hs > as_;
+      if (teamIsAway(team)) return as_ > hs;
+    }
+
+    // Team Over/Under (e.g., "Arsenal Over 0.5")
+    final overRe = RegExp(r'over\s+([\d.]+)');
+    final overMatch = overRe.firstMatch(p);
+    if (overMatch != null) {
+      final threshold = double.tryParse(overMatch.group(1)!) ?? 0;
+      final teamPart = p.substring(0, overMatch.start).trim();
+      if (teamPart.isNotEmpty) {
+        if (teamIsHome(teamPart)) return hs > threshold;
+        if (teamIsAway(teamPart)) return as_ > threshold;
+      }
+      return total > threshold;
+    }
+
+    final underRe = RegExp(r'under\s+([\d.]+)');
+    final underMatch = underRe.firstMatch(p);
+    if (underMatch != null) {
+      final threshold = double.tryParse(underMatch.group(1)!) ?? 0;
+      final teamPart = p.substring(0, underMatch.start).trim();
+      if (teamPart.isNotEmpty) {
+        if (teamIsHome(teamPart)) return hs < threshold;
+        if (teamIsAway(teamPart)) return as_ < threshold;
+      }
+      return total < threshold;
+    }
+
     return false;
   }
 

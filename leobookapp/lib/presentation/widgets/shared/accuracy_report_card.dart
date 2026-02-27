@@ -8,17 +8,24 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/responsive_constants.dart';
 import '../../../data/models/match_model.dart';
 
-class AccuracyReportCard extends StatelessWidget {
+class AccuracyReportCard extends StatefulWidget {
   final List<MatchModel> matches;
 
   const AccuracyReportCard({super.key, required this.matches});
+
+  @override
+  State<AccuracyReportCard> createState() => _AccuracyReportCardState();
+}
+
+class _AccuracyReportCardState extends State<AccuracyReportCard> {
+  bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
     final isDesktop = Responsive.isDesktop(context);
 
     // Compute accuracy from finished matches with predictions
-    final finished = matches
+    final finished = widget.matches
         .where((m) =>
             m.isFinished && m.prediction != null && m.prediction!.isNotEmpty)
         .toList();
@@ -27,8 +34,9 @@ class AccuracyReportCard extends StatelessWidget {
     final totalAccuracy =
         finished.isNotEmpty ? (accurate / finished.length * 100).round() : 0;
 
-    // Compute per-league accuracy (top 3 leagues by match count)
-    final leagueStats = _computeLeagueAccuracy(finished);
+    // Compute per-league accuracy (ALL leagues, sorted by accuracy desc)
+    final allLeagueStats = _computeLeagueAccuracy(finished);
+    final topLeagues = allLeagueStats.take(3).toList();
 
     // Performance label
     String perfLabel = "AWAITING DATA";
@@ -90,12 +98,11 @@ class AccuracyReportCard extends StatelessWidget {
                   child: Row(
                     children: [
                       _buildMainAccuracy(context, totalAccuracy, perfLabel,
-                          perfColor, trendIcon),
+                          perfColor, trendIcon, finished.length),
                       const SizedBox(width: 32),
                       Container(width: 1, color: Colors.white10),
                       const SizedBox(width: 32),
-                      Expanded(
-                          child: _LeagueAccuracyGrid(leagues: leagueStats)),
+                      Expanded(child: _LeagueAccuracyGrid(leagues: topLeagues)),
                     ],
                   ),
                 )
@@ -103,11 +110,60 @@ class AccuracyReportCard extends StatelessWidget {
                 Column(
                   children: [
                     _buildMainAccuracy(context, totalAccuracy, perfLabel,
-                        perfColor, trendIcon),
+                        perfColor, trendIcon, finished.length),
                     SizedBox(height: Responsive.sp(context, 12)),
-                    _LeagueAccuracyGrid(leagues: leagueStats),
+                    _LeagueAccuracyGrid(leagues: topLeagues),
                   ],
                 ),
+
+              // Expandable league list
+              if (allLeagueStats.length > 3) ...[
+                SizedBox(height: Responsive.sp(context, 8)),
+                GestureDetector(
+                  onTap: () => setState(() => _isExpanded = !_isExpanded),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      vertical: Responsive.sp(context, 6),
+                      horizontal: Responsive.sp(context, 10),
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.03),
+                      borderRadius:
+                          BorderRadius.circular(Responsive.sp(context, 8)),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.06)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _isExpanded
+                              ? "HIDE ALL LEAGUES"
+                              : "VIEW ALL ${allLeagueStats.length} LEAGUES",
+                          style: TextStyle(
+                            fontSize: Responsive.sp(context, 7),
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.primary,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        SizedBox(width: Responsive.sp(context, 4)),
+                        Icon(
+                          _isExpanded
+                              ? Icons.keyboard_arrow_up_rounded
+                              : Icons.keyboard_arrow_down_rounded,
+                          color: AppColors.primary,
+                          size: Responsive.sp(context, 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (_isExpanded) ...[
+                  SizedBox(height: Responsive.sp(context, 8)),
+                  _ExpandedLeagueList(leagues: allLeagueStats),
+                ],
+              ],
             ],
           ),
         ),
@@ -127,35 +183,44 @@ class AccuracyReportCard extends StatelessWidget {
       byLeague.putIfAbsent(shortName, () => []).add(m);
     }
 
-    // Sort by match count descending, take top 3
+    // Sort by accuracy descending
     final sorted = byLeague.entries.toList()
-      ..sort((a, b) => b.value.length.compareTo(a.value.length));
+      ..sort((a, b) {
+        final accA = a.value.where((m) => m.isPredictionAccurate).length /
+            (a.value.isEmpty ? 1 : a.value.length);
+        final accB = b.value.where((m) => m.isPredictionAccurate).length /
+            (b.value.isEmpty ? 1 : b.value.length);
+        return accB.compareTo(accA);
+      });
 
     final colors = [
       AppColors.primary,
       AppColors.warning,
-      AppColors.successGreen
+      AppColors.successGreen,
+      const Color(0xFF8B5CF6), // purple
+      const Color(0xFFEC4899), // pink
+      const Color(0xFF06B6D4), // cyan
+      const Color(0xFFF97316), // orange
+      const Color(0xFF10B981), // emerald
     ];
 
-    return sorted.take(3).toList().asMap().entries.map((entry) {
+    return sorted.asMap().entries.map((entry) {
       final i = entry.key;
       final e = entry.value;
       final acc = e.value.where((m) => m.isPredictionAccurate).length;
       final pct = e.value.isNotEmpty ? acc / e.value.length : 0.0;
-      // Truncate league name for display
-      String label = e.key;
-      if (label.length > 12) label = label.substring(0, 12);
 
       return _LeagueAccData(
-        label: label.toUpperCase(),
+        label: e.key,
         percentage: pct,
         color: colors[i % colors.length],
+        matchCount: e.value.length,
       );
     }).toList();
   }
 
   Widget _buildMainAccuracy(BuildContext context, int totalAccuracy,
-      String perfLabel, Color perfColor, IconData trendIcon) {
+      String perfLabel, Color perfColor, IconData trendIcon, int matchCount) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -199,6 +264,16 @@ class AccuracyReportCard extends StatelessWidget {
             ),
           ],
         ),
+        SizedBox(height: Responsive.sp(context, 2)),
+        Text(
+          "$matchCount MATCHES",
+          style: TextStyle(
+            fontSize: Responsive.sp(context, 6),
+            fontWeight: FontWeight.w700,
+            color: AppColors.textGrey.withValues(alpha: 0.7),
+            letterSpacing: 1.0,
+          ),
+        ),
         SizedBox(height: Responsive.sp(context, 4)),
         Container(
           padding: EdgeInsets.symmetric(
@@ -228,8 +303,109 @@ class _LeagueAccData {
   final String label;
   final double percentage;
   final Color color;
-  const _LeagueAccData(
-      {required this.label, required this.percentage, required this.color});
+  final int matchCount;
+  const _LeagueAccData({
+    required this.label,
+    required this.percentage,
+    required this.color,
+    required this.matchCount,
+  });
+}
+
+class _ExpandedLeagueList extends StatelessWidget {
+  final List<_LeagueAccData> leagues;
+  const _ExpandedLeagueList({required this.leagues});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: leagues.map((l) {
+        final pctInt = (l.percentage * 100).toInt();
+        return Padding(
+          padding: EdgeInsets.only(bottom: Responsive.sp(context, 4)),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: Responsive.sp(context, 10),
+              vertical: Responsive.sp(context, 6),
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.desktopHeaderBg,
+              borderRadius: BorderRadius.circular(Responsive.sp(context, 8)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: Responsive.sp(context, 3),
+                  height: Responsive.sp(context, 20),
+                  decoration: BoxDecoration(
+                    color: l.color,
+                    borderRadius:
+                        BorderRadius.circular(Responsive.sp(context, 2)),
+                  ),
+                ),
+                SizedBox(width: Responsive.sp(context, 8)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l.label.length > 30
+                            ? l.label.substring(0, 30).toUpperCase()
+                            : l.label.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: Responsive.sp(context, 7),
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white.withValues(alpha: 0.9),
+                          letterSpacing: 0.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: Responsive.sp(context, 2)),
+                      ClipRRect(
+                        borderRadius:
+                            BorderRadius.circular(Responsive.sp(context, 2)),
+                        child: LinearProgressIndicator(
+                          value: l.percentage.clamp(0.0, 1.0),
+                          backgroundColor: Colors.white.withValues(alpha: 0.05),
+                          color: l.color,
+                          minHeight: Responsive.sp(context, 2),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: Responsive.sp(context, 10)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      "$pctInt%",
+                      style: TextStyle(
+                        fontSize: Responsive.sp(context, 12),
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    Text(
+                      "${l.matchCount} ${l.matchCount == 1 ? 'match' : 'matches'}",
+                      style: TextStyle(
+                        fontSize: Responsive.sp(context, 6),
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textGrey,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
 }
 
 class _LeagueAccuracyGrid extends StatelessWidget {
@@ -258,9 +434,12 @@ class _LeagueAccuracyGrid extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: _LeagueAccuracy(
-                    label: l.label,
+                    label: l.label.length > 12
+                        ? l.label.substring(0, 12).toUpperCase()
+                        : l.label.toUpperCase(),
                     percentage: l.percentage,
                     color: l.color,
+                    matchCount: l.matchCount,
                   ),
                 ),
               ))
@@ -304,11 +483,13 @@ class _LeagueAccuracy extends StatelessWidget {
   final String label;
   final double percentage;
   final Color color;
+  final int matchCount;
 
   const _LeagueAccuracy({
     required this.label,
     required this.percentage,
     required this.color,
+    required this.matchCount,
   });
 
   @override
@@ -344,7 +525,7 @@ class _LeagueAccuracy extends StatelessWidget {
                   size: Responsive.sp(context, 8)),
             ],
           ),
-          SizedBox(height: Responsive.sp(context, 8)),
+          SizedBox(height: Responsive.sp(context, 4)),
           Text(
             "${(percentage * 100).toInt()}%",
             style: TextStyle(
@@ -353,6 +534,14 @@ class _LeagueAccuracy extends StatelessWidget {
               color: Colors.white,
               fontStyle: FontStyle.italic,
               letterSpacing: -0.5,
+            ),
+          ),
+          Text(
+            "$matchCount ${matchCount == 1 ? 'match' : 'matches'}",
+            style: TextStyle(
+              fontSize: Responsive.sp(context, 5),
+              fontWeight: FontWeight.w600,
+              color: AppColors.textGrey.withValues(alpha: 0.7),
             ),
           ),
           SizedBox(height: Responsive.sp(context, 4)),

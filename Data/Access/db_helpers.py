@@ -526,9 +526,10 @@ def get_standings(region_league: str) -> List[Dict[str, Any]]:
 
 def evaluate_market_outcome(prediction: str, home_score: str, away_score: str, home_team: str = "", away_team: str = "") -> Optional[str]:
     """
-    Unified First-Principles Outcome Evaluator (v3.0).
+    Unified First-Principles Outcome Evaluator (v4.0).
     Returns '1' (Correct), '0' (Incorrect), or '' (Unknown/Void).
-    Handles both market types (Over 2.5) and team-specific predictions (Arsenal to win).
+    Handles: 1X2, Double Chance, DNB, Over/Under, BTTS, Team Over/Under,
+             Winner & BTTS, Clean Sheet, and team-specific predictions.
     """
     import re
     try:
@@ -542,36 +543,75 @@ def evaluate_market_outcome(prediction: str, home_score: str, away_score: str, h
     h_lower = (home_team or '').strip().lower()
     a_lower = (away_team or '').strip().lower()
 
+    def _team_matches(candidate: str, reference: str) -> bool:
+        """Substring match: handles 'arsenal' matching 'arsenal (eng)' etc."""
+        if not candidate or not reference:
+            return False
+        return candidate == reference or reference.startswith(candidate) or candidate.startswith(reference)
+
+    def _is_home(team_str: str) -> bool:
+        return _team_matches(team_str, h_lower)
+
+    def _is_away(team_str: str) -> bool:
+        return _team_matches(team_str, a_lower)
+
+    # 0. Winner & BTTS (must check BEFORE "to win" patterns)
+    btts_win_match = re.match(r'^(.+?)\s+to\s+win\s*&\s*btts\s+yes$', p)
+    if btts_win_match:
+        team = btts_win_match.group(1).strip()
+        btts = h > 0 and a > 0
+        if _is_home(team): return '1' if h > a and btts else '0'
+        if _is_away(team): return '1' if a > h and btts else '0'
+
     # 1. Standard Markets (Short Code/Explicit)
     if p in ("over 2.5", "over 2_5", "over_2.5", "over_2_5"): return '1' if total > 2.5 else '0'
     if p in ("under 2.5", "under 2_5", "under_2.5", "under_2_5"): return '1' if total < 2.5 else '0'
-    if p in ("btts yes", "btts_yes", "both teams to score yes"): return '1' if h > 0 and a > 0 else '0'
+    if p in ("over 1.5", "over 1_5", "over_1.5", "over_1_5"): return '1' if total > 1.5 else '0'
+    if p in ("under 1.5", "under 1_5", "under_1.5", "under_1_5"): return '1' if total < 1.5 else '0'
+    if p in ("btts yes", "btts_yes", "both teams to score yes", "both teams to score"): return '1' if h > 0 and a > 0 else '0'
     if p in ("btts no", "btts_no", "both teams to score no"): return '1' if h == 0 or a == 0 else '0'
     if p in ("home win", "home_win", "1"): return '1' if h > a else '0'
     if p in ("away win", "away_win", "2"): return '1' if a > h else '0'
     if p in ("draw", "x"): return '1' if h == a else '0'
+    if p in ("home or away", "12", "double chance 12"): return '1' if h != a else '0'
 
-    # 2. "Team to win" / "Team or Draw" (Verbose Patterns)
+    # 2. "Team to win" (Verbose Patterns with substring matching)
     if p.endswith(" to win"):
         team = p.replace(" to win", "").strip()
-        if team == h_lower: return '1' if h > a else '0'
-        if team == a_lower: return '1' if a > h else '0'
-    
+        if _is_home(team): return '1' if h > a else '0'
+        if _is_away(team): return '1' if a > h else '0'
+
+    # 3. "Team or Draw" / Double Chance
     if " or draw" in p:
         team = p.replace(" or draw", "").strip()
-        if team == h_lower or team == '1': return '1' if h >= a else '0'
-        if team == a_lower or team == '2': return '1' if a >= h else '0'
+        if _is_home(team): return '1' if h >= a else '0'
+        if _is_away(team): return '1' if a >= h else '0'
 
+    # "Home or Away" with team names (e.g., "Arsenal or Liverpool")
+    or_match = re.match(r'^(.+?)\s+or\s+(.+?)$', p)
+    if or_match and "draw" not in p:
+        t1 = or_match.group(1).strip()
+        t2 = or_match.group(2).strip()
+        if (_is_home(t1) and _is_away(t2)) or (_is_away(t1) and _is_home(t2)):
+            return '1' if h != a else '0'
+
+    # 4. Draw No Bet
     if p.endswith(" (dnb)"):
         team = p.replace(" to win (dnb)", "").replace(" (dnb)", "").strip()
-        if h == a: return '' # Void/Refund
-        if team == h_lower: return '1' if h > a else '0'
-        if team == a_lower: return '1' if a > h else '0'
+        if h == a: return ''  # Void/Refund
+        if _is_home(team): return '1' if h > a else '0'
+        if _is_away(team): return '1' if a > h else '0'
 
-    # 3. Dynamic Regex Patterns (Over/Under X, Team Over X)
+    # 5. Dynamic Over/Under with team-specific goals
     over_match = re.search(r'over\s+([\d.]+)', p)
     if over_match:
         threshold = float(over_match.group(1))
+        # Check team-specific: "{team} Over X"
+        team_part = p[:over_match.start()].strip()
+        if team_part:
+            if _is_home(team_part): return '1' if h > threshold else '0'
+            if _is_away(team_part): return '1' if a > threshold else '0'
+        # Generic keywords
         if "away" in p: return '1' if a > threshold else '0'
         if "home" in p: return '1' if h > threshold else '0'
         return '1' if total > threshold else '0'
@@ -579,17 +619,19 @@ def evaluate_market_outcome(prediction: str, home_score: str, away_score: str, h
     under_match = re.search(r'under\s+([\d.]+)', p)
     if under_match:
         threshold = float(under_match.group(1))
+        team_part = p[:under_match.start()].strip()
+        if team_part:
+            if _is_home(team_part): return '1' if h < threshold else '0'
+            if _is_away(team_part): return '1' if a < threshold else '0'
         if "away" in p: return '1' if a < threshold else '0'
         if "home" in p: return '1' if h < threshold else '0'
         return '1' if total < threshold else '0'
 
-    # 4. Clean Sheet / No Draw
+    # 6. Clean Sheet
     if "clean sheet" in p:
         team = p.replace(" clean sheet", "").strip()
-        if team == h_lower: return '1' if a == 0 else '0'
-        if team == a_lower: return '1' if h == 0 else '0'
-    
-    if p in ("home or away", "12", "double chance 12"): return '1' if h != a else '0'
+        if _is_home(team): return '1' if a == 0 else '0'
+        if _is_away(team): return '1' if h == 0 else '0'
 
     return ''
 
