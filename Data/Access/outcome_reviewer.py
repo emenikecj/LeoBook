@@ -414,7 +414,7 @@ async def get_final_score(page):
 
         try:
             # Use shorter timeout for score extraction to prevent hanging
-            SCORE_TIMEOUT = 10000  # 10 seconds
+            SCORE_TIMEOUT = 5000  # 5 seconds
             home_score = await page.locator(home_score_sel).first.inner_text(timeout=SCORE_TIMEOUT)
             away_score = await page.locator(away_score_sel).first.inner_text(timeout=SCORE_TIMEOUT)
             final_score = f"{home_score.strip() if home_score else ''}-{away_score.strip() if away_score else ''}"
@@ -427,7 +427,8 @@ async def get_final_score(page):
         except Exception as sel_fail:
             print(f"      [Selector Failure] {sel_fail}. Attempting AIGO healing fallback...")
             # LOG FAILURE FOR HEALING
-            log_selector_failure("fs_match_page", "header_score_home", str(sel_fail))
+            failed_key = "header_score_away" if "nth-child(3)" in str(sel_fail) or "away" in str(sel_fail).lower() else "header_score_home"
+            log_selector_failure("fs_match_page", failed_key, str(sel_fail))
             
             # Tier 2 Heuristic: Search for team containers and relative score spans
             heuristic_score = await page.evaluate("""() => {

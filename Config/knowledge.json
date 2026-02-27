@@ -83,8 +83,8 @@
         "match_header": ".duelParticipant",
         "home_team": ".duelParticipant__home .participant__participantName",
         "away_team": ".duelParticipant__away .participant__participantName",
-        "header_score_home": ".detailScore__wrapper > span:nth-child(1)",
-        "header_score_away": ".detailScore__wrapper > span:nth-child(3)",
+        "header_score_home": ".detailScore__wrapper > span:nth-child(1), .detailScore__home",
+        "header_score_away": ".detailScore__wrapper > span:nth-child(3), .detailScore__away",
         "meta_match_status": ".fixedHeaderDuel__detailStatus",
         "match_time": ".duelParticipant__startTime div",
         "tabs_container": ".wcl-tabsPrimary_Zzfe6",
@@ -92,8 +92,8 @@
         "tab_standings": "a[data-analytics-alias=\"stats-detail\"]",
         "tab_lineups": "a[data-analytics-alias=\"lineups\"]",
         "tab_stats": "a[data-analytics-alias=\"stats\"]",
-        "final_score_home": ".detailScore__wrapper > span:nth-child(1)",
-        "final_score_away": ".detailScore__wrapper > span:nth-child(3)"
+        "final_score_home": ".detailScore__wrapper > span:nth-child(1), .detailScore__home",
+        "final_score_away": ".detailScore__wrapper > span:nth-child(3), .detailScore__away"
     },
     "fs_match_page_tabs": {
         "h2h_tab": "a[data-analytics-alias=\"h2h\"]",
