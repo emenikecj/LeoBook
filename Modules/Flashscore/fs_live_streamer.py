@@ -34,6 +34,7 @@ STREAM_INTERVAL = 60  # seconds
 FLASHSCORE_URL = "https://www.flashscore.com/football/"
 _STREAMER_HEARTBEAT_FILE = os.path.join(os.path.dirname(LIVE_SCORES_CSV), '.streamer_heartbeat')
 _last_push_sig = None  # Delta detection: (frozenset(live_ids), sched_count, pred_count)
+_missed_cycles = {}    # Persistence trace: {fixture_id: missed_count}
 
 # JS to expand the "Show More" dropdown found in mobile/collapsed views
 EXPAND_DROPDOWN_JS = """
@@ -92,11 +93,12 @@ def _touch_heartbeat():
         pass
 
 
-def _propagate_status_updates(live_matches: list, resolved_matches: list = None):
+def _propagate_status_updates(live_matches, resolved_matches, force_finished_ids=None):
     """
     Propagate live scores and resolved results into schedules.csv and predictions.csv.
     """
     resolved_matches = resolved_matches or []
+    force_finished_ids = force_finished_ids or set()
     live_ids = {m['fixture_id'] for m in live_matches}
     live_map = {m['fixture_id']: m for m in live_matches}
     resolved_ids = {m['fixture_id'] for m in resolved_matches}
@@ -140,6 +142,7 @@ def _propagate_status_updates(live_matches: list, resolved_matches: list = None)
                     row['stage_detail'] = rm['stage_detail']
                 sched_changed = True
 
+
         # Safety Check: Enforce 2.5hr Rule (Gold Rule)
         # Any match marked 'live' that is > 2.5hr past its start time must be 'finished'
         if row.get('status', '').lower() == 'live':
@@ -176,35 +179,44 @@ def _propagate_status_updates(live_matches: list, resolved_matches: list = None)
             row_changed = False
             if cur_status != 'live':
                 row['status'] = 'live'
+                row['match_status'] = 'live'
                 row_changed = True
             
-            new_hs = lm.get('home_score', '')
-            new_as = lm.get('away_score', '')
-            if row.get('home_score') != new_hs or row.get('away_score') != new_as:
-                row['home_score'] = new_hs
-                row['away_score'] = new_as
-                row['actual_score'] = f"{new_hs}-{new_as}"
+            # Update score if provided
+            h_score = lm.get('home_score')
+            a_score = lm.get('away_score')
+            if h_score is not None and str(h_score) != str(row.get('home_score')):
+                row['home_score'] = h_score
+                row_changed = True
+            if a_score is not None and str(a_score) != str(row.get('away_score')):
+                row['away_score'] = a_score
                 row_changed = True
             
             if row_changed:
                 pred_changed = True
                 pred_updates.append(row)
 
-        elif fid in resolved_ids:
-            rm = resolved_map[fid]
-            terminal_status = rm.get('status', 'finished')
+        elif fid in resolved_ids or fid in force_finished_ids:
+            terminal_status = resolved_map[fid].get('status', 'finished') if fid in resolved_ids else 'finished'
             if cur_status != terminal_status:
                 row['status'] = terminal_status
-                if terminal_status in NO_SCORE_STATUSES:
-                    row['home_score'] = ''
-                    row['away_score'] = ''
-                    row['actual_score'] = ''
-                else:
-                    row['home_score'] = rm.get('home_score', row.get('home_score', ''))
-                    row['away_score'] = rm.get('away_score', row.get('away_score', ''))
+                row['match_status'] = terminal_status
+                
+                # Update final score from resolved map if available
+                if fid in resolved_ids:
+                    rm = resolved_map[fid]
+                    if rm.get('home_score') is not None:
+                        row['home_score'] = rm['home_score']
+                    if rm.get('away_score') is not None:
+                        row['away_score'] = rm['away_score']
                     row['actual_score'] = f"{rm.get('home_score', '')}-{rm.get('away_score', '')}"
-                if rm.get('stage_detail'):
-                    row['stage_detail'] = rm['stage_detail']
+                    if rm.get('stage_detail'):
+                        row['stage_detail'] = rm['stage_detail']
+                else: # fid in force_finished_ids but not resolved_ids
+                    row['home_score'] = row.get('home_score', '')
+                    row['away_score'] = row.get('away_score', '')
+                    row['actual_score'] = f"{row.get('home_score', '')}-{row.get('away_score', '')}"
+
                 if terminal_status not in NO_SCORE_STATUSES:
                     oc = evaluate_market_outcome(
                         row.get('prediction', ''),
@@ -249,23 +261,49 @@ def _propagate_status_updates(live_matches: list, resolved_matches: list = None)
 # ---------------------------------------------------------------------------
 # Purge stale live_scores: remove matches no longer in the LIVE tab
 # ---------------------------------------------------------------------------
-def _purge_stale_live_scores(current_live_ids: set):
+def _purge_stale_live_scores(current_live_ids: set, resolved_ids: set):
     """
     Remove any fixture from live_scores.csv that is NOT in the current LIVE set.
+    Matches have a 3-cycle grace period unless explicitly resolved.
     """
+    global _missed_cycles
     live_headers = files_and_headers.get(LIVE_SCORES_CSV, [])
     existing_rows = _read_csv(LIVE_SCORES_CSV)
     if not existing_rows:
-        return set()
+        return set(), set()
     
     existing_ids = {r.get('fixture_id', '') for r in existing_rows}
-    stale_ids = existing_ids - current_live_ids
     
-    if stale_ids:
-        kept_rows = [r for r in existing_rows if r.get('fixture_id', '') not in stale_ids]
+    # Logic:
+    # 1. Matches in 'current_live_ids' or 'resolved_ids' -> reset missed cycles to 0
+    # 2. Matches in 'stale_potential' (existing but not in current scan) -> increment missed cycles
+    # 3. Matches with missed_cycles >= 3 OR in 'resolved_ids' -> PURGE
+    
+    stale_potential = existing_ids - (current_live_ids | resolved_ids)
+    
+    # Reset missed count for matches found
+    for fid in (current_live_ids | resolved_ids):
+        _missed_cycles[fid] = 0
+        
+    # Increment for missing matches
+    for fid in stale_potential:
+        _missed_cycles[fid] = _missed_cycles.get(fid, 0) + 1
+        
+    # Identify IDs to purge
+    purged_for_misses = {fid for fid, count in _missed_cycles.items() if count >= 3 and fid in existing_ids}
+    purged_for_resolution = existing_ids & resolved_ids
+    
+    final_stale_ids = purged_for_misses | purged_for_resolution
+    
+    if final_stale_ids:
+        kept_rows = [r for r in existing_rows if r.get('fixture_id', '') not in final_stale_ids]
         _write_csv(LIVE_SCORES_CSV, kept_rows, live_headers)
-    
-    return stale_ids
+        # Clear from tracking
+        for fid in final_stale_ids:
+            if fid in _missed_cycles: del _missed_cycles[fid]
+            
+    return final_stale_ids, purged_for_misses
+
 
 
 # ---------------------------------------------------------------------------
@@ -393,19 +431,24 @@ async def live_score_streamer(playwright: Playwright, user_data_dir: str = None)
                     live_matches = [m for m in all_matches if m.get('status') in LIVE_STATUSES]
                     resolved_matches = [m for m in all_matches if m.get('status') in RESOLVED_STATUSES]
                     current_live_ids = {m['fixture_id'] for m in live_matches}
+                    current_resolved_ids = {m['fixture_id'] for m in resolved_matches}
 
                     # Save & Sync
-                    stale_ids = _purge_stale_live_scores(current_live_ids)
-                    if stale_ids:
-                        print(f"   [Streamer] Decision: Purged {len(stale_ids)} stale matches from local state.")
+                    final_stale_ids, force_finished_ids = _purge_stale_live_scores(current_live_ids, current_resolved_ids)
+                    if final_stale_ids:
+                        print(f"   [Streamer] Decision: Purged {len(final_stale_ids)} stale matches from local state (Missed: {len(force_finished_ids)}).")
                     
-                    if live_matches or resolved_matches:
-                        print(f"   [Streamer] Process: Upserting {len(live_matches)} live entries and {len(resolved_matches)} resolved entries.")
+                    if live_matches or resolved_matches or force_finished_ids:
+                        msg = f"   [Streamer] Process: Upserting {len(live_matches)} live entries"
+                        if resolved_matches: msg += f" and {len(resolved_matches)} resolved entries"
+                        if force_finished_ids: msg += f" and {len(force_finished_ids)} force-finished entries"
+                        print(msg + ".")
+
                         # Update local CSVs
                         for m in live_matches:
                             save_live_score_entry(m)
                         
-                        sched_upd, pred_upd = _propagate_status_updates(live_matches, resolved_matches)
+                        sched_upd, pred_upd = _propagate_status_updates(live_matches, resolved_matches, force_finished_ids=force_finished_ids)
                         print(f"   [Streamer] Status: Propagation updated {len(sched_upd)} schedule rows and {len(pred_upd)} prediction rows.")
 
                         # Delta detection — skip push if nothing changed from last cycle
@@ -420,10 +463,10 @@ async def live_score_streamer(playwright: Playwright, user_data_dir: str = None)
                                 if live_matches: await sync.batch_upsert('live_scores', live_matches)
                                 if pred_upd: await sync.batch_upsert('predictions', pred_upd)
                                 if sched_upd: await sync.batch_upsert('schedules', sched_upd)
-                                if stale_ids:
+                                if final_stale_ids:
                                     try:
-                                        print(f"   [Streamer] Sync: Deleting {len(stale_ids)} stale entries from Supabase.")
-                                        sync.supabase.table('live_scores').delete().in_('fixture_id', list(stale_ids)).execute()
+                                        print(f"   [Streamer] Sync: Deleting {len(final_stale_ids)} stale entries from Supabase.")
+                                        sync.supabase.table('live_scores').delete().in_('fixture_id', list(final_stale_ids)).execute()
                                     except Exception as e:
                                         print(f"   [Streamer] Sync Warning: Supabase deletion failed: {e}")
 
