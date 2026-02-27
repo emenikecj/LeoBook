@@ -405,7 +405,7 @@ async def get_final_score(page):
             # If the page failed to load at all or the selector is missing
             status_text = "finished"
 
-        if "finished" not in status_text.lower() and "aet" not in status_text.lower() and "pen" not in status_text.lower():
+        if "finished" not in status_text.lower() and "aet" not in status_text.lower() and "pen" not in status_text.lower() and "fro" not in status_text.lower():
             return "NOT_FINISHED"
 
         # Extract Score (With AIGO-style fallback)

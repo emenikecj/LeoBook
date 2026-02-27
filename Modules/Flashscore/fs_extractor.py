@@ -155,7 +155,7 @@ async def extract_all_matches(page: Page, label: str = "Extractor") -> list:
             } else if (stageLower.includes('abn') || stageLower.includes('abd')) {
                 status = 'cancelled'; stageDetail = 'Abn'; homeScore = ''; awayScore = '';
             } else if (stageLower.includes('fro')) {
-                status = 'fro'; stageDetail = 'FRO';
+                status = 'finished'; stageDetail = 'FRO';
             } else if (stageLower.includes('susp')) {
                 status = 'suspended'; stageDetail = 'Susp'; homeScore = ''; awayScore = '';
             } else if (homeScoreEl && awayScoreEl) {

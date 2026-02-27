@@ -85,7 +85,7 @@
         "away_team": ".duelParticipant__away .participant__participantName",
         "header_score_home": ".detailScore__wrapper > span:nth-child(1), .detailScore__home",
         "header_score_away": ".detailScore__wrapper > span:nth-child(3), .detailScore__away",
-        "meta_match_status": ".fixedHeaderDuel__detailStatus",
+        "meta_match_status": ".fixedHeaderDuel__detailStatus, .detailScore__status",
         "match_time": ".duelParticipant__startTime div",
         "tabs_container": ".wcl-tabsPrimary_Zzfe6",
         "tab_h2h": "a[data-analytics-alias=\"h2h\"]",

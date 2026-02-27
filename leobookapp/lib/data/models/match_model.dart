@@ -164,7 +164,8 @@ class MatchModel {
         s.contains('aet') ||
         s.contains('pen') ||
         s.contains('after pen') ||
-        s.contains('after et')) {
+        s.contains('after et') ||
+        s.contains('fro')) {
       return true;
     }
     return false;
