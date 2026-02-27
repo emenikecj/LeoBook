@@ -217,6 +217,27 @@ async def run_flashscore_analysis(playwright: Playwright):
                                 print(f"\n   [Analytics Sync] {total_cycle_predictions} predictions generated. Triggering micro-batch sync...")
                                 from Data.Access.sync_manager import run_full_sync
                                 await run_full_sync()
+                                # Retry enrichment for teams that were skipped earlier (LLM was unavailable)
+                                try:
+                                    from Core.Intelligence.llm_health_manager import health_manager
+                                    from Data.Access.db_helpers import TEAMS_CSV
+                                    if health_manager._gemini_active:
+                                        import csv as _rtcsv
+                                        retry_teams = []
+                                        if os.path.exists(TEAMS_CSV):
+                                            with open(TEAMS_CSV, 'r', encoding='utf-8') as f:
+                                                for row in _rtcsv.DictReader(f):
+                                                    st = (row.get('search_terms') or '').strip()
+                                                    abbr = (row.get('abbreviations') or '').strip()
+                                                    tid = row.get('team_id', '')
+                                                    tname = row.get('team_name', '')
+                                                    if tid and tname and (not st or st == '[]' or not abbr or abbr == '[]'):
+                                                        retry_teams.append({'team_id': tid, 'team_name': tname})
+                                        if retry_teams and len(retry_teams) <= 50:
+                                            print(f"    [SearchDict Retry] LLM recovered — enriching {len(retry_teams)} remaining teams...")
+                                            await enrich_batch_teams_search_dict(retry_teams)
+                                except Exception:
+                                    pass  # Non-fatal
 
                     # Run the per-match pipeline (v3.6)
                     # Each match: H2H → Standings → League Enrichment → Search Dict → Predict

@@ -430,16 +430,29 @@ async def get_final_score(page):
             failed_key = "header_score_away" if "nth-child(3)" in str(sel_fail) or "away" in str(sel_fail).lower() else "header_score_home"
             log_selector_failure("fs_match_page", failed_key, str(sel_fail))
             
+            # Tier 1.5: Universal data-testid selector (works on ALL Flashscore layouts)
+            try:
+                home_score_t = await page.locator('[data-testid="wcl-matchRowScore"][data-side="1"]').first.inner_text(timeout=3000)
+                away_score_t = await page.locator('[data-testid="wcl-matchRowScore"][data-side="2"]').first.inner_text(timeout=3000)
+                testid_score = f"{home_score_t.strip()}-{away_score_t.strip()}"
+                if testid_score.replace('-', '').isdigit():
+                    print(f"      [AIGO HEALED] Extracted score via data-testid: {testid_score}")
+                    return testid_score
+            except Exception:
+                pass  # Fall through to Tier 2
+
             # Tier 2 Heuristic: Search for team containers and relative score spans
             heuristic_score = await page.evaluate("""() => {
+                // Try detailScore spans first
+                const home = document.querySelector('.detailScore__home, [data-testid="wcl-matchRowScore"][data-side="1"]');
+                const away = document.querySelector('.detailScore__away, [data-testid="wcl-matchRowScore"][data-side="2"]');
+                if (home && away) return home.innerText.trim() + '-' + away.innerText.trim();
+                // Broad pattern scan
                 const spans = Array.from(document.querySelectorAll('span, div'));
                 const scorePattern = /^(\\d+)\\s*-\\s*(\\d+)$/;
                 for (const s of spans) {
                     if (scorePattern.test(s.innerText.trim())) return s.innerText.trim();
                 }
-                const home = document.querySelector('.detailScore__home, .home-score')?.innerText;
-                const away = document.querySelector('.detailScore__away, .away-score')?.innerText;
-                if (home && away) return home.trim() + '-' + away.trim();
                 return null;
             }""")
             
