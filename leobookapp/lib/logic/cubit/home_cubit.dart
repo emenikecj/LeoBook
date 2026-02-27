@@ -67,6 +67,8 @@ class HomeCubit extends Cubit<HomeState> {
   final DataRepository _dataRepository;
   final NewsRepository _newsRepository;
   StreamSubscription? _predictionsSub;
+  StreamSubscription? _schedulesSub;
+  StreamSubscription? _teamCrestsSub;
 
   HomeCubit(this._dataRepository, this._newsRepository) : super(HomeInitial());
 
@@ -137,11 +139,15 @@ class HomeCubit extends Cubit<HomeState> {
         ),
       );
 
-      // --- Start Realtime Subscriptions ---
+      // --- Start Realtime Subscriptions (ALL tables) ---
       _predictionsSub?.cancel();
       _liveScoresSub?.cancel();
+      _schedulesSub?.cancel();
+      _teamCrestsSub?.cancel();
       _predictionsSub = null;
       _liveScoresSub = null;
+      _schedulesSub = null;
+      _teamCrestsSub = null;
 
       _predictionsSub = _dataRepository
           .watchPredictions(date: selectionDate)
@@ -155,6 +161,21 @@ class HomeCubit extends Cubit<HomeState> {
         _handleRealtimeUpdate(liveUpdates);
       }, onError: (e) {
         debugPrint("LiveScores Stream Error: $e");
+      });
+
+      _schedulesSub = _dataRepository
+          .watchSchedules(date: selectionDate)
+          .listen((scheduleUpdates) {
+        _handleRealtimeUpdate(scheduleUpdates);
+      }, onError: (e) {
+        debugPrint("Schedules Stream Error: $e");
+      });
+
+      _teamCrestsSub =
+          _dataRepository.watchTeamCrestUpdates().listen((crestMap) {
+        _handleCrestUpdate(crestMap);
+      }, onError: (e) {
+        debugPrint("TeamCrests Stream Error: $e");
       });
     } catch (e) {
       emit(HomeError("Failed to load dashboard: $e"));
@@ -284,7 +305,9 @@ class HomeCubit extends Cubit<HomeState> {
 
       // Re-subscribe for the new date
       _predictionsSub?.cancel();
-      _predictionsSub = null; // Ensure clear
+      _schedulesSub?.cancel();
+      _predictionsSub = null;
+      _schedulesSub = null;
 
       // Delay slightly to allow the previous channel to leave cleanly
       await Future.delayed(const Duration(milliseconds: 300));
@@ -296,6 +319,13 @@ class HomeCubit extends Cubit<HomeState> {
         _handleRealtimeUpdate(updatedMatches);
       }, onError: (e) {
         debugPrint("Predictions Stream (Update) Error: $e");
+      });
+
+      _schedulesSub =
+          _dataRepository.watchSchedules(date: date).listen((scheduleUpdates) {
+        _handleRealtimeUpdate(scheduleUpdates);
+      }, onError: (e) {
+        debugPrint("Schedules Stream (Update) Error: $e");
       });
     }
   }
@@ -490,25 +520,98 @@ class HomeCubit extends Cubit<HomeState> {
     return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
   }
 
+  void _handleCrestUpdate(Map<String, String> crestMap) {
+    if (state is HomeLoaded && crestMap.isNotEmpty) {
+      final currentState = state as HomeLoaded;
+      final updatedMatches = currentState.allMatches.map((m) {
+        final homeCrest = crestMap[m.homeTeam] ?? m.homeCrestUrl;
+        final awayCrest = crestMap[m.awayTeam] ?? m.awayCrestUrl;
+        if (homeCrest != m.homeCrestUrl || awayCrest != m.awayCrestUrl) {
+          return MatchModel(
+            fixtureId: m.fixtureId,
+            date: m.date,
+            time: m.time,
+            homeTeam: m.homeTeam,
+            awayTeam: m.awayTeam,
+            homeTeamId: m.homeTeamId,
+            awayTeamId: m.awayTeamId,
+            homeScore: m.homeScore,
+            awayScore: m.awayScore,
+            status: m.status,
+            sport: m.sport,
+            league: m.league,
+            prediction: m.prediction,
+            odds: m.odds,
+            confidence: m.confidence,
+            liveMinute: m.liveMinute,
+            isFeatured: m.isFeatured,
+            valueTag: m.valueTag,
+            homeCrestUrl: homeCrest,
+            awayCrestUrl: awayCrest,
+            regionFlagUrl: m.regionFlagUrl,
+            marketReliability: m.marketReliability,
+            xgHome: m.xgHome,
+            xgAway: m.xgAway,
+            reasonTags: m.reasonTags,
+            homeFormN: m.homeFormN,
+            awayFormN: m.awayFormN,
+            outcomeCorrect: m.outcomeCorrect,
+          );
+        }
+        return m;
+      }).toList();
+
+      emit(
+        HomeLoaded(
+          allMatches: updatedMatches,
+          filteredMatches: _filterMatches(
+            updatedMatches,
+            currentState.selectedDate,
+            currentState.selectedSport,
+            leagues: currentState.selectedLeagues,
+            types: currentState.selectedPredictionTypes,
+            minO: currentState.minOdds,
+            maxO: currentState.maxOdds,
+          ),
+          featuredMatches: updatedMatches
+              .where(
+                  (m) => m.confidence != null && m.confidence!.contains('High'))
+              .toList(),
+          liveMatches: updatedMatches.where((m) => m.isLive).toList(),
+          news: currentState.news,
+          allRecommendations: currentState.allRecommendations,
+          filteredRecommendations: currentState.filteredRecommendations,
+          selectedDate: currentState.selectedDate,
+          selectedSport: currentState.selectedSport,
+          availableSports: currentState.availableSports,
+          isAllMatchesExpanded: currentState.isAllMatchesExpanded,
+          selectedLeagues: currentState.selectedLeagues,
+          selectedPredictionTypes: currentState.selectedPredictionTypes,
+          minOdds: currentState.minOdds,
+          maxOdds: currentState.maxOdds,
+        ),
+      );
+    }
+  }
+
   @override
   Future<void> close() async {
-    try {
-      if (_predictionsSub != null) {
-        await _predictionsSub!.cancel();
-        _predictionsSub = null;
+    for (final sub in [
+      _predictionsSub,
+      _liveScoresSub,
+      _schedulesSub,
+      _teamCrestsSub
+    ]) {
+      try {
+        await sub?.cancel();
+      } catch (e) {
+        debugPrint("Error canceling subscription: $e");
       }
-    } catch (e) {
-      debugPrint("Error canceling predictions sub: $e");
     }
-
-    try {
-      if (_liveScoresSub != null) {
-        await _liveScoresSub!.cancel();
-        _liveScoresSub = null;
-      }
-    } catch (e) {
-      debugPrint("Error canceling live scores sub: $e");
-    }
+    _predictionsSub = null;
+    _liveScoresSub = null;
+    _schedulesSub = null;
+    _teamCrestsSub = null;
     return super.close();
   }
 }
