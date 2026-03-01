@@ -191,7 +191,7 @@ class _RecommendationCardState extends State<RecommendationCard> {
                           Row(
                             children: [
                               Text(
-                                "RELIABILITY: ${(rec.reliabilityScore * 10).toStringAsFixed(0)}%",
+                                "RELIABILITY: ${rec.reliabilityScore.toStringAsFixed(0)}%",
                                 style: TextStyle(
                                   fontSize: Responsive.sp(context, 6),
                                   fontWeight: FontWeight.bold,

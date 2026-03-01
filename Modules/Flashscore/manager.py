@@ -190,7 +190,7 @@ async def run_flashscore_analysis(playwright: Playwright, refresh: bool = False,
                         continue
 
                     if is_today:
-                        time_str = m.get('time')
+                        time_str = m.get('match_time')
                         if is_time_parsable(time_str):
                             if dt.strptime(time_str, '%H:%M').time() > now_time:
                                 valid_matches.append(m)

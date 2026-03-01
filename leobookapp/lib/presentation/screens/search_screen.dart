@@ -15,6 +15,7 @@ import 'package:leobookapp/core/widgets/glass_container.dart';
 import 'package:leobookapp/data/repositories/data_repository.dart';
 import 'package:leobookapp/presentation/screens/team_screen.dart';
 import 'package:leobookapp/presentation/screens/league_screen.dart';
+import '../widgets/shared/main_top_bar.dart';
 import '../widgets/shared/match_card.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -50,125 +51,144 @@ class _SearchScreenState extends State<SearchScreen> {
     return Scaffold(
       backgroundColor:
           isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── Search Bar Header ──
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: Responsive.sp(context, 12),
-                vertical: Responsive.sp(context, 6),
-              ),
-              child: Row(
+      body: Column(
+        children: [
+          MainTopBar(
+            currentIndex: -1,
+            onTabChanged: (_) {},
+          ),
+          Expanded(
+            child: SafeArea(
+              top: false, // MainTopBar already handles the top
+              child: Column(
                 children: [
-                  Expanded(
-                    child: GlassContainer(
-                      borderRadius: Responsive.sp(context, 14),
-                      padding: EdgeInsets.zero,
-                      interactive: false,
-                      child: SizedBox(
-                        height: Responsive.sp(context, 40),
-                        child: TextField(
-                          controller: _searchController,
-                          focusNode: _focusNode,
-                          onChanged: (val) =>
-                              context.read<SearchCubit>().search(val),
-                          onSubmitted: (val) {
-                            if (val.isNotEmpty) {
-                              context.read<SearchCubit>().addRecentSearch(val);
-                            }
-                          },
-                          style: GoogleFonts.lexend(
-                            fontSize: Responsive.sp(context, 13),
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? Colors.white : AppColors.textDark,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: "Search teams, leagues...",
-                            hintStyle: GoogleFonts.lexend(
-                              fontSize: Responsive.sp(context, 12),
-                              color: AppColors.textGrey.withValues(alpha: 0.5),
-                            ),
-                            prefixIcon: Padding(
-                              padding: EdgeInsets.only(
-                                  left: Responsive.sp(context, 10),
-                                  right: Responsive.sp(context, 6)),
-                              child: Icon(
-                                Icons.search,
-                                size: Responsive.sp(context, 16),
-                                color: AppColors.primary,
-                              ),
-                            ),
-                            prefixIconConstraints: const BoxConstraints(),
-                            suffixIcon: _searchController.text.isNotEmpty
-                                ? GestureDetector(
-                                    onTap: () {
-                                      _searchController.clear();
-                                      context.read<SearchCubit>().search('');
-                                    },
-                                    child: Padding(
-                                      padding: EdgeInsets.only(
-                                          right: Responsive.sp(context, 8)),
-                                      child: Icon(
-                                        Icons.close,
-                                        size: Responsive.sp(context, 14),
-                                        color: AppColors.textGrey,
-                                      ),
+                  // ── Search Bar Header ──
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Responsive.sp(context, 12),
+                      vertical: Responsive.sp(context, 6),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GlassContainer(
+                            borderRadius: Responsive.sp(context, 14),
+                            padding: EdgeInsets.zero,
+                            interactive: false,
+                            child: SizedBox(
+                              height: Responsive.sp(context, 40),
+                              child: TextField(
+                                controller: _searchController,
+                                focusNode: _focusNode,
+                                onChanged: (val) =>
+                                    context.read<SearchCubit>().search(val),
+                                onSubmitted: (val) {
+                                  if (val.isNotEmpty) {
+                                    context
+                                        .read<SearchCubit>()
+                                        .addRecentSearch(val);
+                                  }
+                                },
+                                style: GoogleFonts.lexend(
+                                  fontSize: Responsive.sp(context, 13),
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark
+                                      ? Colors.white
+                                      : AppColors.textDark,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: "Search teams, leagues...",
+                                  hintStyle: GoogleFonts.lexend(
+                                    fontSize: Responsive.sp(context, 12),
+                                    color: AppColors.textGrey
+                                        .withValues(alpha: 0.5),
+                                  ),
+                                  prefixIcon: Padding(
+                                    padding: EdgeInsets.only(
+                                        left: Responsive.sp(context, 10),
+                                        right: Responsive.sp(context, 6)),
+                                    child: Icon(
+                                      Icons.search,
+                                      size: Responsive.sp(context, 16),
+                                      color: AppColors.primary,
                                     ),
-                                  )
-                                : null,
-                            suffixIconConstraints: const BoxConstraints(),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              vertical: Responsive.sp(context, 9),
+                                  ),
+                                  prefixIconConstraints: const BoxConstraints(),
+                                  suffixIcon: _searchController.text.isNotEmpty
+                                      ? GestureDetector(
+                                          onTap: () {
+                                            _searchController.clear();
+                                            context
+                                                .read<SearchCubit>()
+                                                .search('');
+                                          },
+                                          child: Padding(
+                                            padding: EdgeInsets.only(
+                                                right:
+                                                    Responsive.sp(context, 8)),
+                                            child: Icon(
+                                              Icons.close,
+                                              size: Responsive.sp(context, 14),
+                                              color: AppColors.textGrey,
+                                            ),
+                                          ),
+                                        )
+                                      : null,
+                                  suffixIconConstraints: const BoxConstraints(),
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    vertical: Responsive.sp(context, 9),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                        SizedBox(width: Responsive.sp(context, 10)),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Text(
+                            "Cancel",
+                            style: GoogleFonts.lexend(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: Responsive.sp(context, 12),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(width: Responsive.sp(context, 10)),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Text(
-                      "Cancel",
-                      style: GoogleFonts.lexend(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: Responsive.sp(context, 12),
-                      ),
+
+                  // ── Content Area ──
+                  Expanded(
+                    child: BlocBuilder<SearchCubit, SearchState>(
+                      builder: (context, state) {
+                        if (state is SearchInitial) {
+                          return _buildInitialView(context, state);
+                        } else if (state is SearchResults) {
+                          return _buildResultsView(context, state);
+                        } else if (state is SearchLoading) {
+                          return Center(
+                            child: SizedBox(
+                              width: Responsive.sp(context, 20),
+                              height: Responsive.sp(context, 20),
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          );
+                        }
+                        return const SizedBox();
+                      },
                     ),
                   ),
                 ],
               ),
             ),
-
-            // ── Content Area ──
-            Expanded(
-              child: BlocBuilder<SearchCubit, SearchState>(
-                builder: (context, state) {
-                  if (state is SearchInitial) {
-                    return _buildInitialView(context, state);
-                  } else if (state is SearchResults) {
-                    return _buildResultsView(context, state);
-                  } else if (state is SearchLoading) {
-                    return Center(
-                      child: SizedBox(
-                        width: Responsive.sp(context, 20),
-                        height: Responsive.sp(context, 20),
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    );
-                  }
-                  return const SizedBox();
-                },
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
