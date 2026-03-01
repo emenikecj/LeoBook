@@ -1,62 +1,63 @@
-// search_service.dart: search_service.dart: Widget/screen for App — Services.
+// search_service.dart: Fuzzy search across teams, leagues, and matches via Supabase.
 // Part of LeoBook App — Services
 //
 // Classes: SearchService
 
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SearchService {
   final _supabase = Supabase.instance.client;
 
+  /// Search teams and leagues using name matching + search_terms + abbreviations.
+  /// Returns a list of maps with keys: id, name, type, crest, region.
   Future<List<Map<String, dynamic>>> fuzzySearch(String query) async {
     final q = query.toLowerCase().trim();
     if (q.isEmpty) return [];
 
     try {
-      // 1. Search Teams where search_terms array contains the query
-      // Using 'cs' (contains) filter for exact element match in the enriched array
+      final results = <Map<String, dynamic>>[];
+
+      // 1. Search Teams — name, search_terms, abbreviations (all text ILIKE)
       final teamResults = await _supabase
           .from('teams')
-          .select('id, official_name')
-          .filter('search_terms', 'cs', '{"$q"}')
-          .limit(5);
+          .select('team_id, team_name, team_crest, search_terms, abbreviations')
+          .or('team_name.ilike.%$q%,search_terms.ilike.%$q%,abbreviations.ilike.%$q%')
+          .limit(10);
 
-      // 2. Search Leagues (region_league)
-      final leagueResults = await _supabase
-          .from('region_league')
-          .select('rl_id, official_name')
-          .filter('search_terms', 'cs', '{"$q"}')
-          .limit(5);
-
-      // 3. Fallback: If no enriched matches, try basic ILIKE on names
-      if (teamResults.isEmpty && leagueResults.isEmpty) {
-        final fallbackTeams = await _supabase
-            .from('teams')
-            .select('id, official_name')
-            .ilike('official_name', '%$q%')
-            .limit(3);
-
-        final fallbackLeagues = await _supabase
-            .from('region_league')
-            .select('rl_id, official_name')
-            .ilike('official_name', '%$q%')
-            .limit(3);
-
-        return [
-          ...fallbackTeams.map((t) =>
-              {'id': t['id'], 'name': t['official_name'], 'type': 'team'}),
-          ...fallbackLeagues.map((l) =>
-              {'id': l['rl_id'], 'name': l['official_name'], 'type': 'league'}),
-        ];
+      for (var t in (teamResults as List)) {
+        results.add({
+          'id': t['team_id']?.toString() ?? '',
+          'name': t['team_name']?.toString() ?? '',
+          'type': 'team',
+          'crest': t['team_crest']?.toString() ?? '',
+        });
       }
 
-      return [
-        ...teamResults.map(
-            (t) => {'id': t['id'], 'name': t['official_name'], 'type': 'team'}),
-        ...leagueResults.map((l) =>
-            {'id': l['rl_id'], 'name': l['official_name'], 'type': 'league'}),
-      ];
+      // 2. Search Leagues (region_league table)
+      final leagueResults = await _supabase
+          .from('region_league')
+          .select(
+              'league_id, region, league, league_crest, search_terms, abbreviations')
+          .or('league.ilike.%$q%,region.ilike.%$q%,search_terms.ilike.%$q%,abbreviations.ilike.%$q%')
+          .limit(10);
+
+      for (var l in (leagueResults as List)) {
+        final region = l['region']?.toString() ?? '';
+        final league = l['league']?.toString() ?? '';
+        final displayName = region.isNotEmpty ? '$region - $league' : league;
+        results.add({
+          'id': l['league_id']?.toString() ?? '',
+          'name': displayName,
+          'type': 'league',
+          'crest': l['league_crest']?.toString() ?? '',
+          'region': region,
+        });
+      }
+
+      return results;
     } catch (e) {
+      debugPrint('[SearchService] Error: $e');
       return [];
     }
   }

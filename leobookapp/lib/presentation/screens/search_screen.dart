@@ -1,13 +1,17 @@
-// search_screen.dart: search_screen.dart: Widget/screen for App — Screens.
+// search_screen.dart: Production-grade search UI with Liquid Glass design.
 // Part of LeoBook App — Screens
 //
 // Classes: SearchScreen, _SearchScreenState
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:leobookapp/logic/cubit/search_cubit.dart';
 import 'package:leobookapp/logic/cubit/search_state.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';
+import 'package:leobookapp/core/constants/responsive_constants.dart';
+import 'package:leobookapp/core/widgets/glass_container.dart';
 import 'package:leobookapp/data/repositories/data_repository.dart';
 import 'package:leobookapp/presentation/screens/team_screen.dart';
 import 'package:leobookapp/presentation/screens/league_screen.dart';
@@ -49,59 +53,89 @@ class _SearchScreenState extends State<SearchScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header with Search Bar
+            // ── Search Bar Header ──
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: Responsive.sp(context, 12),
+                vertical: Responsive.sp(context, 6),
+              ),
               child: Row(
                 children: [
                   Expanded(
-                    child: Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.cardDark : Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: AppColors.primary, width: 2),
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        focusNode: _focusNode,
-                        onChanged: (val) =>
-                            context.read<SearchCubit>().search(val),
-                        onSubmitted: (val) {
-                          if (val.isNotEmpty) {
-                            context.read<SearchCubit>().addRecentSearch(val);
-                          }
-                        },
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: "Search teams, leagues, players...",
-                          hintStyle: TextStyle(
-                            color: AppColors.textGrey.withValues(alpha: 0.5),
+                    child: GlassContainer(
+                      borderRadius: Responsive.sp(context, 14),
+                      padding: EdgeInsets.zero,
+                      interactive: false,
+                      child: SizedBox(
+                        height: Responsive.sp(context, 40),
+                        child: TextField(
+                          controller: _searchController,
+                          focusNode: _focusNode,
+                          onChanged: (val) =>
+                              context.read<SearchCubit>().search(val),
+                          onSubmitted: (val) {
+                            if (val.isNotEmpty) {
+                              context.read<SearchCubit>().addRecentSearch(val);
+                            }
+                          },
+                          style: GoogleFonts.lexend(
+                            fontSize: Responsive.sp(context, 13),
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.white : AppColors.textDark,
                           ),
-                          prefixIcon: const Icon(
-                            Icons.search,
-                            color: AppColors.primary,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 11,
+                          decoration: InputDecoration(
+                            hintText: "Search teams, leagues...",
+                            hintStyle: GoogleFonts.lexend(
+                              fontSize: Responsive.sp(context, 12),
+                              color: AppColors.textGrey.withValues(alpha: 0.5),
+                            ),
+                            prefixIcon: Padding(
+                              padding: EdgeInsets.only(
+                                  left: Responsive.sp(context, 10),
+                                  right: Responsive.sp(context, 6)),
+                              child: Icon(
+                                Icons.search,
+                                size: Responsive.sp(context, 16),
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            prefixIconConstraints: const BoxConstraints(),
+                            suffixIcon: _searchController.text.isNotEmpty
+                                ? GestureDetector(
+                                    onTap: () {
+                                      _searchController.clear();
+                                      context.read<SearchCubit>().search('');
+                                    },
+                                    child: Padding(
+                                      padding: EdgeInsets.only(
+                                          right: Responsive.sp(context, 8)),
+                                      child: Icon(
+                                        Icons.close,
+                                        size: Responsive.sp(context, 14),
+                                        color: AppColors.textGrey,
+                                      ),
+                                    ),
+                                  )
+                                : null,
+                            suffixIconConstraints: const BoxConstraints(),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(
+                              vertical: Responsive.sp(context, 9),
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: Responsive.sp(context, 10)),
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Text(
+                    child: Text(
                       "Cancel",
-                      style: TextStyle(
+                      style: GoogleFonts.lexend(
                         color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        fontSize: Responsive.sp(context, 12),
                       ),
                     ),
                   ),
@@ -109,6 +143,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
 
+            // ── Content Area ──
             Expanded(
               child: BlocBuilder<SearchCubit, SearchState>(
                 builder: (context, state) {
@@ -117,7 +152,16 @@ class _SearchScreenState extends State<SearchScreen> {
                   } else if (state is SearchResults) {
                     return _buildResultsView(context, state);
                   } else if (state is SearchLoading) {
-                    return const Center(child: CircularProgressIndicator());
+                    return Center(
+                      child: SizedBox(
+                        width: Responsive.sp(context, 20),
+                        height: Responsive.sp(context, 20),
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    );
                   }
                   return const SizedBox();
                 },
@@ -132,18 +176,20 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildInitialView(BuildContext context, SearchInitial state) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: EdgeInsets.symmetric(vertical: Responsive.sp(context, 12)),
       children: [
+        // ── Recent Searches ──
         if (state.recentSearches.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding:
+                EdgeInsets.symmetric(horizontal: Responsive.sp(context, 12)),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   "RECENT SEARCHES",
-                  style: TextStyle(
-                    fontSize: 10,
+                  style: GoogleFonts.lexend(
+                    fontSize: Responsive.sp(context, 9),
                     fontWeight: FontWeight.w900,
                     color: AppColors.textGrey,
                     letterSpacing: 1.2,
@@ -152,10 +198,10 @@ class _SearchScreenState extends State<SearchScreen> {
                 GestureDetector(
                   onTap: () =>
                       context.read<SearchCubit>().clearRecentSearches(),
-                  child: const Text(
+                  child: Text(
                     "Clear All",
-                    style: TextStyle(
-                      fontSize: 11,
+                    style: GoogleFonts.lexend(
+                      fontSize: Responsive.sp(context, 10),
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
                     ),
@@ -164,46 +210,52 @@ class _SearchScreenState extends State<SearchScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: Responsive.sp(context, 10)),
           SizedBox(
-            height: 36,
+            height: Responsive.sp(context, 28),
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding:
+                  EdgeInsets.symmetric(horizontal: Responsive.sp(context, 12)),
               itemCount: state.recentSearches.length,
               itemBuilder: (context, index) {
                 final term = state.recentSearches[index];
-                return Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.cardDark : Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.05)
-                          : Colors.black.withValues(alpha: 0.05),
-                    ),
-                  ),
+                return GlassContainer(
+                  borderRadius: Responsive.sp(context, 14),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: Responsive.sp(context, 10)),
+                  margin: EdgeInsets.only(right: Responsive.sp(context, 6)),
+                  interactive: true,
+                  onTap: () {
+                    _searchController.text = term;
+                    context.read<SearchCubit>().search(term);
+                  },
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      Icon(
+                        Icons.history,
+                        size: Responsive.sp(context, 11),
+                        color: AppColors.textGrey.withValues(alpha: 0.6),
+                      ),
+                      SizedBox(width: Responsive.sp(context, 4)),
                       Text(
                         term,
-                        style: const TextStyle(
-                          fontSize: 12,
+                        style: GoogleFonts.lexend(
+                          fontSize: Responsive.sp(context, 10),
                           fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white : AppColors.textDark,
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: Responsive.sp(context, 4)),
                       GestureDetector(
                         onTap: () => context
                             .read<SearchCubit>()
                             .removeRecentSearch(term),
                         child: Icon(
                           Icons.close,
-                          size: 14,
-                          color: AppColors.textGrey.withValues(alpha: 0.6),
+                          size: Responsive.sp(context, 10),
+                          color: AppColors.textGrey.withValues(alpha: 0.5),
                         ),
                       ),
                     ],
@@ -212,76 +264,89 @@ class _SearchScreenState extends State<SearchScreen> {
               },
             ),
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: Responsive.sp(context, 20)),
         ],
+
+        // ── Popular Teams ──
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: const Text(
+          padding: EdgeInsets.symmetric(horizontal: Responsive.sp(context, 12)),
+          child: Text(
             "POPULAR TEAMS",
-            style: TextStyle(
-              fontSize: 10,
+            style: GoogleFonts.lexend(
+              fontSize: Responsive.sp(context, 9),
               fontWeight: FontWeight.w900,
               color: AppColors.textGrey,
               letterSpacing: 1.2,
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: Responsive.sp(context, 12)),
         SizedBox(
-          height: 90,
+          height: Responsive.sp(context, 70),
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding:
+                EdgeInsets.symmetric(horizontal: Responsive.sp(context, 12)),
             itemCount: state.popularTeams.length,
             itemBuilder: (context, index) {
               final match = state.popularTeams[index];
-              return Container(
-                width: 65,
-                margin: const EdgeInsets.only(right: 16),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.cardDark : Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(
+              return GlassContainer(
+                borderRadius: Responsive.sp(context, 14),
+                padding: EdgeInsets.all(Responsive.sp(context, 8)),
+                margin: EdgeInsets.only(right: Responsive.sp(context, 10)),
+                interactive: true,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TeamScreen(
+                        teamName: match.homeTeam,
+                        repository: context.read<DataRepository>(),
+                      ),
+                    ),
+                  );
+                },
+                child: SizedBox(
+                  width: Responsive.sp(context, 48),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: Responsive.sp(context, 34),
+                        height: Responsive.sp(context, 34),
+                        decoration: BoxDecoration(
                           color: isDark
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : Colors.black.withValues(alpha: 0.05),
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.grey[100],
+                          shape: BoxShape.circle,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          match.homeTeam
-                              .substring(0, min(3, match.homeTeam.length))
-                              .toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
+                        child: Center(
+                          child: Text(
+                            match.homeTeam
+                                .substring(0, min(3, match.homeTeam.length))
+                                .toUpperCase(),
+                            style: GoogleFonts.lexend(
+                              fontSize: Responsive.sp(context, 9),
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      match.homeTeam,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                      SizedBox(height: Responsive.sp(context, 5)),
+                      Text(
+                        match.homeTeam,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.lexend(
+                          fontSize: Responsive.sp(context, 9),
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : AppColors.textDark,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },
@@ -292,6 +357,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildResultsView(BuildContext context, SearchResults state) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     // Separate results by type
     final teams =
         state.searchResults.where((r) => r['type'] == 'team').toList();
@@ -305,15 +371,24 @@ class _SearchScreenState extends State<SearchScreen> {
           children: [
             Icon(
               Icons.search_off,
-              size: 48,
+              size: Responsive.sp(context, 36),
               color: AppColors.textGrey.withValues(alpha: 0.3),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: Responsive.sp(context, 12)),
             Text(
-              "No results found for \"${state.query}\"",
-              style: TextStyle(
+              "No results for \"${state.query}\"",
+              style: GoogleFonts.lexend(
+                fontSize: Responsive.sp(context, 13),
                 color: AppColors.textGrey,
                 fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: Responsive.sp(context, 4)),
+            Text(
+              "Try a different spelling or search term",
+              style: GoogleFonts.lexend(
+                fontSize: Responsive.sp(context, 10),
+                color: AppColors.textGrey.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -322,34 +397,41 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: EdgeInsets.symmetric(vertical: Responsive.sp(context, 8)),
       children: [
-        // --- MATCHED TEAMS ---
+        // ── TEAMS Section ──
         if (teams.isNotEmpty) ...[
-          _buildSectionHeader("TEAMS"),
-          ...teams.map((t) => _buildSearchResultItem(context, t, Icons.shield)),
-          const SizedBox(height: 24),
+          _buildSectionHeader(context, "TEAMS", Icons.shield_outlined,
+              count: teams.length),
+          SizedBox(height: Responsive.sp(context, 6)),
+          ...teams.map((t) => _buildTeamResultTile(context, t, isDark)),
+          SizedBox(height: Responsive.sp(context, 16)),
         ],
 
-        // --- MATCHED LEAGUES ---
+        // ── LEAGUES Section ──
         if (leagues.isNotEmpty) ...[
-          _buildSectionHeader("LEAGUES"),
-          ...leagues.map(
-              (l) => _buildSearchResultItem(context, l, Icons.emoji_events)),
-          const SizedBox(height: 24),
+          _buildSectionHeader(context, "LEAGUES", Icons.emoji_events_outlined,
+              count: leagues.length),
+          SizedBox(height: Responsive.sp(context, 6)),
+          ...leagues.map((l) => _buildLeagueResultTile(context, l, isDark)),
+          SizedBox(height: Responsive.sp(context, 16)),
         ],
 
-        // --- MATCHES ---
+        // ── MATCHES Section ──
         if (state.matchedMatches.isNotEmpty) ...[
-          _buildSectionHeader("MATCHES"),
+          _buildSectionHeader(context, "MATCHES", Icons.sports_soccer_outlined,
+              count: state.matchedMatches.length),
+          SizedBox(height: Responsive.sp(context, 6)),
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(
+                horizontal: Responsive.sp(context, 12),
+                vertical: Responsive.sp(context, 4)),
             itemCount: state.matchedMatches.length,
             itemBuilder: (context, index) {
               return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.only(bottom: Responsive.sp(context, 8)),
                 child: MatchCard(match: state.matchedMatches[index]),
               );
             },
@@ -359,87 +441,254 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(BuildContext context, String title, IconData icon,
+      {int? count}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w900,
-          color: AppColors.primary,
-          letterSpacing: 1.2,
-        ),
+      padding: EdgeInsets.symmetric(horizontal: Responsive.sp(context, 12)),
+      child: Row(
+        children: [
+          Icon(icon,
+              size: Responsive.sp(context, 13), color: AppColors.primary),
+          SizedBox(width: Responsive.sp(context, 6)),
+          Text(
+            title,
+            style: GoogleFonts.lexend(
+              fontSize: Responsive.sp(context, 10),
+              fontWeight: FontWeight.w900,
+              color: AppColors.primary,
+              letterSpacing: 1.0,
+            ),
+          ),
+          if (count != null) ...[
+            SizedBox(width: Responsive.sp(context, 4)),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: Responsive.sp(context, 5),
+                vertical: Responsive.sp(context, 1),
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(Responsive.sp(context, 8)),
+              ),
+              child: Text(
+                count.toString(),
+                style: GoogleFonts.lexend(
+                  fontSize: Responsive.sp(context, 9),
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
 
-  Widget _buildSearchResultItem(
-      BuildContext context, Map<String, dynamic> item, IconData icon) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: () {
-        if (item['type'] == 'team') {
+  Widget _buildTeamResultTile(
+      BuildContext context, Map<String, dynamic> item, bool isDark) {
+    final crest = item['crest']?.toString() ?? '';
+    final name = item['name']?.toString() ?? '';
+
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: Responsive.sp(context, 12),
+        vertical: Responsive.sp(context, 2),
+      ),
+      child: GlassContainer(
+        borderRadius: Responsive.sp(context, 14),
+        padding: EdgeInsets.symmetric(
+          horizontal: Responsive.sp(context, 12),
+          vertical: Responsive.sp(context, 10),
+        ),
+        interactive: true,
+        onTap: () {
+          context.read<SearchCubit>().addRecentSearch(name);
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => TeamScreen(
-                teamName: item['name'],
+                teamName: name,
                 repository: context.read<DataRepository>(),
               ),
             ),
           );
-        } else if (item['type'] == 'league') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => LeagueScreen(
-                leagueId: item['id'].toString(),
-                leagueName: item['name'],
-              ),
-            ),
-          );
-        }
-        // Save to recent searches
-        context.read<SearchCubit>().addRecentSearch(item['name']);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : Colors.white,
-          border: Border(
-            bottom: BorderSide(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : Colors.black.withValues(alpha: 0.05),
-            ),
-          ),
-        ),
+        },
         child: Row(
           children: [
+            // Team Badge
             Container(
-              padding: const EdgeInsets.all(8),
+              width: Responsive.sp(context, 32),
+              height: Responsive.sp(context, 32),
               decoration: BoxDecoration(
-                color: AppColors.backgroundDark,
-                borderRadius: BorderRadius.circular(8),
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : AppColors.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 16, color: AppColors.textGrey),
+              child: crest.isNotEmpty && crest.startsWith('http')
+                  ? ClipOval(
+                      child: Image.network(
+                        crest,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            _buildTeamInitials(context, name),
+                      ),
+                    )
+                  : _buildTeamInitials(context, name),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: Responsive.sp(context, 10)),
             Expanded(
-              child: Text(
-                item['name'],
-                style:
-                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.lexend(
+                      fontSize: Responsive.sp(context, 12),
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : AppColors.textDark,
+                    ),
+                  ),
+                  Text(
+                    "Team",
+                    style: GoogleFonts.lexend(
+                      fontSize: Responsive.sp(context, 9),
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textGrey,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const Icon(Icons.chevron_right,
-                size: 16, color: AppColors.textGrey),
+            Icon(
+              Icons.chevron_right,
+              size: Responsive.sp(context, 14),
+              color: AppColors.textGrey.withValues(alpha: 0.5),
+            ),
           ],
         ),
       ),
     );
   }
 
-  int min(int a, int b) => a < b ? a : b;
+  Widget _buildLeagueResultTile(
+      BuildContext context, Map<String, dynamic> item, bool isDark) {
+    final crest = item['crest']?.toString() ?? '';
+    final name = item['name']?.toString() ?? '';
+    final region = item['region']?.toString() ?? '';
+
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: Responsive.sp(context, 12),
+        vertical: Responsive.sp(context, 2),
+      ),
+      child: GlassContainer(
+        borderRadius: Responsive.sp(context, 14),
+        padding: EdgeInsets.symmetric(
+          horizontal: Responsive.sp(context, 12),
+          vertical: Responsive.sp(context, 10),
+        ),
+        interactive: true,
+        onTap: () {
+          context.read<SearchCubit>().addRecentSearch(name);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => LeagueScreen(
+                leagueId: item['id']?.toString() ?? '',
+                leagueName: name,
+              ),
+            ),
+          );
+        },
+        child: Row(
+          children: [
+            // League Badge
+            Container(
+              width: Responsive.sp(context, 32),
+              height: Responsive.sp(context, 32),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppColors.accentYellow.withValues(alpha: 0.12)
+                    : AppColors.accentYellow.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(Responsive.sp(context, 8)),
+              ),
+              child: crest.isNotEmpty && crest.startsWith('http')
+                  ? ClipRRect(
+                      borderRadius:
+                          BorderRadius.circular(Responsive.sp(context, 6)),
+                      child: Image.network(
+                        crest,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.emoji_events_outlined,
+                          size: Responsive.sp(context, 16),
+                          color: AppColors.accentYellow,
+                        ),
+                      ),
+                    )
+                  : Icon(
+                      Icons.emoji_events_outlined,
+                      size: Responsive.sp(context, 16),
+                      color: AppColors.accentYellow,
+                    ),
+            ),
+            SizedBox(width: Responsive.sp(context, 10)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.lexend(
+                      fontSize: Responsive.sp(context, 12),
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : AppColors.textDark,
+                    ),
+                  ),
+                  if (region.isNotEmpty)
+                    Text(
+                      region,
+                      style: GoogleFonts.lexend(
+                        fontSize: Responsive.sp(context, 9),
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textGrey,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              size: Responsive.sp(context, 14),
+              color: AppColors.textGrey.withValues(alpha: 0.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTeamInitials(BuildContext context, String name) {
+    return Center(
+      child: Text(
+        name
+            .split(' ')
+            .take(2)
+            .map((w) => w.isNotEmpty ? w[0] : '')
+            .join()
+            .toUpperCase(),
+        style: GoogleFonts.lexend(
+          fontSize: Responsive.sp(context, 10),
+          fontWeight: FontWeight.w900,
+          color: AppColors.primary,
+        ),
+      ),
+    );
+  }
 }

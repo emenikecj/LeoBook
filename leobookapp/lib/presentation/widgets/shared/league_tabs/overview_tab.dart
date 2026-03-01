@@ -298,8 +298,7 @@ class _LeagueOverviewTabState extends State<LeagueOverviewTab> {
       width: width ?? 25,
       child: Text(
         value,
-        style:
-            style ??
+        style: style ??
             GoogleFonts.lexend(
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -313,33 +312,32 @@ class _LeagueOverviewTabState extends State<LeagueOverviewTab> {
   Widget _buildPredictionsCarousel(BuildContext context, bool isDark) {
     return SizedBox(
       height: 160,
-      child: ListView(
+      child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        children: [
-          _buildPredictionCard(
+        itemCount: _featuredMatches.length.clamp(0, 5),
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final m = _featuredMatches[index];
+          final homeCode = m.homeTeam.length >= 3
+              ? m.homeTeam.substring(0, 3).toUpperCase()
+              : m.homeTeam.toUpperCase();
+          final awayCode = m.awayTeam.length >= 3
+              ? m.awayTeam.substring(0, 3).toUpperCase()
+              : m.awayTeam.toUpperCase();
+          final color =
+              index.isEven ? AppColors.primary : AppColors.accentYellow;
+          return _buildPredictionCard(
             context,
-            "ARS",
-            "CHE",
-            "Arsenal",
-            "Chelsea",
-            "Home Win",
-            "1.75",
-            AppColors.primary,
+            homeCode,
+            awayCode,
+            m.homeTeam,
+            m.awayTeam,
+            m.prediction ?? 'N/A',
+            m.odds ?? '--',
+            color,
             isDark,
-          ),
-          const SizedBox(width: 12),
-          _buildPredictionCard(
-            context,
-            "MCI",
-            "LIV",
-            "Man City",
-            "Liverpool",
-            "Over 3.5 Goals",
-            "2.40",
-            AppColors.accentYellow,
-            isDark,
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -494,9 +492,8 @@ class _LeagueOverviewTabState extends State<LeagueOverviewTab> {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.1)
-                : Colors.grey[100],
+            color:
+                isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey[100],
             shape: BoxShape.circle,
             border: Border.all(
               color: isDark

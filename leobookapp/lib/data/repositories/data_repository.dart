@@ -115,10 +115,21 @@ class DataRepository {
 
   Future<List<StandingModel>> getStandings(String leagueName) async {
     try {
-      final response = await _supabase
+      // Try exact match first
+      var response = await _supabase
           .from('standings')
           .select()
-          .eq('region_league', leagueName);
+          .eq('region_league', leagueName)
+          .order('position', ascending: true);
+
+      // Fallback: ILIKE if exact match returns empty (handles format variations)
+      if ((response as List).isEmpty && leagueName.isNotEmpty) {
+        response = await _supabase
+            .from('standings')
+            .select()
+            .ilike('region_league', '%$leagueName%')
+            .order('position', ascending: true);
+      }
 
       return (response as List)
           .map((row) => StandingModel.fromJson(row))
