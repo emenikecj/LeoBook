@@ -8,13 +8,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';
-
 import 'package:leobookapp/core/constants/responsive_constants.dart';
 import 'package:leobookapp/presentation/screens/home_screen.dart';
 import 'package:leobookapp/presentation/screens/account_screen.dart';
 import 'package:leobookapp/presentation/screens/rule_engine/backtest_dashboard.dart';
 import 'package:leobookapp/presentation/screens/top_predictions_screen.dart';
-import 'package:leobookapp/presentation/widgets/desktop/desktop_header.dart';
+import 'package:leobookapp/presentation/widgets/shared/main_top_bar.dart';
 import 'package:leobookapp/logic/cubit/search_cubit.dart';
 import 'package:leobookapp/logic/cubit/home_cubit.dart';
 import 'package:leobookapp/data/models/match_model.dart';
@@ -44,11 +43,10 @@ class _MainScreenState extends State<MainScreen> {
             if (state is HomeLoaded) {
               final content = Column(
                 children: [
-                  if (isDesktop)
-                    DesktopHeader(
-                      currentIndex: _currentIndex,
-                      onTabChanged: (i) => setState(() => _currentIndex = i),
-                    ),
+                  MainTopBar(
+                    currentIndex: _currentIndex,
+                    onTabChanged: (i) => setState(() => _currentIndex = i),
+                  ),
                   Expanded(
                     child: IndexedStack(
                       index: _currentIndex,
@@ -76,11 +74,10 @@ class _MainScreenState extends State<MainScreen> {
             } else {
               bodyArea = Column(
                 children: [
-                  if (isDesktop)
-                    DesktopHeader(
-                      currentIndex: _currentIndex,
-                      onTabChanged: (i) => setState(() => _currentIndex = i),
-                    ),
+                  MainTopBar(
+                    currentIndex: _currentIndex,
+                    onTabChanged: (i) => setState(() => _currentIndex = i),
+                  ),
                   Expanded(
                     child: IndexedStack(
                       index: _currentIndex,

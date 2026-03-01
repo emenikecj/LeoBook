@@ -239,12 +239,14 @@ class RuleEngine:
         if (home_xg + away_xg) > 2.5: rec_score += 10
         if final_confidence == "Very High": rec_score += 5
         
+
         return {
             "market_prediction": prediction_text,
             "type": prediction_text,
             "market_type": best_prediction["market_type"],
             "confidence": final_confidence,
             "recommendation_score": min(rec_score, 100),
+            "market_reliability": round(raw_confidence * 100, 1),
             "reason": reasoning[:3],
             "xg_home": round(home_xg, 2),
             "xg_away": round(away_xg, 2),

@@ -7,9 +7,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';
 import 'package:leobookapp/logic/cubit/user_cubit.dart';
+import '../widgets/shared/main_top_bar.dart';
 
-class AccountScreen extends StatelessWidget {
+class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
+
+  @override
+  State<AccountScreen> createState() => _AccountScreenState();
+}
+
+class _AccountScreenState extends State<AccountScreen> {
+  final int _currentIndex = 3; // Account tab
 
   @override
   Widget build(BuildContext context) {
@@ -17,142 +25,157 @@ class AccountScreen extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark
-          ? AppColors.backgroundDark
-          : AppColors.backgroundLight,
-      body: SafeArea(
-        child: BlocBuilder<UserCubit, UserState>(
-          builder: (context, state) {
-            final user = state.user;
-            return SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: isDesktop ? 64 : 24.0,
-                vertical: 32,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 900),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "MY ACCOUNT",
-                        style: TextStyle(
-                          fontSize: isDesktop ? 40 : 32,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -1.5,
-                          color: Colors.white,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      _buildProfileCard(context, user, isDesktop),
-                      const SizedBox(height: 48),
-                      const Text(
-                        "ACCOUNT SETTINGS",
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textGrey,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      if (isDesktop)
-                        GridView.count(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 24,
-                          mainAxisSpacing: 16,
-                          childAspectRatio: 4,
+      backgroundColor:
+          isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
+      body: Column(
+        children: [
+          MainTopBar(
+            currentIndex: _currentIndex,
+            onTabChanged: (i) => setState(() {
+              // Note: This needs to trigger tab change in MainScreen if it's integrated
+              // For now, it's a sub-page, so no tab change here
+            }),
+          ),
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: BlocBuilder<UserCubit, UserState>(
+                builder: (context, state) {
+                  final user = state.user;
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isDesktop ? 64 : 24.0,
+                      vertical: 32,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 900),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildSettingsItem(
-                              context,
-                              icon: Icons.notifications_outlined,
-                              title: "Notifications",
-                              onTap: () {},
+                            Text(
+                              "MY ACCOUNT",
+                              style: TextStyle(
+                                fontSize: isDesktop ? 40 : 32,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -1.5,
+                                color: Colors.white,
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
-                            _buildSettingsItem(
-                              context,
-                              icon: Icons.language,
-                              title: "Language",
-                              subtitle: "English",
-                              onTap: () {},
+                            const SizedBox(height: 32),
+                            _buildProfileCard(context, user, isDesktop),
+                            const SizedBox(height: 48),
+                            const Text(
+                              "ACCOUNT SETTINGS",
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textGrey,
+                                letterSpacing: 2,
+                              ),
                             ),
-                            _buildSettingsItem(
-                              context,
-                              icon: Icons.help_outline,
-                              title: "Support",
-                              onTap: () {},
-                            ),
-                            _buildSettingsItem(
-                              context,
-                              icon: Icons.security_rounded,
-                              title: "Security & Privacy",
-                              onTap: () {},
+                            const SizedBox(height: 16),
+                            if (isDesktop)
+                              GridView.count(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 24,
+                                mainAxisSpacing: 16,
+                                childAspectRatio: 4,
+                                children: [
+                                  _buildSettingsItem(
+                                    context,
+                                    icon: Icons.notifications_outlined,
+                                    title: "Notifications",
+                                    onTap: () {},
+                                  ),
+                                  _buildSettingsItem(
+                                    context,
+                                    icon: Icons.language,
+                                    title: "Language",
+                                    subtitle: "English",
+                                    onTap: () {},
+                                  ),
+                                  _buildSettingsItem(
+                                    context,
+                                    icon: Icons.help_outline,
+                                    title: "Support",
+                                    onTap: () {},
+                                  ),
+                                  _buildSettingsItem(
+                                    context,
+                                    icon: Icons.security_rounded,
+                                    title: "Security & Privacy",
+                                    onTap: () {},
+                                  ),
+                                ],
+                              )
+                            else ...[
+                              _buildSettingsItem(
+                                context,
+                                icon: Icons.notifications_outlined,
+                                title: "Notifications",
+                                onTap: () {},
+                              ),
+                              _buildSettingsItem(
+                                context,
+                                icon: Icons.language,
+                                title: "Language",
+                                subtitle: "English",
+                                onTap: () {},
+                              ),
+                              _buildSettingsItem(
+                                context,
+                                icon: Icons.help_outline,
+                                title: "Support",
+                                onTap: () {},
+                              ),
+                            ],
+                            const SizedBox(height: 48),
+                            SizedBox(
+                              width: isDesktop ? 200 : double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text("Logged out")),
+                                  );
+                                },
+                                icon: const Icon(
+                                  Icons.logout,
+                                  color: AppColors.liveRed,
+                                ),
+                                label: const Text(
+                                  "LOG OUT",
+                                  style: TextStyle(
+                                    color: AppColors.liveRed,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 12,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(
+                                      color: AppColors.liveRed),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 20),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
-                        )
-                      else ...[
-                        _buildSettingsItem(
-                          context,
-                          icon: Icons.notifications_outlined,
-                          title: "Notifications",
-                          onTap: () {},
-                        ),
-                        _buildSettingsItem(
-                          context,
-                          icon: Icons.language,
-                          title: "Language",
-                          subtitle: "English",
-                          onTap: () {},
-                        ),
-                        _buildSettingsItem(
-                          context,
-                          icon: Icons.help_outline,
-                          title: "Support",
-                          onTap: () {},
-                        ),
-                      ],
-                      const SizedBox(height: 48),
-                      SizedBox(
-                        width: isDesktop ? 200 : double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Logged out")),
-                            );
-                          },
-                          icon: const Icon(
-                            Icons.logout,
-                            color: AppColors.liveRed,
-                          ),
-                          label: const Text(
-                            "LOG OUT",
-                            style: TextStyle(
-                              color: AppColors.liveRed,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 12,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.liveRed),
-                            padding: const EdgeInsets.symmetric(vertical: 20),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }

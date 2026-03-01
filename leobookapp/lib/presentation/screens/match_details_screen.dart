@@ -12,6 +12,7 @@ import 'package:leobookapp/data/models/standing_model.dart';
 import 'package:leobookapp/data/repositories/data_repository.dart';
 import 'team_screen.dart';
 import 'league_screen.dart';
+import '../widgets/shared/main_top_bar.dart';
 
 class MatchDetailsScreen extends StatefulWidget {
   final MatchModel match;
@@ -90,44 +91,54 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // 1. Stadium Header
-            _buildStadiumHeader(context),
+      body: Column(
+        children: [
+          MainTopBar(
+            currentIndex: -1,
+            onTabChanged: (_) {},
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  // 1. Stadium Header
+                  _buildStadiumHeader(context),
 
-            // Main Content
-            Transform.translate(
-              offset: const Offset(0, -40),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    // 2. AI Win Probability
-                    _buildWinProbabilitySection(),
+                  // Main Content
+                  Transform.translate(
+                    offset: const Offset(0, -40),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        children: [
+                          // 2. AI Win Probability
+                          _buildWinProbabilitySection(),
 
-                    const SizedBox(height: 16),
+                          const SizedBox(height: 16),
 
-                    // 2b. Standings
-                    _buildStandingsSection(),
+                          // 2b. Standings
+                          _buildStandingsSection(),
 
-                    const SizedBox(height: 16),
+                          const SizedBox(height: 16),
 
-                    // 3. Expert Prediction
-                    _buildExpertPrediction(),
+                          // 3. Expert Prediction
+                          _buildExpertPrediction(),
 
-                    const SizedBox(height: 16),
+                          const SizedBox(height: 16),
 
-                    // 4. Match Stats
-                    _buildMatchStats(),
+                          // 4. Match Stats
+                          _buildMatchStats(),
 
-                    const SizedBox(height: 40),
-                  ],
-                ),
+                          const SizedBox(height: 40),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1060,15 +1071,13 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
             child: Divider(height: 1, color: Colors.white10),
           ),
           ..._standings.map((s) {
-            final isHome =
-                s.teamName.toLowerCase().contains(
-                  match.homeTeam.toLowerCase(),
-                ) ||
+            final isHome = s.teamName.toLowerCase().contains(
+                      match.homeTeam.toLowerCase(),
+                    ) ||
                 match.homeTeam.toLowerCase().contains(s.teamName.toLowerCase());
-            final isAway =
-                s.teamName.toLowerCase().contains(
-                  match.awayTeam.toLowerCase(),
-                ) ||
+            final isAway = s.teamName.toLowerCase().contains(
+                      match.awayTeam.toLowerCase(),
+                    ) ||
                 match.awayTeam.toLowerCase().contains(s.teamName.toLowerCase());
             final isMatchTeam = isHome || isAway;
 
@@ -1082,9 +1091,8 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
                       s.position.toString(),
                       style: TextStyle(
                         color: isMatchTeam ? AppColors.primary : Colors.white70,
-                        fontWeight: isMatchTeam
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                        fontWeight:
+                            isMatchTeam ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                   ),
@@ -1107,9 +1115,8 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: isMatchTeam ? AppColors.primary : Colors.white,
-                          fontWeight: isMatchTeam
-                              ? FontWeight.w900
-                              : FontWeight.normal,
+                          fontWeight:
+                              isMatchTeam ? FontWeight.w900 : FontWeight.normal,
                         ),
                       ),
                     ),

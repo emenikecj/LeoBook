@@ -13,7 +13,6 @@ import 'package:leobookapp/core/constants/responsive_constants.dart';
 import 'package:leobookapp/core/utils/match_sorter.dart';
 import 'package:leobookapp/core/animations/liquid_glass_animations.dart';
 import 'package:leobookapp/core/theme/liquid_glass_theme.dart';
-import 'package:leobookapp/logic/cubit/search_cubit.dart';
 import '../shared/match_card.dart';
 import '../shared/featured_carousel.dart';
 import '../shared/news_feed.dart';
@@ -21,7 +20,6 @@ import '../shared/category_bar.dart';
 import '../shared/leo_tab.dart';
 import '../shared/accuracy_report_card.dart';
 import '../shared/footnote_section.dart';
-import '../../screens/search_screen.dart';
 
 /// Mobile home content — fullscreen scrollable layout with:
 /// - Glassmorphic App Bar with search + CategoryBar
@@ -86,54 +84,7 @@ class _MobileHomeContentState extends State<MobileHomeContent>
               floating: false,
               elevation: 0,
               backgroundColor: Colors.transparent,
-              expandedHeight: 0,
-              toolbarHeight: Responsive.sp(context, 32),
-              centerTitle: false,
-              title: Padding(
-                padding: EdgeInsets.symmetric(horizontal: hp),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "LEOBOOK",
-                      style: TextStyle(
-                        fontSize: Responsive.sp(context, 12),
-                        fontWeight: FontWeight.w900,
-                        color: isDark ? Colors.white : AppColors.textDark,
-                        letterSpacing: 2.0,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => BlocProvider.value(
-                              value: context.read<SearchCubit>(),
-                              child: const SearchScreen(),
-                            ),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(Responsive.sp(context, 6)),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : Colors.black.withValues(alpha: 0.05),
-                          borderRadius:
-                              BorderRadius.circular(Responsive.sp(context, 8)),
-                        ),
-                        child: Icon(
-                          Icons.search_rounded,
-                          color: isDark ? Colors.white70 : Colors.black54,
-                          size: Responsive.sp(context, 15),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              toolbarHeight: 0, // No main toolbar needed here anymore
               bottom: PreferredSize(
                 preferredSize: Size.fromHeight(Responsive.sp(context, 44)),
                 child: const CategoryBar(),
