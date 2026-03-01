@@ -339,6 +339,16 @@ class MatchModel {
     return false;
   }
 
+  static String _clean(String? text) {
+    if (text == null) return "";
+    return text
+        .replaceAll('â€”', ' - ')
+        .replaceAll('â€“', ' - ')
+        .replaceAll('â€¢', ' | ')
+        .replaceAll('Â', '')
+        .trim();
+  }
+
   factory MatchModel.fromCsv(
     Map<String, dynamic> row, [
     Map<String, dynamic>? predictionData,
@@ -403,17 +413,17 @@ class MatchModel {
     return MatchModel(
       fixtureId: fixtureId,
       date: formattedDate,
-      time: row['match_time'] ?? '',
-      homeTeam: row['home_team'] ?? '',
-      awayTeam: row['away_team'] ?? '',
+      time: _clean(row['match_time']?.toString() ?? ''),
+      homeTeam: _clean(row['home_team']?.toString() ?? ''),
+      awayTeam: _clean(row['away_team']?.toString() ?? ''),
       homeTeamId: row['home_team_id']?.toString(),
       awayTeamId: row['away_team_id']?.toString(),
       homeScore: hScore,
       awayScore: aScore,
       status: (row['status'] ?? row['match_status'] ?? 'Scheduled').toString(),
-      league: row['region_league']?.toString(),
+      league: _clean(row['region_league']?.toString() ?? ''),
       sport: sport,
-      prediction: prediction,
+      prediction: _clean(prediction),
       confidence: confidence,
       odds: odds,
       marketReliability: marketReliability,
@@ -425,7 +435,7 @@ class MatchModel {
       leagueCrestUrl: row['league_crest_url']?.toString(),
       xgHome: xgHome,
       xgAway: xgAway,
-      reasonTags: reasonTags,
+      reasonTags: _clean(reasonTags),
       homeFormN: int.tryParse(row['home_form_n']?.toString() ?? ''),
       awayFormN: int.tryParse(row['away_form_n']?.toString() ?? ''),
       outcomeCorrect: outcomeCorrect,

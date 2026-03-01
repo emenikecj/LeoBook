@@ -21,7 +21,8 @@ from playwright.async_api import Playwright
 from Data.Access.db_helpers import (
     save_live_score_entry, log_audit_event,
     SCHEDULES_CSV, PREDICTIONS_CSV, LIVE_SCORES_CSV,
-    files_and_headers
+    files_and_headers, evaluate_market_outcome,
+    transform_streamer_match_to_schedule
 )
 from Data.Access.sync_manager import SyncManager
 from Core.Browser.site_helpers import fs_universal_popup_dismissal
@@ -176,6 +177,21 @@ def _propagate_status_updates(live_matches, resolved_matches, force_finished_ids
                     live_ids.remove(fid)
                     live_matches = [m for m in live_matches if m['fixture_id'] != fid]
 
+    # --- Upsert Logic: Add missing matches to schedules ---
+    existing_sched_ids = {r['fixture_id'] for r in sched_rows if r.get('fixture_id')}
+    new_sched_entries = []
+    for m in live_matches + resolved_matches:
+        fid = m.get('fixture_id')
+        if fid and fid not in existing_sched_ids:
+            new_entry = transform_streamer_match_to_schedule(m)
+            new_sched_entries.append(new_entry)
+            sched_dirty_ids.add(fid)
+            sched_changed = True
+    
+    if new_sched_entries:
+        print(f"   [Streamer] Discovery: Found {len(new_sched_entries)} new matches missing from schedules. Adding them.")
+        sched_rows.extend(new_sched_entries)
+
     sched_updates = []
     if sched_changed:
         _write_csv(SCHEDULES_CSV, sched_rows, sched_headers)
@@ -267,6 +283,58 @@ def _propagate_status_updates(live_matches, resolved_matches, force_finished_ids
         _write_csv(PREDICTIONS_CSV, pred_rows, pred_headers)
         
     return sched_updates, pred_updates
+
+
+def _review_pending_backlog():
+    """
+    Scans predictions.csv for 'pending' entries and attempts to resolve them
+    using finished data from schedules.csv.
+    """
+    if not os.path.exists(PREDICTIONS_CSV) or not os.path.exists(SCHEDULES_CSV):
+        return []
+
+    preds = _read_csv(PREDICTIONS_CSV)
+    scheds = {s['fixture_id']: s for s in _read_csv(SCHEDULES_CSV) if s.get('fixture_id')}
+    
+    updates = []
+    changed = False
+    
+    for p in preds:
+        if p.get('status', '').lower() == 'pending':
+            fid = p.get('fixture_id')
+            if fid in scheds:
+                s = scheds[fid]
+                s_status = s.get('match_status', '').lower()
+                h_score = s.get('home_score', '').strip()
+                a_score = s.get('away_score', '').strip()
+                
+                # If finished and has valid scores, resolve
+                if s_status in ('finished', 'aet', 'pen') and h_score.isdigit() and a_score.isdigit():
+                    p['status'] = 'finished'
+                    p['home_score'] = h_score
+                    p['away_score'] = a_score
+                    p['actual_score'] = f"{h_score}-{a_score}"
+                    
+                    oc = evaluate_market_outcome(
+                        p.get('prediction', ''),
+                        h_score,
+                        a_score,
+                        p.get('home_team', ''),
+                        p.get('away_team', '')
+                    )
+                    if oc:
+                        p['outcome_correct'] = oc
+                    
+                    p['last_updated'] = dt.now().isoformat()
+                    updates.append(p)
+                    changed = True
+                    print(f"   [Streamer-Review] Resolved backlog match: {p.get('home_team')} vs {p.get('away_team')} -> {p['actual_score']}")
+
+    if changed:
+        _write_csv(PREDICTIONS_CSV, preds, files_and_headers[PREDICTIONS_CSV])
+        print(f"   [Streamer-Review] Successfully resolved {len(updates)} pending backlog predictions.")
+    
+    return updates
 
 
 # ---------------------------------------------------------------------------
@@ -485,6 +553,13 @@ async def live_score_streamer(playwright: Playwright, user_data_dir: str = None)
                     else:
                         _propagate_status_updates([], [])
                         print(f"   [Streamer] {now_ts} — No active/resolved matches found (Cycle {cycle}). Fallback check performed.")
+
+                    # 4. Periodically Review Backlog (Every 5 cycles)
+                    if cycle % 5 == 0:
+                        backlog_upds = _review_pending_backlog()
+                        if backlog_upds and sync.supabase:
+                            print(f"   [Streamer] Sync: Pushing {len(backlog_upds)} backlog resolutions to Supabase...")
+                            await sync.batch_upsert('predictions', backlog_upds)
 
                     # Sleep before next cycle
                     await asyncio.sleep(STREAM_INTERVAL)

@@ -1,12 +1,8 @@
-// overview_tab.dart: overview_tab.dart: Widget/screen for App — League Tab Widgets.
-// Part of LeoBook App — League Tab Widgets
-//
-// Classes: LeagueOverviewTab, _LeagueOverviewTabState
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';
 import 'package:leobookapp/data/models/match_model.dart';
 import 'package:leobookapp/data/models/standing_model.dart';
@@ -35,20 +31,17 @@ class _LeagueOverviewTabState extends State<LeagueOverviewTab> {
     final repo = context.read<DataRepository>();
     final standings = await repo.getStandings(widget.leagueName);
 
-    // Standard Sports Sorting: Points > GD > GF > Team Name
-    standings.sort((a, b) {
-      // 1. Points (Descending)
-      if (b.points != a.points) return b.points.compareTo(a.points);
-
-      // 2. Goal Difference (Descending)
-      if (b.goalDiff != a.goalDiff) return b.goalDiff.compareTo(a.goalDiff);
-
-      // 3. Goals For (Descending)
-      if (b.goalsFor != a.goalsFor) return b.goalsFor.compareTo(a.goalsFor);
-
-      // 4. Team Name (Ascending)
-      return a.teamName.compareTo(b.teamName);
-    });
+    // Trust the DB position — no custom re-sort.
+    // Only sort as a safety fallback if positions are all 0 (unset).
+    final hasPositions = standings.any((s) => s.position > 0);
+    if (!hasPositions && standings.isNotEmpty) {
+      standings.sort((a, b) {
+        if (b.points != a.points) return b.points.compareTo(a.points);
+        if (b.goalDiff != a.goalDiff) return b.goalDiff.compareTo(a.goalDiff);
+        if (b.goalsFor != a.goalsFor) return b.goalsFor.compareTo(a.goalsFor);
+        return a.teamName.compareTo(b.teamName);
+      });
+    }
 
     // For featured matches in this league, we'll fetch predictions for today
     final allPredictions = await repo.fetchMatches(date: DateTime.now());
@@ -141,52 +134,54 @@ class _LeagueOverviewTabState extends State<LeagueOverviewTab> {
               : Colors.black.withValues(alpha: 0.05),
         ),
       ),
-      child: Column(
-        children: [
-          _buildTableHeader(isDark),
-          ..._standings.asMap().entries.map((entry) {
-            final index = entry.key;
-            final s = entry.value;
-            final rank = index + 1;
-            return _buildTableRow(
-              rank,
-              s.teamName.substring(0, 3).toUpperCase(),
-              s.teamName,
-              s.played,
-              s.wins,
-              s.draws,
-              s.losses,
-              s.goalsFor - s.goalsAgainst,
-              s.points,
-              isDark,
-              rank == 1,
-            );
-          }),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: MediaQuery.of(context).size.width - 64,
+          ),
+          child: Column(
+            children: [
+              _buildTableHeader(isDark),
+              ..._standings.asMap().entries.map((entry) {
+                final index = entry.key;
+                final s = entry.value;
+                final rank = s.position > 0 ? s.position : index + 1;
+                return _buildTableRow(
+                  rank,
+                  s.teamName,
+                  s.teamCrestUrl,
+                  s.played,
+                  s.wins,
+                  s.draws,
+                  s.losses,
+                  s.goalsFor,
+                  s.goalsAgainst,
+                  s.goalDiff,
+                  s.points,
+                  isDark,
+                  rank == 1,
+                );
+              }),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildTableHeader(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
       child: Row(
         children: [
+          _buildHeaderCell("#", width: 24),
+          const SizedBox(width: 4),
+          // Crest column placeholder
+          const SizedBox(width: 22),
+          const SizedBox(width: 6),
           SizedBox(
-            width: 24,
-            child: Text(
-              "#",
-              style: GoogleFonts.lexend(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textGrey,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 3,
+            width: 100,
             child: Text(
               "TEAM",
               style: GoogleFonts.lexend(
@@ -200,16 +195,18 @@ class _LeagueOverviewTabState extends State<LeagueOverviewTab> {
           _buildHeaderCell("W"),
           _buildHeaderCell("D"),
           _buildHeaderCell("L"),
+          _buildHeaderCell("GF"),
+          _buildHeaderCell("GA"),
           _buildHeaderCell("GD"),
-          _buildHeaderCell("PTS", flex: 0, width: 35),
+          _buildHeaderCell("PTS", width: 32),
         ],
       ),
     );
   }
 
-  Widget _buildHeaderCell(String label, {int flex = 1, double? width}) {
+  Widget _buildHeaderCell(String label, {double width = 28}) {
     return SizedBox(
-      width: width ?? 25,
+      width: width,
       child: Text(
         label,
         style: GoogleFonts.lexend(
@@ -224,19 +221,21 @@ class _LeagueOverviewTabState extends State<LeagueOverviewTab> {
 
   Widget _buildTableRow(
     int pos,
-    String code,
     String name,
+    String? crestUrl,
     int played,
     int wins,
     int draws,
     int losses,
+    int goalsFor,
+    int goalsAgainst,
     int gd,
     int pts,
     bool isDark,
     bool isFirst,
   ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
@@ -260,15 +259,49 @@ class _LeagueOverviewTabState extends State<LeagueOverviewTab> {
               textAlign: TextAlign.center,
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 3,
+          const SizedBox(width: 4),
+          // Team Crest
+          SizedBox(
+            width: 22,
+            height: 22,
+            child:
+                crestUrl != null && crestUrl.isNotEmpty && crestUrl != 'Unknown'
+                    ? CachedNetworkImage(
+                        imageUrl: crestUrl,
+                        width: 22,
+                        height: 22,
+                        fit: BoxFit.contain,
+                        errorWidget: (_, __, ___) => Center(
+                          child: Text(
+                            name.substring(0, 1),
+                            style: GoogleFonts.lexend(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textGrey,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          name.isNotEmpty ? name.substring(0, 1) : '?',
+                          style: GoogleFonts.lexend(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textGrey,
+                          ),
+                        ),
+                      ),
+          ),
+          const SizedBox(width: 6),
+          SizedBox(
+            width: 100,
             child: Text(
               name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.lexend(
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: isDark ? Colors.white : AppColors.textDark,
               ),
@@ -278,10 +311,21 @@ class _LeagueOverviewTabState extends State<LeagueOverviewTab> {
           _buildDataCell(wins.toString()),
           _buildDataCell(draws.toString()),
           _buildDataCell(losses.toString()),
-          _buildDataCell(gd.toString()),
+          _buildDataCell(goalsFor.toString()),
+          _buildDataCell(goalsAgainst.toString()),
+          _buildDataCell(
+            gd >= 0 ? '+$gd' : '$gd',
+            style: GoogleFonts.lexend(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: gd > 0
+                  ? AppColors.successGreen
+                  : (gd < 0 ? AppColors.liveRed : AppColors.textGrey),
+            ),
+          ),
           _buildDataCell(
             pts.toString(),
-            width: 35,
+            width: 32,
             style: GoogleFonts.lexend(
               fontSize: 13,
               fontWeight: FontWeight.w900,
@@ -295,7 +339,7 @@ class _LeagueOverviewTabState extends State<LeagueOverviewTab> {
 
   Widget _buildDataCell(String value, {double? width, TextStyle? style}) {
     return SizedBox(
-      width: width ?? 25,
+      width: width ?? 28,
       child: Text(
         value,
         style: style ??

@@ -64,16 +64,76 @@ class DataRepository {
 
   Future<List<MatchModel>> getTeamMatches(String teamName) async {
     try {
-      final response = await _supabase
+      // Fetch from predictions
+      final predResponse = await _supabase
           .from('predictions')
           .select()
           .or('home_team.eq.$teamName,away_team.eq.$teamName')
-          .order('date', ascending: false) // Latest first
-          .limit(50); // Limit to last 50 matches
+          .order('date', ascending: false)
+          .limit(40);
 
-      return (response as List)
-          .map((row) => MatchModel.fromCsv(row, row))
-          .toList();
+      // Fetch from schedules (where historical H2H data is stored)
+      final schedResponse = await _supabase
+          .from('schedules')
+          .select()
+          .or('home_team.eq.$teamName,away_team.eq.$teamName')
+          .order('date', ascending: false)
+          .limit(40);
+
+      final List<MatchModel> matches = [];
+      final Set<String> seenIds = {};
+
+      void addMatches(List<dynamic> rows, bool isPrediction) {
+        for (var row in rows) {
+          final m = isPrediction
+              ? MatchModel.fromCsv(row, row)
+              : MatchModel.fromCsv(row);
+
+          final id = m.fixtureId;
+          if (!seenIds.contains(id)) {
+            matches.add(m);
+            seenIds.add(id);
+          }
+        }
+      }
+
+      addMatches(predResponse as List, true);
+      addMatches(schedResponse as List, false);
+
+      // Enrich matches with crests if missing (schedules table doesn't have them)
+      if (matches.isNotEmpty) {
+        final crests = await fetchTeamCrests();
+        for (int i = 0; i < matches.length; i++) {
+          final m = matches[i];
+          final hCrest = crests[m.homeTeam] ?? m.homeCrestUrl;
+          final aCrest = crests[m.awayTeam] ?? m.awayCrestUrl;
+          if ((hCrest != null && hCrest != m.homeCrestUrl) ||
+              (aCrest != null && aCrest != m.awayCrestUrl)) {
+            matches[i] = m.mergeWith(MatchModel(
+              fixtureId: m.fixtureId,
+              date: m.date,
+              time: m.time,
+              homeTeam: m.homeTeam,
+              awayTeam: m.awayTeam,
+              status: m.status,
+              sport: m.sport,
+              homeCrestUrl: hCrest ?? m.homeCrestUrl,
+              awayCrestUrl: aCrest ?? m.awayCrestUrl,
+            ));
+          }
+        }
+      }
+
+      // Sort by date descending
+      matches.sort((a, b) {
+        try {
+          return DateTime.parse(b.date).compareTo(DateTime.parse(a.date));
+        } catch (_) {
+          return 0;
+        }
+      });
+
+      return matches;
     } catch (e) {
       debugPrint("DataRepository Error (Team Matches): $e");
       return [];
@@ -131,9 +191,54 @@ class DataRepository {
             .order('position', ascending: true);
       }
 
-      return (response as List)
-          .map((row) => StandingModel.fromJson(row))
-          .toList();
+      // Enrich standings with team crests from teams table
+      final standings =
+          (response as List).map((row) => StandingModel.fromJson(row)).toList();
+
+      if (standings.isNotEmpty) {
+        try {
+          final teamNames = standings.map((s) => s.teamName).toList();
+          final teamsResponse = await _supabase
+              .from('teams')
+              .select('team_name, team_crest')
+              .inFilter('team_name', teamNames);
+          final Map<String, String> crestMap = {};
+          for (var row in (teamsResponse as List)) {
+            final name = row['team_name']?.toString();
+            final crest = row['team_crest']?.toString();
+            if (name != null &&
+                crest != null &&
+                crest.isNotEmpty &&
+                crest != 'Unknown') {
+              crestMap[name] = crest;
+            }
+          }
+          // Merge crests into standings
+          for (int i = 0; i < standings.length; i++) {
+            final crest = crestMap[standings[i].teamName];
+            if (crest != null && standings[i].teamCrestUrl == null) {
+              standings[i] = StandingModel(
+                teamName: standings[i].teamName,
+                teamId: standings[i].teamId,
+                teamCrestUrl: crest,
+                position: standings[i].position,
+                played: standings[i].played,
+                wins: standings[i].wins,
+                draws: standings[i].draws,
+                losses: standings[i].losses,
+                goalsFor: standings[i].goalsFor,
+                goalsAgainst: standings[i].goalsAgainst,
+                points: standings[i].points,
+                leagueName: standings[i].leagueName,
+              );
+            }
+          }
+        } catch (e) {
+          debugPrint("Could not fetch team crests for standings: $e");
+        }
+      }
+
+      return standings;
     } catch (e) {
       debugPrint("DataRepository Error (Standings): $e");
       return [];

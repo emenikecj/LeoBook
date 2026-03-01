@@ -47,8 +47,8 @@ class _MatchCardState extends State<MatchCard> {
         match.status.toUpperCase() == 'FT';
 
     // Parse League String "REGION: League"
-    String region = "WORLD";
-    String leagueName = match.league ?? "SOCCER";
+    String region = "";
+    String leagueName = match.league ?? "";
     if (leagueName.contains(':')) {
       final parts = leagueName.split(':');
       if (parts.length >= 2) {
@@ -56,6 +56,8 @@ class _MatchCardState extends State<MatchCard> {
         leagueName = parts[1].trim();
       }
     }
+    // Remove "WORLD" hardcoded region labels
+    if (region.toUpperCase() == "WORLD") region = "";
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -93,65 +95,74 @@ class _MatchCardState extends State<MatchCard> {
                   if (showLeagueHeader && !hideLeagueInfo)
                     GestureDetector(
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => LeagueScreen(
-                              leagueId: match.league ?? "SOCCER",
-                              leagueName: match.league ?? "SOCCER",
+                        if (match.league != null && match.league!.isNotEmpty) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => LeagueScreen(
+                                leagueId: match.league!,
+                                leagueName: match.league!,
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        }
                       },
                       child: Column(
                         children: [
-                          // Region + Flag Row
+                          // League Crest + League Name Row
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              if (match.regionFlagUrl != null &&
-                                  match.regionFlagUrl!.isNotEmpty)
-                                CachedNetworkImage(
-                                  imageUrl: match.regionFlagUrl!,
-                                  width: Responsive.sp(context, 10),
-                                  height: Responsive.sp(context, 7),
-                                  fit: BoxFit.cover,
-                                  placeholder: (_, __) => SizedBox(
-                                    width: Responsive.sp(context, 10),
-                                  ),
-                                  errorWidget: (_, __, ___) => SizedBox(
-                                    width: Responsive.sp(context, 10),
+                              if (match.leagueCrestUrl != null &&
+                                  match.leagueCrestUrl!.isNotEmpty)
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                      right: Responsive.sp(context, 5)),
+                                  child: CachedNetworkImage(
+                                    imageUrl: match.leagueCrestUrl!,
+                                    width: Responsive.sp(context, 14),
+                                    height: Responsive.sp(context, 14),
+                                    fit: BoxFit.contain,
+                                    placeholder: (_, __) => SizedBox(
+                                      width: Responsive.sp(context, 14),
+                                    ),
+                                    errorWidget: (_, __, ___) => SizedBox(
+                                      width: Responsive.sp(context, 14),
+                                    ),
                                   ),
                                 ),
-                              SizedBox(width: Responsive.sp(context, 3)),
                               Flexible(
-                                child: Text(
-                                  region.toUpperCase(),
-                                  style: TextStyle(
-                                    fontSize: Responsive.sp(context, 7),
-                                    fontWeight: FontWeight.w900,
-                                    color: AppColors.textGrey
-                                        .withValues(alpha: 0.8),
-                                    letterSpacing: 1.0,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (region.isNotEmpty)
+                                      Text(
+                                        region.toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: Responsive.sp(context, 7),
+                                          fontWeight: FontWeight.w900,
+                                          color: AppColors.textGrey,
+                                          letterSpacing: 0.5,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    Text(
+                                      leagueName.toUpperCase(),
+                                      style: TextStyle(
+                                        fontSize: Responsive.sp(context, 8.5),
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.white,
+                                        letterSpacing: 0.2,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
-                          ),
-                          SizedBox(height: Responsive.sp(context, 2)),
-                          // League Name
-                          Text(
-                            leagueName.toUpperCase(),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: Responsive.sp(context, 8),
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              letterSpacing: 0.3,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                           SizedBox(height: Responsive.sp(context, 2)),
                           // Date & Time — hide date when live

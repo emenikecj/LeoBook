@@ -425,6 +425,17 @@ LeoBook/
 
 ---
 
+## 10. Decision-Making Standard
+
+> **MANDATORY**: All technical and design decisions MUST be made with the expertise of a senior advanced software engineer and expert sports analyst.
+
+- **Sports Domain Accuracy**: Data displayed in the UI (standings, crests, scores, statistics) MUST match the real-world source of truth. Verify data integrity at every layer (extraction → storage → sync → rendering).
+- **Crest & Metadata Integrity**: Team crests, league logos, and region flags MUST always be displayed wherever a team or league name appears. Fallback to initials only when no crest URL is available.
+- **No Hardcoded Proxy Data**: Never hardcode placeholder data (e.g., "WORLD", fake standings, dummy teams). If data is unavailable, display "Unknown" or hide the element.
+- **Sports-Informed Sorting**: Trust the database `position` column for standings. Only apply custom sorting as a fallback when no position data exists.
+
+---
+
 *Last updated: March 1, 2026*
 *Authored by: LeoBook Engineering Team*
 

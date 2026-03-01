@@ -189,7 +189,7 @@ class TopPredictionsScreen extends StatelessWidget {
                           ),
                           child: LayoutBuilder(
                             builder: (context, constraints) {
-                              const crossAxisCount = 4;
+                              const crossAxisCount = 3;
                               final spacing = Responsive.sp(context, 14);
                               final itemWidth = (constraints.maxWidth -
                                       (spacing * (crossAxisCount - 1))) /

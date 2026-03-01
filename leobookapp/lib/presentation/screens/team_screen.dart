@@ -5,7 +5,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-// import 'package:fl_chart/fl_chart.dart'; // Optional for future graph
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';
 import 'package:leobookapp/data/models/match_model.dart';
 import 'package:leobookapp/data/repositories/data_repository.dart';
@@ -35,6 +35,7 @@ class _TeamScreenState extends State<TeamScreen> {
   List<MatchModel> _matches = [];
   List<MatchModel> _pastMatches = [];
   MatchModel? _nextMatch;
+  String? _teamCrestUrl;
   final Map<String, dynamic> _stats = {
     'pos': 'N/A',
     'avgGoals': '0.0',
@@ -51,6 +52,32 @@ class _TeamScreenState extends State<TeamScreen> {
   Future<void> _loadTeamData() async {
     final matches = await widget.repository.getTeamMatches(widget.teamName);
     final standing = await widget.repository.getTeamStanding(widget.teamName);
+
+    // Fetch team crest
+    String? crestUrl = widget.logoUrl;
+    if (crestUrl == null || crestUrl.isEmpty) {
+      // Try to find crest from match data
+      for (var m in matches) {
+        if (m.homeTeam == widget.teamName &&
+            m.homeCrestUrl != null &&
+            m.homeCrestUrl!.isNotEmpty) {
+          crestUrl = m.homeCrestUrl;
+          break;
+        } else if (m.awayTeam == widget.teamName &&
+            m.awayCrestUrl != null &&
+            m.awayCrestUrl!.isNotEmpty) {
+          crestUrl = m.awayCrestUrl;
+          break;
+        }
+      }
+    }
+    // Fallback: fetch from teams table
+    if (crestUrl == null || crestUrl.isEmpty) {
+      try {
+        final crests = await widget.repository.fetchTeamCrests();
+        crestUrl = crests[widget.teamName];
+      } catch (_) {}
+    }
 
     // Sort: Future matches (Next) vs Past matches (History)
     final now = DateTime.now();
@@ -104,6 +131,7 @@ class _TeamScreenState extends State<TeamScreen> {
         _matches = [...futureMatches, ...pastMatches];
         _pastMatches = pastMatches;
         _nextMatch = futureMatches.isNotEmpty ? futureMatches.first : null;
+        _teamCrestUrl = crestUrl;
         _isLoading = false;
       });
     }
@@ -200,10 +228,24 @@ class _TeamScreenState extends State<TeamScreen> {
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.shield,
-                      size: 40,
-                      color: AppColors.primary,
+                    child: ClipOval(
+                      child: _teamCrestUrl != null && _teamCrestUrl!.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: _teamCrestUrl!,
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.contain,
+                              errorWidget: (_, __, ___) => const Icon(
+                                Icons.shield,
+                                size: 40,
+                                color: AppColors.primary,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.shield,
+                              size: 40,
+                              color: AppColors.primary,
+                            ),
                     ),
                   ),
                   Positioned(
@@ -591,7 +633,7 @@ class _TeamScreenState extends State<TeamScreen> {
     );
   }
 
-  Widget _buildTeamColumn(String name) {
+  Widget _buildTeamColumn(String name, {String? crestUrl}) {
     return Column(
       children: [
         Container(
@@ -602,7 +644,26 @@ class _TeamScreenState extends State<TeamScreen> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.white10),
           ),
-          child: const Icon(Icons.shield, color: AppColors.textGrey, size: 24),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: crestUrl != null && crestUrl.isNotEmpty
+                ? CachedNetworkImage(
+                    imageUrl: crestUrl,
+                    width: 30,
+                    height: 30,
+                    fit: BoxFit.contain,
+                    errorWidget: (_, __, ___) => const Icon(
+                      Icons.shield,
+                      color: AppColors.textGrey,
+                      size: 24,
+                    ),
+                  )
+                : const Icon(
+                    Icons.shield,
+                    color: AppColors.textGrey,
+                    size: 24,
+                  ),
+          ),
         ),
         const SizedBox(height: 8),
         Text(

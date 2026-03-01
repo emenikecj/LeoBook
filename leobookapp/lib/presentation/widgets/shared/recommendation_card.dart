@@ -36,6 +36,17 @@ class _RecommendationCardState extends State<RecommendationCard> {
         rec.league.toLowerCase().contains('live');
     final accentColor = isLive ? AppColors.liveRed : AppColors.primary;
 
+    // Parse league string
+    String region = "";
+    String leagueDisplay = rec.league;
+    if (rec.league.contains(':')) {
+      final parts = rec.league.split(':');
+      if (parts.length >= 2) {
+        region = parts[0].trim();
+        leagueDisplay = parts[1].trim();
+      }
+    }
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -76,16 +87,56 @@ class _RecommendationCardState extends State<RecommendationCard> {
                           ),
                         );
                       },
-                      child: Text(
-                        rec.league.toUpperCase(),
-                        maxLines: 1,
-                        style: TextStyle(
-                          color: AppColors.textGrey.withValues(alpha: 0.8),
-                          fontSize: Responsive.sp(context, 7),
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.0,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (rec.leagueCrestUrl != null &&
+                              rec.leagueCrestUrl!.isNotEmpty)
+                            Padding(
+                              padding: EdgeInsets.only(
+                                  right: Responsive.sp(context, 3)),
+                              child: CachedNetworkImage(
+                                imageUrl: rec.leagueCrestUrl!,
+                                width: Responsive.sp(context, 10),
+                                height: Responsive.sp(context, 10),
+                                fit: BoxFit.contain,
+                                errorWidget: (_, __, ___) =>
+                                    const SizedBox.shrink(),
+                              ),
+                            ),
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (region.isNotEmpty)
+                                  Text(
+                                    region.toUpperCase(),
+                                    maxLines: 1,
+                                    style: TextStyle(
+                                      color: AppColors.textGrey
+                                          .withValues(alpha: 0.6),
+                                      fontSize: Responsive.sp(context, 6),
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.8,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                Text(
+                                  leagueDisplay.toUpperCase(),
+                                  maxLines: 1,
+                                  style: TextStyle(
+                                    color: AppColors.textGrey
+                                        .withValues(alpha: 0.8),
+                                    fontSize: Responsive.sp(context, 7),
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.0,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
