@@ -164,6 +164,7 @@ python Leo.py --enrich      # Manual metadata enrichment
 python Leo.py --enrich-leagues  # Parallel league enrichment + search dict
 python Leo.py --search-dict # Rebuild team/league search dictionary
 python Leo.py --backtest    # Single-pass backtest
+python Leo.py --assets      # Sync team and league assets to Supabase
 python Leo.py --rule-engine --list  # List registered rule engines
 python Leo.py --rule-engine --set-default <name>  # Set default engine
 python Leo.py --rule-engine --backtest --from-date 2025-08-01 # Backtest with date
@@ -218,6 +219,7 @@ flutter run -d chrome  # or: flutter run (mobile)
 - `python Leo.py --review` — Run outcome review
 - `python Leo.py --backtest` — Run backtest check
 - `python Leo.py --streamer` — Run live streamer standalone
+- `python Leo.py --assets` — Sync team and league assets
 - Monitor `Data/Store/audit_log.csv` for real-time event transparency
 - Live streamer runs automatically in parallel — check `[Streamer]` logs
 
