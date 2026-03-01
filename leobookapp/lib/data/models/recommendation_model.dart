@@ -19,6 +19,8 @@ class RecommendationModel {
   final String sport;
   final String? homeCrestUrl;
   final String? awayCrestUrl;
+  final String? leagueCrestUrl;
+  final String? regionFlagUrl;
   final String league;
 
   RecommendationModel({
@@ -38,6 +40,8 @@ class RecommendationModel {
     this.sport = 'Football',
     this.homeCrestUrl,
     this.awayCrestUrl,
+    this.leagueCrestUrl,
+    this.regionFlagUrl,
   });
 
   String get homeTeam {
@@ -128,6 +132,8 @@ class RecommendationModel {
       sport: sport,
       homeCrestUrl: json['home_crest_url']?.toString(),
       awayCrestUrl: json['away_crest_url']?.toString(),
+      leagueCrestUrl: json['league_crest_url']?.toString(),
+      regionFlagUrl: json['region_flag_url']?.toString(),
     );
   }
 }

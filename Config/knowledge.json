@@ -122,18 +122,18 @@
     },
     "fs_standings_tab": {
         "standings_row": ".ui-table__row",
-        "standings_col_rank": ".tableCellRank",
-        "standings_col_team_name": ".tableCellParticipant__name",
-        "standings_col_team_link": ".tableCellParticipant__name",
-        "standings_col_matches_played": ".table__cell--value:nth-child(5)",
-        "standings_col_wins": ".table__cell--value:nth-child(6)",
-        "standings_col_draws": ".table__cell--value:nth-child(7)",
-        "standings_col_losses": ".table__cell--value:nth-child(8)",
+        "standings_col_rank": ".table__cell--rank",
+        "standings_col_team_name": ".table__cell--participant",
+        "standings_col_team_link": ".table__cell--participant a",
+        "standings_col_matches_played": ".table__cell--value:nth-child(3), .table__cell--matches-played",
+        "standings_col_wins": ".table__cell--value:nth-child(4), .table__cell--win",
+        "standings_col_draws": ".table__cell--value:nth-child(5), .table__cell--draw",
+        "standings_col_losses": ".table__cell--value:nth-child(6), .table__cell--loss",
         "standings_col_goals": ".table__cell--score",
         "standings_col_points": ".table__cell--points",
         "standings_col_form": ".table__cell--form",
-        "meta_breadcrumb_country": ".wcl-breadcrumbItem_8btmf:nth-child(2) .wcl-breadcrumbItemLabel_2QT1M",
-        "meta_breadcrumb_league": ".wcl-breadcrumbItem_8btmf:nth-child(3) .wcl-breadcrumbItemLabel_2QT1M"
+        "meta_breadcrumb_country": ".tournamentHeader__country",
+        "meta_breadcrumb_league": ".tournamentHeader__league a"
     },
     "fs_generic": {
         "cookie_consent": "#onetrust-accept-btn-handler",

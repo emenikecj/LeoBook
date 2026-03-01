@@ -31,14 +31,14 @@ class _LeoTabState extends State<LeoTab> {
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedScale(
-        scale: _isHovered ? 1.05 : 1.0,
+      child: AnimatedOpacity(
+        opacity: _isHovered ? 1.0 : 0.85,
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
-        child: Container(
+        child: Padding(
           padding: EdgeInsets.symmetric(
             vertical: Responsive.sp(context, 4),
-            horizontal: Responsive.sp(context, 4),
+            horizontal: Responsive.sp(context, 2),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -49,14 +49,16 @@ class _LeoTabState extends State<LeoTab> {
                   size: Responsive.sp(context, 10),
                   color: _getColor(),
                 ),
-                SizedBox(width: Responsive.sp(context, 4)),
+                SizedBox(width: Responsive.sp(context, 3)),
               ],
-              Text(
-                widget.text.toUpperCase(),
-                style: TextStyle(
-                  color: _getColor(),
-                  // font size is handled by TabBar's labelStyle usually,
-                  // but we replicate here for hover consistency if needed
+              Flexible(
+                child: Text(
+                  widget.text.toUpperCase(),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: _getColor(),
+                  ),
                 ),
               ),
             ],

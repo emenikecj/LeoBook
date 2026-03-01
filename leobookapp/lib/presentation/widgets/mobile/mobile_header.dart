@@ -25,7 +25,6 @@ class MobileHeader extends StatelessWidget {
           sigmaY: LiquidGlassTheme.blurRadiusMedium,
         ),
         child: Container(
-          height: Responsive.sp(context, 36),
           padding: EdgeInsets.symmetric(horizontal: hp),
           decoration: BoxDecoration(
             color:
@@ -40,47 +39,53 @@ class MobileHeader extends StatelessWidget {
               ),
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "LEOBOOK",
-                style: TextStyle(
-                  fontSize: Responsive.sp(context, 12),
-                  fontWeight: FontWeight.w900,
-                  color: isDark ? Colors.white : AppColors.textDark,
-                  letterSpacing: 2.0,
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => BlocProvider.value(
-                        value: context.read<SearchCubit>(),
-                        child: const SearchScreen(),
+          child: SafeArea(
+            bottom: false,
+            child: SizedBox(
+              height: Responsive.sp(context, 36),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "LEOBOOK",
+                    style: TextStyle(
+                      fontSize: Responsive.sp(context, 12),
+                      fontWeight: FontWeight.w900,
+                      color: isDark ? Colors.white : AppColors.textDark,
+                      letterSpacing: 2.0,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BlocProvider.value(
+                            value: context.read<SearchCubit>(),
+                            child: const SearchScreen(),
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: EdgeInsets.all(Responsive.sp(context, 6)),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.black.withValues(alpha: 0.05),
+                        borderRadius:
+                            BorderRadius.circular(Responsive.sp(context, 8)),
+                      ),
+                      child: Icon(
+                        Icons.search_rounded,
+                        color: isDark ? Colors.white70 : Colors.black54,
+                        size: Responsive.sp(context, 15),
                       ),
                     ),
-                  );
-                },
-                child: Container(
-                  padding: EdgeInsets.all(Responsive.sp(context, 6)),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.black.withValues(alpha: 0.05),
-                    borderRadius:
-                        BorderRadius.circular(Responsive.sp(context, 8)),
                   ),
-                  child: Icon(
-                    Icons.search_rounded,
-                    color: isDark ? Colors.white70 : Colors.black54,
-                    size: Responsive.sp(context, 15),
-                  ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

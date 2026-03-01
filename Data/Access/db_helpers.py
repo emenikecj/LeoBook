@@ -294,6 +294,52 @@ def save_schedule_entry(match_info: Dict[str, Any]):
 
     upsert_entry(SCHEDULES_CSV, match_info, files_and_headers[SCHEDULES_CSV], 'fixture_id')
 
+def transform_streamer_match_to_schedule(m: Dict[str, Any]) -> Dict[str, Any]:
+    """Transforms a raw match dictionary from the streamer into a standard Schedule entry."""
+    now = dt.now()
+    
+    # Date extraction: streamer 'timestamp' is ISO, 'match_time' is usually HH:MM or date
+    date_str = m.get('date')
+    if not date_str:
+        # If timestamp exists, use it
+        ts = m.get('timestamp')
+        if ts:
+            try: date_str = dt.fromisoformat(ts.replace('Z', '+00:00')).strftime("%d.%m.%Y")
+            except: date_str = now.strftime("%d.%m.%Y")
+        else:
+            date_str = now.strftime("%d.%m.%Y")
+
+    # League ID generation (fallback if not provided)
+    league_id = m.get('league_id', '')
+    if not league_id and m.get('region_league'):
+        league_id = m['region_league'].replace(' - ', '_').replace(' ', '_').upper()
+
+    return {
+        'fixture_id': m.get('fixture_id'),
+        'date': date_str,
+        'match_time': m.get('match_time', '00:00'),
+        'region_league': m.get('region_league', 'Unknown'),
+        'league_id': league_id,
+        'home_team': m.get('home_team', 'Unknown'),
+        'away_team': m.get('away_team', 'Unknown'),
+        'home_team_id': m.get('home_team_id', 'unknown'),
+        'away_team_id': m.get('away_team_id', 'unknown'),
+        'home_score': m.get('home_score', ''),
+        'away_score': m.get('away_score', ''),
+        'match_status': m.get('status', 'scheduled'),
+        'match_link': m.get('match_link', ''),
+        'league_stage': m.get('league_stage', ''),
+        'last_updated': now.isoformat()
+    }
+
+def save_schedule_batch(entries: List[Dict[str, Any]]):
+    """Batch UPSERTs multiple schedule entries into schedules.csv."""
+    if not entries: return
+    for e in entries:
+        if 'last_updated' not in e:
+            e['last_updated'] = dt.now().isoformat()
+    batch_upsert(SCHEDULES_CSV, entries, files_and_headers[SCHEDULES_CSV], 'fixture_id')
+
 def save_live_score_entry(match_info: Dict[str, Any]):
     """Saves or updates a live score entry in live_scores.csv."""
     match_info['last_updated'] = dt.now().isoformat()

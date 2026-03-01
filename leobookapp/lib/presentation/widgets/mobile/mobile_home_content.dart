@@ -71,6 +71,7 @@ class _MobileHomeContentState extends State<MobileHomeContent>
     final hp = Responsive.horizontalPadding(context);
 
     return SafeArea(
+      top: false,
       bottom: false,
       child: RefreshIndicator(
         onRefresh: () async {

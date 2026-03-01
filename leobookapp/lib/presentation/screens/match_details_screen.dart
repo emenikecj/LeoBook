@@ -1,18 +1,21 @@
-// match_details_screen.dart: match_details_screen.dart: Widget/screen for App — Screens.
-// Part of LeoBook App — Screens
+// match_details_screen.dart: match_details_screen.dart: Widget/screen for App  -  Screens.
+// Part of LeoBook App  -  Screens
 //
 // Classes: MatchDetailsScreen, _MatchDetailsScreenState
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:leobookapp/core/constants/app_colors.dart';
 import 'package:leobookapp/data/models/match_model.dart';
 import 'package:leobookapp/data/models/standing_model.dart';
 import 'package:leobookapp/data/repositories/data_repository.dart';
+import 'package:leobookapp/core/constants/responsive_constants.dart';
 import 'team_screen.dart';
 import 'league_screen.dart';
 import '../widgets/shared/main_top_bar.dart';
+import '../widgets/shared/match_card.dart';
 
 class MatchDetailsScreen extends StatefulWidget {
   final MatchModel match;
@@ -29,6 +32,9 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
   List<MatchModel> _awayHistory = [];
   List<MatchModel> _h2hHistory = [];
   List<StandingModel> _standings = [];
+  bool _homeExpanded = false;
+  bool _awayExpanded = false;
+  bool _h2hExpanded = false;
 
   MatchModel get match => widget.match;
 
@@ -62,8 +68,8 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
       }
     }
 
-    final pastHome = homeMatches.where(isPast).take(5).toList();
-    final pastAway = awayMatches.where(isPast).take(5).toList();
+    final pastHome = homeMatches.where(isPast).take(10).toList();
+    final pastAway = awayMatches.where(isPast).take(10).toList();
 
     // H2H: matches where both teams participated
     final h2h = homeMatches
@@ -73,7 +79,7 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
               (m.homeTeam == match.awayTeam && m.awayTeam == match.homeTeam),
         )
         .where(isPast)
-        .take(5)
+        .take(10)
         .toList();
 
     if (mounted) {
@@ -116,18 +122,50 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
 
                           const SizedBox(height: 16),
 
-                          // 2b. Standings
-                          _buildStandingsSection(),
-
-                          const SizedBox(height: 16),
-
                           // 3. Expert Prediction
                           _buildExpertPrediction(),
 
                           const SizedBox(height: 16),
 
-                          // 4. Match Stats
-                          _buildMatchStats(),
+                          // 4. Prediction Insights (all data/stats that led to prediction)
+                          _buildPredictionInsights(),
+
+                          const SizedBox(height: 16),
+
+                          // 5. Standings
+                          _buildStandingsSection(),
+
+                          const SizedBox(height: 16),
+
+                          // 6. Home Team History
+                          _buildMatchHistorySection(
+                            "${match.homeTeam}  -  LAST MATCHES",
+                            _homeHistory,
+                            _homeExpanded,
+                            () =>
+                                setState(() => _homeExpanded = !_homeExpanded),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // 7. Away Team History
+                          _buildMatchHistorySection(
+                            "${match.awayTeam}  -  LAST MATCHES",
+                            _awayHistory,
+                            _awayExpanded,
+                            () =>
+                                setState(() => _awayExpanded = !_awayExpanded),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // 8. H2H History
+                          _buildMatchHistorySection(
+                            "HEAD-TO-HEAD",
+                            _h2hHistory,
+                            _h2hExpanded,
+                            () => setState(() => _h2hExpanded = !_h2hExpanded),
+                          ),
 
                           const SizedBox(height: 40),
                         ],
@@ -210,18 +248,39 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
                   },
                   child: Column(
                     children: [
-                      Text(
-                        (match.league ?? "LEAGUE").toUpperCase(),
-                        style: GoogleFonts.lexend(
-                          color: AppColors.primary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2.0,
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (match.leagueCrestUrl != null &&
+                              match.leagueCrestUrl!.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: CachedNetworkImage(
+                                imageUrl: match.leagueCrestUrl!,
+                                width: 14,
+                                height: 14,
+                                fit: BoxFit.contain,
+                                errorWidget: (_, __, ___) =>
+                                    const SizedBox.shrink(),
+                              ),
+                            ),
+                          Flexible(
+                            child: Text(
+                              _parseLeagueName(match.league ?? "LEAGUE"),
+                              style: GoogleFonts.lexend(
+                                color: AppColors.primary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 2.0,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        "${match.date} • ${match.time}${match.displayStatus.isEmpty ? '' : ' • ${match.displayStatus}'}",
+                        "${match.date} | ${match.time}${match.displayStatus.isEmpty ? '' : ' | ${match.displayStatus}'}",
                         style: GoogleFonts.lexend(
                           color: Colors.white60,
                           fontSize: 10,
@@ -277,10 +336,26 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: Colors.white24),
                         ),
-                        child: const Icon(
-                          Icons.shield,
-                          size: 40,
-                          color: Colors.white,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: match.homeCrestUrl != null &&
+                                  match.homeCrestUrl!.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: match.homeCrestUrl!,
+                                  width: 50,
+                                  height: 50,
+                                  fit: BoxFit.contain,
+                                  errorWidget: (_, __, ___) => const Icon(
+                                    Icons.shield,
+                                    size: 40,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.shield,
+                                  size: 40,
+                                  color: Colors.white,
+                                ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -361,10 +436,26 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: Colors.white24),
                         ),
-                        child: const Icon(
-                          Icons.security,
-                          size: 40,
-                          color: Colors.white,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: match.awayCrestUrl != null &&
+                                  match.awayCrestUrl!.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: match.awayCrestUrl!,
+                                  width: 50,
+                                  height: 50,
+                                  fit: BoxFit.contain,
+                                  errorWidget: (_, __, ___) => const Icon(
+                                    Icons.shield,
+                                    size: 40,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.shield,
+                                  size: 40,
+                                  color: Colors.white,
+                                ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -673,193 +764,36 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
     );
   }
 
-  Widget _buildMatchStats() {
-    return Column(
-      children: [
-        // Title
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.leaderboard,
-                  size: 18,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  "MATCH STATS",
-                  style: GoogleFonts.lexend(
-                    color: AppColors.primary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-              ],
-            ),
-            Text(
-              "LAST 5 MATCHES",
-              style: GoogleFonts.lexend(
-                color: AppColors.textGrey,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+  // â”€â”€ Expandable Match History Section â”€â”€
+  Widget _buildMatchHistorySection(
+    String title,
+    List<MatchModel> matches,
+    bool isExpanded,
+    VoidCallback onToggle,
+  ) {
+    if (_isLoadingIndices) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.cardDark,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white10),
         ),
-        const SizedBox(height: 12),
-        if (_isLoadingIndices)
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.all(20.0),
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          )
-        else ...[
-          Row(
-            children: [
-              // Home Team Form
-              Expanded(
-                child: _buildstatBox(
-                  "${match.homeTeam} Form",
-                  _homeHistory.isEmpty
-                      ? Text(
-                          "No history",
-                          style: GoogleFonts.lexend(
-                            color: Colors.white24,
-                            fontSize: 10,
-                          ),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: _homeHistory.map((m) {
-                            final hScore = int.tryParse(m.homeScore ?? '') ?? 0;
-                            final aScore = int.tryParse(m.awayScore ?? '') ?? 0;
-                            final isWin = m.homeTeam == match.homeTeam
-                                ? hScore > aScore
-                                : aScore > hScore;
-                            final isDraw = hScore == aScore;
-                            return _buildFormBadge(
-                              isWin ? "W" : (isDraw ? "D" : "L"),
-                              isWin
-                                  ? Colors.green
-                                  : (isDraw ? Colors.grey : AppColors.liveRed),
-                            );
-                          }).toList(),
-                        ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Away Team Form
-              Expanded(
-                child: _buildstatBox(
-                  "${match.awayTeam} Form",
-                  _awayHistory.isEmpty
-                      ? Text(
-                          "No history",
-                          style: GoogleFonts.lexend(
-                            color: Colors.white24,
-                            fontSize: 10,
-                          ),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: _awayHistory.map((m) {
-                            final hScore = int.tryParse(m.homeScore ?? '') ?? 0;
-                            final aScore = int.tryParse(m.awayScore ?? '') ?? 0;
-                            final isWin = m.homeTeam == match.awayTeam
-                                ? hScore > aScore
-                                : aScore > hScore;
-                            final isDraw = hScore == aScore;
-                            return _buildFormBadge(
-                              isWin ? "W" : (isDraw ? "D" : "L"),
-                              isWin
-                                  ? Colors.green
-                                  : (isDraw ? Colors.grey : AppColors.liveRed),
-                            );
-                          }).toList(),
-                        ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // H2H List
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.cardDark,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white10),
-            ),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "HEAD-TO-HEAD HISTORY",
-                        style: GoogleFonts.lexend(
-                          color: Colors.white54,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      Text(
-                        "${_h2hHistory.length} Matches",
-                        style: GoogleFonts.lexend(
-                          color: AppColors.primary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1, color: Colors.white10),
-                if (_h2hHistory.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Text(
-                      "No direct encounters found",
-                      style: GoogleFonts.lexend(
-                        color: Colors.white24,
-                        fontSize: 11,
-                      ),
-                    ),
-                  )
-                else
-                  ..._h2hHistory.map((m) {
-                    final hScore = int.tryParse(m.homeScore ?? '') ?? 0;
-                    final aScore = int.tryParse(m.awayScore ?? '') ?? 0;
-                    return Column(
-                      children: [
-                        _buildH2HRow(
-                          m.homeTeam,
-                          "$hScore - $aScore",
-                          m.awayTeam,
-                          hScore > aScore,
-                        ),
-                        const Divider(height: 1, color: Colors.white10),
-                      ],
-                    );
-                  }),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
+        child: const Center(
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
 
-  Widget _buildstatBox(String title, Widget content) {
+    final visibleCount = isExpanded
+        ? (matches.length > 10 ? 10 : matches.length)
+        : (matches.length > 5 ? 5 : matches.length);
+    final visibleMatches = matches.take(visibleCount).toList();
+    final hasMore = matches.length > 5 && !isExpanded;
+    final canCollapse = isExpanded;
+
     return Container(
-      height: 80,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.cardDark,
         borderRadius: BorderRadius.circular(16),
@@ -868,115 +802,316 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title.toUpperCase(),
-            style: GoogleFonts.lexend(
-              color: Colors.white54,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-            ),
+          // Section Header
+          Row(
+            children: [
+              Icon(
+                title.contains("HEAD") ? Icons.compare_arrows : Icons.history,
+                size: 16,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title.toUpperCase(),
+                  style: GoogleFonts.lexend(
+                    color: AppColors.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                "${matches.length} match${matches.length == 1 ? '' : 'es'}",
+                style: GoogleFonts.lexend(
+                  color: AppColors.textGrey,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
-          Expanded(child: Center(child: content)),
+          const SizedBox(height: 16),
+
+          if (matches.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Center(
+                child: Text(
+                  "No matches found",
+                  style: GoogleFonts.lexend(
+                    color: Colors.white24,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            )
+          else ...[
+            // Match Cards - Responsive Layout
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isDesktop = Responsive.isDesktop(context);
+                if (isDesktop) {
+                  const crossAxisCount = 3;
+                  const spacing = 12.0;
+                  final itemWidth = (constraints.maxWidth -
+                          (spacing * (crossAxisCount - 1))) /
+                      crossAxisCount;
+
+                  return Wrap(
+                    spacing: spacing,
+                    runSpacing: spacing,
+                    children: visibleMatches
+                        .map((m) => SizedBox(
+                              width: itemWidth,
+                              child: MatchCard(
+                                match: m,
+                                showLeagueHeader: true,
+                                hideLeagueInfo: false,
+                              ),
+                            ))
+                        .toList(),
+                  );
+                }
+
+                // Mobile/Tablet: Vertical List
+                return Column(
+                  children: visibleMatches
+                      .map((m) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: MatchCard(
+                              match: m,
+                              showLeagueHeader: true,
+                              hideLeagueInfo: false,
+                            ),
+                          ))
+                      .toList(),
+                );
+              },
+            ),
+
+            const SizedBox(height: 12),
+
+            // Expand / Collapse Button
+            if (hasMore || canCollapse)
+              GestureDetector(
+                onTap: onToggle,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        isExpanded
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        isExpanded ? "SHOW LESS" : "SHOW MORE",
+                        style: GoogleFonts.lexend(
+                          color: AppColors.primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildFormBadge(String text, Color color) {
-    return Container(
-      width: 20,
-      height: 20,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        text,
-        style: GoogleFonts.lexend(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
+  // â”€â”€ Prediction Insights Section â”€â”€
+  Widget _buildPredictionInsights() {
+    if (match.prediction == null || match.prediction!.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-  Widget _buildH2HRow(
-    String home,
-    String score,
-    String away,
-    bool highlightHome,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    final List<Map<String, dynamic>> insights = [];
+
+    // xG values
+    if (match.xgHome != null && match.xgAway != null) {
+      insights.add({
+        'icon': Icons.sports_soccer,
+        'label': 'Expected Goals (xG)',
+        'value':
+            '${match.xgHome!.toStringAsFixed(2)}  -  ${match.xgAway!.toStringAsFixed(2)}',
+        'sub': '${match.homeTeam} vs ${match.awayTeam}',
+      });
+    }
+
+    // Win probabilities
+    insights.add({
+      'icon': Icons.pie_chart_outline,
+      'label': 'Win Probability',
+      'value':
+          'H ${(match.probHome * 100).toInt()}%  |  D ${(match.probDraw * 100).toInt()}%  |  A ${(match.probAway * 100).toInt()}%',
+    });
+
+    // Odds
+    if (match.odds != null && match.odds!.isNotEmpty && match.odds != '-') {
+      insights.add({
+        'icon': Icons.monetization_on_outlined,
+        'label': 'Market Odds',
+        'value': match.odds!,
+      });
+    }
+
+    // Market reliability
+    if (match.marketReliability != null &&
+        match.marketReliability!.isNotEmpty) {
+      insights.add({
+        'icon': Icons.verified_outlined,
+        'label': 'Market Reliability',
+        'value': match.marketReliability!,
+      });
+    }
+
+    // Confidence
+    if (match.confidence != null && match.confidence!.isNotEmpty) {
+      insights.add({
+        'icon': Icons.speed,
+        'label': 'Confidence Level',
+        'value': match.confidence!,
+      });
+    }
+
+    // Reason tags
+    if (match.reasonTags != null && match.reasonTags!.isNotEmpty) {
+      insights.add({
+        'icon': Icons.label_outline,
+        'label': 'Reason Tags',
+        'value': match.reasonTags!.replaceAll('|', '  |  '),
+      });
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TeamScreen(
-                    teamName: home,
-                    repository: context.read<DataRepository>(),
-                  ),
-                ),
-              );
-            },
-            child: SizedBox(
-              width: 80,
-              child: Text(
-                home,
+          Row(
+            children: [
+              const Icon(Icons.insights, size: 16, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(
+                "PREDICTION DATA & INSIGHTS",
                 style: GoogleFonts.lexend(
-                  color: highlightHome ? Colors.white : Colors.white54,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+                  color: AppColors.primary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
                 ),
               ),
-            ),
+            ],
           ),
+          const SizedBox(height: 12),
+          ...insights.map((insight) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      insight['icon'] as IconData,
+                      size: 16,
+                      color: AppColors.textGrey.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            insight['label'] as String,
+                            style: GoogleFonts.lexend(
+                              color: Colors.white54,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            insight['value'] as String,
+                            style: GoogleFonts.lexend(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          if (insight['sub'] != null) ...[
+                            const SizedBox(height: 1),
+                            Text(
+                              insight['sub'] as String,
+                              style: GoogleFonts.lexend(
+                                color: Colors.white30,
+                                fontSize: 9,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+          // AI Reasoning
+          const SizedBox(height: 4),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: highlightHome
-                  ? AppColors.primary.withValues(alpha: 0.2)
-                  : Colors.white10,
-              borderRadius: BorderRadius.circular(4),
+              color: Colors.white.withValues(alpha: 0.03),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white10),
             ),
-            child: Text(
-              score,
-              style: GoogleFonts.lexend(
-                color: highlightHome ? AppColors.primary : Colors.white70,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TeamScreen(
-                    teamName: away,
-                    repository: context.read<DataRepository>(),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.auto_awesome,
+                  size: 14,
+                  color: Colors.cyanAccent,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    match.aiReasoningSentence,
+                    style: GoogleFonts.lexend(
+                      color: Colors.white60,
+                      fontSize: 10,
+                      fontStyle: FontStyle.italic,
+                      height: 1.4,
+                    ),
                   ),
                 ),
-              );
-            },
-            child: SizedBox(
-              width: 80,
-              child: Text(
-                away,
-                textAlign: TextAlign.end,
-                style: GoogleFonts.lexend(
-                  color: !highlightHome ? Colors.white : Colors.white54,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              ],
             ),
           ),
         ],
@@ -1033,151 +1168,208 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          DefaultTextStyle(
-            style: GoogleFonts.lexend(fontSize: 10, color: Colors.white38),
-            child: const Row(
-              children: [
-                SizedBox(width: 25, child: Text("#")),
-                Expanded(child: Text("TEAM")),
-                SizedBox(
-                  width: 25,
-                  child: Text("P", textAlign: TextAlign.center),
-                ),
-                SizedBox(
-                  width: 25,
-                  child: Text("W", textAlign: TextAlign.center),
-                ),
-                SizedBox(
-                  width: 25,
-                  child: Text("D", textAlign: TextAlign.center),
-                ),
-                SizedBox(
-                  width: 25,
-                  child: Text("L", textAlign: TextAlign.center),
-                ),
-                SizedBox(
-                  width: 30,
-                  child: Text("GD", textAlign: TextAlign.center),
-                ),
-                SizedBox(
-                  width: 40,
-                  child: Text("PTS", textAlign: TextAlign.center),
-                ),
-              ],
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Divider(height: 1, color: Colors.white10),
-          ),
-          ..._standings.map((s) {
-            final isHome = s.teamName.toLowerCase().contains(
-                      match.homeTeam.toLowerCase(),
-                    ) ||
-                match.homeTeam.toLowerCase().contains(s.teamName.toLowerCase());
-            final isAway = s.teamName.toLowerCase().contains(
-                      match.awayTeam.toLowerCase(),
-                    ) ||
-                match.awayTeam.toLowerCase().contains(s.teamName.toLowerCase());
-            final isMatchTeam = isHome || isAway;
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: 500, // Explicit width for horizontal scrolling
+              child: Column(
                 children: [
-                  SizedBox(
-                    width: 25,
-                    child: Text(
-                      s.position.toString(),
-                      style: TextStyle(
-                        color: isMatchTeam ? AppColors.primary : Colors.white70,
-                        fontWeight:
-                            isMatchTeam ? FontWeight.bold : FontWeight.normal,
+                  DefaultTextStyle(
+                    style:
+                        GoogleFonts.lexend(fontSize: 10, color: Colors.white38),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          SizedBox(width: 25, child: Text("#")),
+                          SizedBox(width: 30), // Space for crest
+                          Expanded(child: Text("TEAM")),
+                          SizedBox(
+                              width: 30,
+                              child: Text("P", textAlign: TextAlign.center)),
+                          SizedBox(
+                              width: 30,
+                              child: Text("W", textAlign: TextAlign.center)),
+                          SizedBox(
+                              width: 30,
+                              child: Text("D", textAlign: TextAlign.center)),
+                          SizedBox(
+                              width: 30,
+                              child: Text("L", textAlign: TextAlign.center)),
+                          SizedBox(
+                              width: 35,
+                              child: Text("GF", textAlign: TextAlign.center)),
+                          SizedBox(
+                              width: 35,
+                              child: Text("GA", textAlign: TextAlign.center)),
+                          SizedBox(
+                              width: 35,
+                              child: Text("GD", textAlign: TextAlign.center)),
+                          SizedBox(
+                              width: 45,
+                              child: Text("PTS", textAlign: TextAlign.center)),
+                        ],
                       ),
                     ),
                   ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => TeamScreen(
-                              teamName: s.teamName,
-                              repository: context.read<DataRepository>(),
+                  const Divider(height: 8, color: Colors.white10),
+                  ..._standings.map((s) {
+                    final normalizedTableTeam = s.teamName.toLowerCase();
+                    final hTeam = match.homeTeam.toLowerCase();
+                    final aTeam = match.awayTeam.toLowerCase();
+
+                    final isHome = normalizedTableTeam.contains(hTeam) ||
+                        hTeam.contains(normalizedTableTeam);
+                    final isAway = normalizedTableTeam.contains(aTeam) ||
+                        aTeam.contains(normalizedTableTeam);
+                    final isMatchTeam = isHome || isAway;
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        children: [
+                          // Position
+                          SizedBox(
+                            width: 25,
+                            child: Text(
+                              s.position.toString(),
+                              style: TextStyle(
+                                color: isMatchTeam
+                                    ? AppColors.primary
+                                    : Colors.white70,
+                                fontSize: 11,
+                                fontWeight: isMatchTeam
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
                             ),
                           ),
-                        );
-                      },
-                      child: Text(
-                        s.teamName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isMatchTeam ? AppColors.primary : Colors.white,
-                          fontWeight:
-                              isMatchTeam ? FontWeight.w900 : FontWeight.normal,
-                        ),
+                          // Crest
+                          SizedBox(
+                            width: 30,
+                            child: s.teamCrestUrl != null &&
+                                    s.teamCrestUrl != 'Unknown'
+                                ? CachedNetworkImage(
+                                    imageUrl: s.teamCrestUrl!,
+                                    height: 18,
+                                    width: 18,
+                                    placeholder: (ctx, url) => Container(),
+                                    errorWidget: (ctx, url, err) => const Icon(
+                                        Icons.shield,
+                                        size: 14,
+                                        color: Colors.white10),
+                                  )
+                                : const Icon(Icons.shield,
+                                    size: 14, color: Colors.white10),
+                          ),
+                          // Team Name
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => TeamScreen(
+                                      teamName: s.teamName,
+                                      repository:
+                                          context.read<DataRepository>(),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Text(
+                                s.teamName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: isMatchTeam
+                                      ? AppColors.primary
+                                      : Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: isMatchTeam
+                                      ? FontWeight.w900
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Stats
+                          SizedBox(
+                              width: 30,
+                              child: Text(s.played.toString(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      fontSize: 11, color: Colors.white70))),
+                          SizedBox(
+                              width: 30,
+                              child: Text(s.wins.toString(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      fontSize: 11, color: Colors.white70))),
+                          SizedBox(
+                              width: 30,
+                              child: Text(s.draws.toString(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      fontSize: 11, color: Colors.white70))),
+                          SizedBox(
+                              width: 30,
+                              child: Text(s.losses.toString(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      fontSize: 11, color: Colors.white70))),
+                          SizedBox(
+                              width: 35,
+                              child: Text(s.goalsFor.toString(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      fontSize: 11, color: Colors.white70))),
+                          SizedBox(
+                              width: 35,
+                              child: Text(s.goalsAgainst.toString(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      fontSize: 11, color: Colors.white70))),
+                          SizedBox(
+                              width: 35,
+                              child: Text(
+                                  (s.goalsFor - s.goalsAgainst).toString(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      fontSize: 11, color: Colors.white70))),
+                          // Points
+                          SizedBox(
+                            width: 45,
+                            child: Text(
+                              s.points.toString(),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: isMatchTeam
+                                    ? AppColors.primary
+                                    : Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 25,
-                    child: Text(
-                      s.played.toString(),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 25,
-                    child: Text(
-                      s.wins.toString(),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 25,
-                    child: Text(
-                      s.draws.toString(),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 25,
-                    child: Text(
-                      s.losses.toString(),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 30,
-                    child: Text(
-                      (s.goalsFor - s.goalsAgainst).toString(),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 40,
-                    child: Text(
-                      s.points.toString(),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: isMatchTeam ? AppColors.primary : Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+                    );
+                  }),
                 ],
               ),
-            );
-          }),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  String _parseLeagueName(String leagueStr) {
+    if (leagueStr.contains(':')) {
+      final parts = leagueStr.split(':');
+      if (parts.length >= 2) return parts[1].trim().toUpperCase();
+    }
+    return leagueStr.toUpperCase();
   }
 }

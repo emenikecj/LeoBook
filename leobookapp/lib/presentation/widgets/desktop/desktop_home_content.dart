@@ -200,7 +200,7 @@ class _DesktopHomeContentState extends State<DesktopHomeContent>
                       sliverItems.add(
                         LayoutBuilder(
                           builder: (context, constraints) {
-                            const crossAxisCount = 4;
+                            const crossAxisCount = 3;
                             final spacing = Responsive.dp(context, 12);
                             final itemWidth = (constraints.maxWidth -
                                     (spacing * (crossAxisCount - 1))) /
