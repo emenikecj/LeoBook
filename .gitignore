@@ -65,6 +65,7 @@ playwright-state/
 tmp/
 temp/
 *.tmp
+*.zip
 
 # Node modules (if any)
 node_modules/
