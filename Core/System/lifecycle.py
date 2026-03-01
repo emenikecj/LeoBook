@@ -84,6 +84,7 @@ def setup_terminal_logging(args):
         elif args.schedule: prefix = "leo_schedule_session"
         elif args.prologue: prefix = "leo_prologue_session"
         elif args.chapter: prefix = f"leo_chapter{args.chapter}_session"
+        elif args.assets: prefix = "leo_assets_session"
 
     TERMINAL_LOG_DIR = LOG_DIR / "Terminal"
     TERMINAL_LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -148,6 +149,8 @@ Examples:
   python Leo.py --rule-engine --backtest --id ENGINE_ID   Backtest a specific engine
   python Leo.py --rule-engine --backtest --from-date 2025-08-01   Set start date
   python Leo.py --rule-engine --set-default "James' Law"   Set engine as default
+  python Leo.py --assets                   Sync all team and league assets
+  python Leo.py --assets --limit 10         Sync assets with a limit
         """
     )
     # --- Granular Chapter / Page Selection ---
@@ -185,6 +188,10 @@ Examples:
                        help='Run manual metadata enrichment (gap-fill for historical data)')
     parser.add_argument('--enrich-leagues', action='store_true',
                        help='Visit league pages to fill Unknown metadata in region_league, schedules, and teams')
+    parser.add_argument('--assets', action='store_true',
+                       help='Sync team and league assets (crests/logos) to Supabase Storage')
+    parser.add_argument('--limit', type=int, metavar='N',
+                       help='Limit the number of items processed (useful for testing)')
 
     # --- Rule Engine Management ---
     parser.add_argument('--rule-engine', action='store_true',

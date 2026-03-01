@@ -67,6 +67,7 @@ from Modules.Flashscore.fs_live_streamer import live_score_streamer
 from Modules.FootballCom.fb_manager import run_odds_harvesting, run_automated_booking
 from Core.System.monitoring import run_chapter_3_oversight
 from Scripts.recommend_bets import get_recommendations
+from Modules.Assets.asset_manager import sync_team_assets, sync_league_assets
 
 # Configuration
 CYCLE_WAIT_HOURS = int(os.getenv('LEO_CYCLE_WAIT_HOURS', 6))
@@ -371,6 +372,13 @@ async def run_utility(args):
             engine = RuleEngineManager.get_default()
             RuleEngineManager.print_engine(engine)
 
+    elif args.assets:
+        print("\n  --- LEO: Sync Team & League Assets ---")
+        limit = getattr(args, 'limit', None)
+        sync_team_assets(limit=limit)
+        sync_league_assets(limit=limit)
+        print("  [SUCCESS] Asset sync complete.")
+
 
 # ============================================================
 # DISPATCH — Routes CLI args to the appropriate functions
@@ -543,7 +551,7 @@ if __name__ == "__main__":
     is_utility = any([args.sync, args.recommend, args.accuracy,
                       args.search_dict, args.review, args.backtest,
                       args.rule_engine, args.streamer, args.schedule,
-                      args.enrich, args.enrich_leagues])
+                      args.enrich, args.enrich_leagues, args.assets])
     is_granular = args.prologue or args.chapter is not None
 
     try:
