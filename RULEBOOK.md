@@ -1,4 +1,4 @@
-# LeoBook Developer RuleBook v3.6
+# LeoBook Developer RuleBook v4.0
 
 > **This document is LAW.** Every developer and AI agent working on LeoBook MUST follow these rules without exception. Violations will break the system.
 
@@ -32,15 +32,20 @@ Every page function (`run_prologue_p1`, `run_chapter_1_p2`, etc.) MUST call `awa
 ### 2.3 Chapter Structure
 
 ```
-Prologue P1: Cloud Handshake & Review    → sync_on_startup + review
-Prologue P2: Final Sync & Cleanup        → accuracy + sync
-Chapter 1 (Per-Match Pipeline):
+Prologue P1: Cloud Handshake & Review    → sync_on_startup + outcome review + accuracy report
+Prologue P2: Accuracy Generation & Sync  → accuracy generation + final sync
+  (Runs concurrently with Ch1→Ch2 pipeline)
+Chapter 1 P1 (Per-Match Pipeline):
     1. Extraction (Match page)            → H2H + Standings
     2. Enrichment (League page)           → Metadata + Match URLs + Teams
     3. Search Dict (LLM)                  → Search terms + Abbreviations
     4. Prediction (Adaptive)              → Probability + Save
-Chapter 2: Booking & Withdrawal           → book + withdraw + sync
-Chapter 3: Monitoring & Oversight        → monitor + backtest + sync
+Chapter 1 P2: Odds Harvesting            → Football.com URL resolution
+Chapter 1 P3: Final Sync & Recommendations → sync + recommendations
+Chapter 2 P1: Automated Booking           → Football.com bet placement
+Chapter 2 P2: Withdrawal Check            → balance + withdrawal trigger
+Chapter 3: Monitoring & Oversight         → monitor + backtest + sync
+Live Streamer: Isolated parallel task     → 60s live score streaming
 ```
 
 ### 2.4 File Headers (MANDATORY)
@@ -138,10 +143,11 @@ Every Dart file MUST have this header format using `//` (NOT `///`):
 
 ### 3.5 State Management
 
-- Use `flutter_bloc` / `Cubit` for app-level state
+- Use `flutter_bloc` / `Cubit` for app-level state (HomeCubit, UserCubit, SearchCubit)
 - `StatefulWidget` ONLY when the widget owns internal state (animations, controllers, tabs)
 - `StatelessWidget` when the widget is a pure function of its inputs
 - **NEVER use `setState()` for business logic** — only for local UI state (animations, tab index)
+- **NO Riverpod, NO GetX** — the project uses `flutter_bloc` exclusively
 
 ### 3.6 Import Style
 
@@ -419,6 +425,6 @@ LeoBook/
 
 ---
 
-*Last updated: February 26, 2026*
+*Last updated: March 1, 2026*
 *Authored by: LeoBook Engineering Team*
 

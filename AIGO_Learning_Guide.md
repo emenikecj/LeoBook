@@ -1,6 +1,6 @@
 # AIGO: AI-Guided Operation — Self-Healing Framework (v5.4)
 
-> **Version**: 5.4 · **Last Updated**: 2026-02-27 · **LLM Backend**: Multi-Key Gemini Rotation (DESCENDING chain) & xAI Grok API
+> **Version**: 5.4 · **Last Updated**: 2026-03-01 · **LLM Backend**: Multi-Key Gemini Rotation (DESCENDING chain) · xAI Grok API (Optional)
 
 AIGO is the **self-healing immune system** of LeoBook. It ensures the automation pipeline never stops — even when target websites (Flashscore, Football.com) change their UI, add popups, rename CSS classes, or deploy entirely new page layouts.
 
@@ -40,7 +40,7 @@ When the `InteractionEngine` is asked to perform any browser action (e.g., "Clic
 If standard retries fail, the system invokes the **AIGO Expert**:
 
 1. **Artifact Capture**: Takes a high-res screenshot (Base64-encoded) and a sanitized HTML snapshot (scripts/styles stripped via `html_utils.py`).
-2. **The Brain (Grok)**: Sends both artifacts to the xAI Grok multimodal API with a highly specific prompt:
+2. **The Brain (Gemini/Grok)**: Sends both artifacts to the LLM multimodal API with a highly specific prompt:
    > "You are an Elite Troubleshooting Expert. Mission: Click 'Place Bet'. Here is what we ALREADY tried (The Heatmap). Do NOT suggest those again. Give me a Primary Path and a Backup Path."
 3. **Path Diversity**: AIGO mandates that the two paths must be **fundamentally different**:
    - **Path A (Direct Selector)**: A new, robust CSS selector derived from visual analysis.
@@ -102,8 +102,8 @@ AIGO is **not called directly** by Leo.py. Instead, it's woven into every browse
 
 | Variable | Required | Purpose |
 |----------|:--------:|---------|
-| `GROK_API_KEY` | ✅ | xAI Grok API for Phase 3 expert consultation |
-| `LLM_API_URL` | Optional | Local Leo AI server fallback if Grok is unavailable |
+| `GEMINI_API_KEY` | ✅ | Google Gemini API (comma-separated, 25+ keys) — primary LLM for Phase 3 expert consultation |
+| `GROK_API_KEY` | Optional | xAI Grok API — secondary fallback for expert consultation |
 
 ---
 

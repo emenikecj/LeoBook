@@ -1,6 +1,6 @@
 # Supabase Setup Guide
 
-> **Version**: 3.6 · **Last Updated**: 2026-02-26
+> **Version**: 4.0 · **Last Updated**: 2026-03-01
 
 ## Quick Setup (5 minutes)
 
@@ -67,44 +67,50 @@ SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1...
 
 ---
 
-## How Sync Works (v2.8)
+## How Sync Works (v4.0)
 
-LeoBook v3.5 uses **High-Velocity Parallel Syncing** — no manual scripts needed.
+LeoBook v4.0 uses **High-Velocity Bi-Directional Syncing** — all tables sync both ways using timestamp-based conflict resolution. No manual scripts needed.
 
 ### Sync Architecture
 ```
 Leo.py runs SyncManager automatically:
-  ① sync_on_startup()    — Pull Supabase → merge with local CSVs → push deltas back
-  ② run_full_sync()      — Push all local CSV changes to Supabase (called 3× per cycle)
+  ① sync_on_startup()    — Bi-directional merge: compare timestamps, pull newer remote, push newer local
+  ② run_full_sync()      — Called 5+ times per cycle (after each chapter page)
+  ③ batch_upsert()       — Real-time micro-pushes during match processing
 ```
 
 ### Key Files
 | File | Purpose |
 |------|---------|
-| [`Data/Access/sync_manager.py`](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Data/Access/sync_manager.py) | `SyncManager` — bi-directional UPSERT engine with batch processing |
-| [`Data/Access/supabase_client.py`](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Data/Access/supabase_client.py) | Supabase client singleton factory |
-| [`Data/Supabase/supabase_schema.sql`](file:///c:/Users/Admin/Desktop/ProProjection/LeoBook/Data/Supabase/supabase_schema.sql) | Complete PostgreSQL schema definition |
+| `Data/Access/sync_manager.py` | `SyncManager` — bi-directional UPSERT engine with pandas delta detection |
+| `Data/Access/supabase_client.py` | Supabase client singleton factory |
+| `Data/Supabase/push_schema.sql` | Auto-provisioning schema definition |
 
-### Tables Synced
+### Tables Synced (12 tables, all bi-directional)
 
-| Table | Source CSV | Unique Key | Direction |
-|-------|-----------|------------|-----------|
-| `predictions` | `predictions.csv` | `fixture_id` | Bi-directional |
-| `schedules` | `schedules.csv` | `fixture_id` | Bi-directional |
-| `standings` | `standings.csv` | `league_id + team_id` | CSV → Supabase |
-| `teams` | `teams.csv` | `team_id` | CSV → Supabase |
-| `region_league` | `region_league.csv` | `league_id` | CSV → Supabase (Enriched via Dual-LLM) |
-| `accuracy_reports` | `accuracy_reports.csv` | `report_id` | CSV → Supabase |
-| `live_scores` | `live_scores.csv` | `fixture_id` | CSV → Supabase (every 60s) |
-| `learning_weights` | `learning_weights.json` | `region_league` | CSV → Supabase (upon weight update) |
+| Table | Source CSV | Unique Key |
+|-------|-----------|------------|
+| `predictions` | `predictions.csv` | `fixture_id` |
+| `schedules` | `schedules.csv` | `fixture_id` |
+| `teams` | `teams.csv` | `team_id` |
+| `region_league` | `region_league.csv` | `league_id` |
+| `standings` | `standings.csv` | `standings_key` |
+| `fb_matches` | `fb_matches.csv` | `site_match_id` |
+| `profiles` | `profiles.csv` | `id` |
+| `custom_rules` | `custom_rules.csv` | `id` |
+| `rule_executions` | `rule_executions.csv` | `id` |
+| `accuracy_reports` | `accuracy_reports.csv` | `report_id` |
+| `audit_log` | `audit_log.csv` | `id` |
+| `live_scores` | `live_scores.csv` | `fixture_id` |
 
-### Sync Frequency per Leo.py Cycle (v3.6)
-1. **Phase 1 (Sequential)**: `sync_on_startup()` — bi-directional merge
-2. **Phase 2 (Parallel Match Workers)**:
-   - **Real-time Enrichment**: League/team metadata pushed immediately after extraction.
-   - **Real-time Search Dict**: LLM-enriched search terms pushed per-match.
-   - **Micro-Batch Sync**: Predictions synced to Supabase every 10 matches processed.
-3. **Ad-hoc**: Long-running modules call `run_full_sync()` protected by `CSV_LOCK`.
+### Sync Frequency per Leo.py Cycle
+1. **Prologue P1**: `sync_on_startup()` — full bi-directional merge with timestamp normalization
+2. **Prologue P2**: `run_full_sync()` — accuracy report push
+3. **Ch1 P1 (Per-Match Workers)**:
+   - **Real-time Enrichment**: League/team metadata pushed immediately after extraction
+   - **Micro-Batch Sync**: Predictions synced to Supabase every 10 matches
+4. **Ch1 P2, P3, Ch2, Ch3**: `run_full_sync()` after each page
+5. **Live Streamer**: Delta-only `batch_upsert()` + `batch_delete()` every 60s
 
 ---
 
@@ -117,7 +123,7 @@ WHERE table_schema = 'public'
 ORDER BY table_name;
 ```
 
-Expected: `predictions`, `schedules`, `standings`, `teams`, `region_league`, `accuracy_reports`, `audit_events`, `live_scores`, `learning_weights`
+Expected: `predictions`, `schedules`, `standings`, `teams`, `region_league`, `fb_matches`, `profiles`, `custom_rules`, `rule_executions`, `accuracy_reports`, `audit_log`, `live_scores`
 
 ### Check Data After First Leo.py Cycle
 ```sql
