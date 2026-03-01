@@ -231,11 +231,20 @@ class RuleEngine:
              if most_prob_score == "0-0" and "over 2.5" in primary_pred:
                  final_confidence = "Low" # Contradiction
 
+
+        # Calculate final recommendation_score for the UI "TOP PREDICTIONS" section
+        # Formula: Confidence Score (0-1) * 100, plus bonuses for xG clarity
+        raw_confidence = best_prediction.get("confidence_score", 0.5)
+        rec_score = int(raw_confidence * 85) # Base weight
+        if (home_xg + away_xg) > 2.5: rec_score += 10
+        if final_confidence == "Very High": rec_score += 5
+        
         return {
             "market_prediction": prediction_text,
             "type": prediction_text,
             "market_type": best_prediction["market_type"],
             "confidence": final_confidence,
+            "recommendation_score": min(rec_score, 100),
             "reason": reasoning[:3],
             "xg_home": round(home_xg, 2),
             "xg_away": round(away_xg, 2),
