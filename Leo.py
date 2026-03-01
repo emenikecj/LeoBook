@@ -121,14 +121,14 @@ async def run_prologue_p2():
 
 
 @AIGOSuite.aigo_retry(max_retries=2, delay=3.0)
-async def run_chapter_1_p1(p):
+async def run_chapter_1_p1(p, refresh: bool = False, target_dates: list = None):
     """Chapter 1 Page 1: Flashscore Extraction & AI Analysis."""
     log_state(chapter="Ch1 P1", action="Flashscore Extraction & Analysis")
     try:
         print("\n" + "=" * 60)
         print("  CHAPTER 1 PAGE 1: Extraction & Prediction")
         print("=" * 60)
-        await run_flashscore_analysis(p)
+        await run_flashscore_analysis(p, refresh=refresh, target_dates=target_dates)
         await run_full_sync(session_name="Ch1 P1")
         log_audit_event("CH1_P1", "Flashscore extraction and analysis completed.", status="success")
     except Exception as e:
@@ -316,7 +316,8 @@ async def run_utility(args):
         mode = "Full Deep" if extract_all else ("Refresh" if refresh else "Extract")
         print(f"\n  --- LEO: Schedule {mode} ---")
         async with async_playwright() as p:
-            await run_flashscore_schedule_only(p, refresh=refresh, extract_all=extract_all)
+            # If redo/all requested, we MUST refresh today effectively
+            await run_flashscore_schedule_only(p, refresh=refresh or extract_all, extract_all=extract_all, target_dates=getattr(args, 'date', None))
 
     elif args.enrich:
         print("\n  --- LEO: Manual Metadata Enrichment ---")
@@ -395,13 +396,13 @@ async def dispatch(args):
         # --- Chapter ---
         if args.chapter == 1:
             if args.page == 1:
-                await run_chapter_1_p1(p)
+                await run_chapter_1_p1(p, refresh=getattr(args, 'refresh', False) or getattr(args, 'all', False), target_dates=getattr(args, 'date', None))
             elif args.page == 2:
                 await run_chapter_1_p2(p)
             elif args.page == 3:
                 await run_chapter_1_p3()
             else:
-                await run_chapter_1_p1(p)
+                await run_chapter_1_p1(p, refresh=getattr(args, 'refresh', False) or getattr(args, 'all', False), target_dates=getattr(args, 'date', None))
                 fb_healthy = await run_chapter_1_p2(p)
                 await run_chapter_1_p3()
             return

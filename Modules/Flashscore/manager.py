@@ -31,7 +31,7 @@ from .fs_offline import run_flashscore_offline_repredict
 NIGERIA_TZ = ZoneInfo("Africa/Lagos")
 
 @AIGOSuite.aigo_retry(max_retries=2, delay=5.0)
-async def run_flashscore_analysis(playwright: Playwright):
+async def run_flashscore_analysis(playwright: Playwright, refresh: bool = False, target_dates: list = None):
     """
     Main function to handle Flashscore data extraction and analysis.
     Coordinates browser launch, navigation, schedule extraction, and batch processing.
@@ -76,23 +76,52 @@ async def run_flashscore_analysis(playwright: Playwright):
 
         last_processed_info = get_last_processed_info()
         
-        # Fix #5: If resume date is already in the future, skip forward scanning
-        resume_date = last_processed_info.get('date_obj')
+        # Bypass resume if refresh=True
+        resume_date = last_processed_info.get('date_obj') if not refresh else None
+        
         if resume_date and resume_date > (dt.now(NIGERIA_TZ) + timedelta(days=7)).date():
             print(f"  [Chapter 1A] Resume date {resume_date} is beyond 7-day window. All caught up — skipping forward scan.")
         else:
-            print(f"  [Chapter 1A] Starting analysis loop for 7 days...")
-            for day_offset in range(7):
-                target_date = dt.now(NIGERIA_TZ) + timedelta(days=day_offset)
-                target_full = target_date.strftime("%d.%m.%Y")
-            
-                if day_offset > 0:
-                    match_row_sel = await SelectorManager.get_selector_auto(page, "fs_home_page", "match_rows")
-                    if not match_row_sel or not await click_next_day(page, match_row_sel):
-                        break
-                    await asyncio.sleep(2)
+            if target_dates:
+                 print(f"  [Chapter 1A] Starting analysis loop for specific dates: {target_dates}")
+                 processing_dates = [(dt.strptime(d, "%d.%m.%Y"), d) for d in target_dates]
+            else:
+                 print(f"  [Chapter 1A] Starting analysis loop for 7 days (Refresh: {refresh})...")
+                 processing_dates = [(dt.now(NIGERIA_TZ) + timedelta(days=i), (dt.now(NIGERIA_TZ) + timedelta(days=i)).strftime("%d.%m.%Y")) for i in range(7)]
 
-                if resume_date and target_date.date() < resume_date:
+            current_day_offset = 0
+            for target_dt, target_full in processing_dates:
+                # Calculate necessary clicks to reach the date if we are in sequential scan
+                # If we have specific target_dates, we might need to jump.
+                # Simplification: we only support jumps if they are in the near future/past relative to today.
+                today = dt.now(NIGERIA_TZ).date()
+                target_date_obj = target_dt.date()
+                diff_days = (target_date_obj - today).days
+
+                # Navigation logic (compensate for day_offset if sequential, or diff_days if specific)
+                if target_dates:
+                    # For specific dates, we reset to home and click diff_days times
+                    await page.goto("https://www.flashscore.com/football/", wait_until="domcontentloaded", timeout=NAVIGATION_TIMEOUT)
+                    await asyncio.sleep(2)
+                    await fs_universal_popup_dismissal(page, "fs_home_page")
+                    if diff_days > 0:
+                        for _ in range(diff_days):
+                            match_row_sel = await SelectorManager.get_selector_auto(page, "fs_home_page", "match_rows")
+                            if not match_row_sel or not await click_next_day(page, match_row_sel): break
+                            await asyncio.sleep(1)
+                    elif diff_days < 0:
+                         # click_prev_day not implemented yet, but we could add it if needed.
+                         # For now, let's assume future/today dates.
+                         pass
+                else:
+                    if current_day_offset > 0:
+                        match_row_sel = await SelectorManager.get_selector_auto(page, "fs_home_page", "match_rows")
+                        if not match_row_sel or not await click_next_day(page, match_row_sel):
+                            break
+                        await asyncio.sleep(2)
+                    current_day_offset += 1
+
+                if resume_date and target_dt.date() < resume_date:
                     continue
 
                 print(f"\n--- ANALYZING DATE: {target_full} ---")
@@ -122,7 +151,7 @@ async def run_flashscore_analysis(playwright: Playwright):
                 from Data.Access.db_helpers import PREDICTIONS_CSV
                 import csv
                 existing_ids = set()
-                if os.path.exists(PREDICTIONS_CSV):
+                if os.path.exists(PREDICTIONS_CSV) and not refresh:
                     try:
                         with open(PREDICTIONS_CSV, 'r', encoding='utf-8') as f:
                             reader = csv.DictReader(f)
@@ -259,7 +288,7 @@ async def run_flashscore_analysis(playwright: Playwright):
 
 
 @AIGOSuite.aigo_retry(max_retries=2, delay=5.0)
-async def run_flashscore_schedule_only(playwright: Playwright, refresh: bool = False, extract_all: bool = False):
+async def run_flashscore_schedule_only(playwright: Playwright, refresh: bool = False, extract_all: bool = False, target_dates: list = None):
     """
     Schedule-only mode: extract match schedules, save to DB + sync.
     No predictions, no match-page analysis.
@@ -307,28 +336,49 @@ async def run_flashscore_schedule_only(playwright: Playwright, refresh: bool = F
 
         await fs_universal_popup_dismissal(page, "fs_home_page")
 
-        # Resume logic (skipped if refresh=True)
+        # Resume logic (skipped if refresh=True or extract_all=True)
         resume_date = None
-        if not refresh:
+        if not refresh and not extract_all:
             last_processed_info = get_last_processed_info()
             resume_date = last_processed_info.get('date_obj')
             if resume_date and resume_date > (dt.now(NIGERIA_TZ) + timedelta(days=7)).date():
                 print(f"  [Schedule] Resume date {resume_date} is beyond 7-day window. All caught up.")
                 return
         else:
-            print("  [Schedule] Refresh mode — starting from today.")
+            msg = "Refresh mode" if refresh else "Full Extraction mode"
+            print(f"  [Schedule] {msg} — bypassing resume logic.")
 
-        for day_offset in range(days):
-            target_date = dt.now(NIGERIA_TZ) + timedelta(days=day_offset)
-            target_full = target_date.strftime("%d.%m.%Y")
+        if target_dates:
+            print(f"  [Schedule] Processing specific dates: {target_dates}")
+            processing_dates = [(dt.strptime(d, "%d.%m.%Y"), d) for d in target_dates]
+        else:
+            processing_dates = [(dt.now(NIGERIA_TZ) + timedelta(days=i), (dt.now(NIGERIA_TZ) + timedelta(days=i)).strftime("%d.%m.%Y")) for i in range(days)]
 
-            if day_offset > 0:
-                match_row_sel = await SelectorManager.get_selector_auto(page, "fs_home_page", "match_rows")
-                if not match_row_sel or not await click_next_day(page, match_row_sel):
-                    break
+        current_day_offset = 0
+        for target_dt, target_full in processing_dates:
+            today = dt.now(NIGERIA_TZ).date()
+            target_date_obj = target_dt.date()
+            diff_days = (target_date_obj - today).days
+
+            if target_dates:
+                # Reset and jump for specific dates
+                await page.goto("https://www.flashscore.com/football/", wait_until="domcontentloaded", timeout=NAVIGATION_TIMEOUT)
                 await asyncio.sleep(2)
+                await fs_universal_popup_dismissal(page, "fs_home_page")
+                if diff_days > 0:
+                    for _ in range(diff_days):
+                        match_row_sel = await SelectorManager.get_selector_auto(page, "fs_home_page", "match_rows")
+                        if not match_row_sel or not await click_next_day(page, match_row_sel): break
+                        await asyncio.sleep(1)
+            else:
+                if current_day_offset > 0:
+                    match_row_sel = await SelectorManager.get_selector_auto(page, "fs_home_page", "match_rows")
+                    if not match_row_sel or not await click_next_day(page, match_row_sel):
+                        break
+                    await asyncio.sleep(2)
+                current_day_offset += 1
 
-            if resume_date and target_date.date() < resume_date:
+            if resume_date and target_dt.date() < resume_date:
                 continue
 
             print(f"\n--- EXTRACTING SCHEDULE: {target_full} ---")

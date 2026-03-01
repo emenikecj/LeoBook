@@ -197,6 +197,8 @@ Examples:
                        help='Target a specific engine by ID (use with --rule-engine --backtest)')
     parser.add_argument('--from-date', type=str, metavar='DATE',
                        help='Start date for backtest YYYY-MM-DD (use with --rule-engine --backtest)')
+    parser.add_argument('--date', type=str, nargs='+', metavar='DATE',
+                       help='Specific date(s) to process (DD.MM.YYYY)')
 
     # --- Validation ---
     args = parser.parse_args()

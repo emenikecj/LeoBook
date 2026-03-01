@@ -158,12 +158,15 @@ python Leo.py --recommend   # Generate recommendations
 python Leo.py --streamer    # Run live score streamer standalone
 python Leo.py --schedule    # Extract schedules
 python Leo.py --schedule --all  # Full deep schedule extraction
+python Leo.py --schedule --all --date 01.03.2026  # Redo/extract specific day
+python Leo.py --chapter 1 --page 1 --refresh     # Re-analyze today (bypass resume)
 python Leo.py --enrich      # Manual metadata enrichment
 python Leo.py --enrich-leagues  # Parallel league enrichment + search dict
 python Leo.py --search-dict # Rebuild team/league search dictionary
 python Leo.py --backtest    # Single-pass backtest
 python Leo.py --rule-engine --list  # List registered rule engines
 python Leo.py --rule-engine --set-default <name>  # Set default engine
+python Leo.py --rule-engine --backtest --from-date 2025-08-01 # Backtest with date
 python Leo.py --offline-repredict  # Offline reprediction mode
 python Leo.py --help        # See all commands
 ```

@@ -25,6 +25,7 @@ class MatchModel {
   final String? homeCrestUrl;
   final String? awayCrestUrl;
   final String? regionFlagUrl;
+  final String? leagueCrestUrl;
   final String? marketReliability;
   final double? xgHome;
   final double? xgAway;
@@ -58,6 +59,7 @@ class MatchModel {
     this.homeCrestUrl,
     this.awayCrestUrl,
     this.regionFlagUrl,
+    this.leagueCrestUrl,
     this.marketReliability,
     this.xgHome,
     this.xgAway,
@@ -420,6 +422,7 @@ class MatchModel {
       homeCrestUrl: row['home_crest_url']?.toString(),
       awayCrestUrl: row['away_crest_url']?.toString(),
       regionFlagUrl: row['region_flag_url']?.toString(),
+      leagueCrestUrl: row['league_crest_url']?.toString(),
       xgHome: xgHome,
       xgAway: xgAway,
       reasonTags: reasonTags,
@@ -452,6 +455,7 @@ class MatchModel {
       homeCrestUrl: other.homeCrestUrl ?? homeCrestUrl,
       awayCrestUrl: other.awayCrestUrl ?? awayCrestUrl,
       regionFlagUrl: other.regionFlagUrl ?? regionFlagUrl,
+      leagueCrestUrl: other.leagueCrestUrl ?? leagueCrestUrl,
       marketReliability: marketReliability, // Preserve existing
       xgHome: xgHome, // Preserve existing
       xgAway: xgAway, // Preserve existing
