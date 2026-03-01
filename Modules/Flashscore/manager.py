@@ -319,6 +319,9 @@ async def run_flashscore_schedule_only(playwright: Playwright, refresh: bool = F
         )
         page = await context.new_page()
 
+        # Concurrency strictly from .env MAX_CONCURRENCY
+        from Core.Utils.constants import MAX_CONCURRENCY
+
         # Navigation
         print("  [Navigation] Going to Flashscore...")
         for attempt in range(5):
@@ -412,73 +415,30 @@ async def run_flashscore_schedule_only(playwright: Playwright, refresh: bool = F
                         # If parsing fails, skip deep extraction for safety
                         continue
 
-                print(f"\n  [Deep] Eligible for H2H + Standings: {len(deep_eligible)}/{len(matches_data)} matches (Buffer: {buffer_h}h)")
+                print(f"\n  [Deep] Eligible for Analysis & Prediction: {len(deep_eligible)}/{len(matches_data)} matches (Buffer: {buffer_h}h)")
 
-                from Core.Browser.Extractors.h2h_extractor import activate_h2h_tab, extract_h2h_data, save_extracted_h2h_to_schedules
-                from Core.Browser.Extractors.standings_extractor import activate_standings_tab, extract_standings_data
-                from Data.Access.db_helpers import save_standings
-                from .fs_utils import retry_extraction
-
-                for i, match in enumerate(deep_eligible):
-                    label = f"{match.get('home_team', '?')} vs {match.get('away_team', '?')}"
-                    try:
-                        print(f"    [{i+1}/{len(deep_eligible)}] {label}")
-                        await page.goto(match['match_link'], wait_until="domcontentloaded", timeout=NAVIGATION_TIMEOUT)
-                        await asyncio.sleep(2.0)
-                        await fs_universal_popup_dismissal(page, "fs_match_page")
-
-                        # --- JIT Metadata Enrichment (team crests, URLs, league IDs) ---
-                        from .enrich_match_metadata import extract_match_page_metadata
-                        await extract_match_page_metadata(page, match)
-
-                        # --- H2H ---
-                        if await activate_h2h_tab(page):
-                            try:
-                                h2h = await retry_extraction(
-                                    extract_h2h_data, page,
-                                    match.get('home_team', ''), match.get('away_team', ''),
-                                    "fs_h2h_tab"
-                                )
-                                h2h_total = sum(len(h2h.get(k, [])) for k in ('home_last_10_matches', 'away_last_10_matches', 'head_to_head'))
-                                print(f"      [H2H] {h2h_total} records")
-                                await save_extracted_h2h_to_schedules(h2h)
-                            except Exception as e:
-                                print(f"      [H2H Error] {e}")
-                        
-                        # --- Standings ---
-                        if await activate_standings_tab(page):
-                            try:
-                                s_result = await retry_extraction(extract_standings_data, page)
-                                s_data = s_result.get("standings", [])
-                                s_league = s_result.get("region_league", "Unknown")
-                                if s_league == "Unknown":
-                                    s_league = match.get('region_league', 'Unknown')
-                                if s_data and s_league != "Unknown":
-                                    s_url = s_result.get("league_url", "")
-                                    for row in s_data:
-                                        row['url'] = s_url
-                                    save_standings(s_data, s_league)
-                                    print(f"      [Standings] {len(s_data)} rows for {s_league}")
-                            except Exception as e:
-                                print(f"      [Standings Error] {e}")
-
-                        total_deep += 1
-
-                        # Incremental Sync every 5 deep matches to prevent data loss on long runs
-                        if total_deep > 0 and total_deep % 5 == 0:
-                            print(f"\n    [Cloud Sync] Performing incremental deep sync ({total_deep} matches complete)...")
-                            from Data.Access.sync_manager import run_full_sync
-                            await run_full_sync(session_name=f"Deep Extraction Sample {total_deep}")
-                            print(f"    [Cloud Sync] Progress persisted to Supabase.\n")
-
-                    except Exception as e:
-                        print(f"    [Skip] {label}: {e}")
-                        continue
+                # --- Batch Processing (v3.8: Unified extraction + prediction) ---
+                async def _run_deep_batch_processing():
+                    nonlocal total_deep
+                    processor = BatchProcessor(max_concurrent=MAX_CONCURRENCY)
                     
-                    # Navigate back to home page for next day (if needed)
-                    # No — we stay on match pages, the day loop re-navigates
-
-                print(f"  [Deep] Completed: {total_deep} matches enriched.")
+                    # Process in chunks of 5 for more frequent syncs
+                    chunk_size = 5
+                    for i in range(0, len(deep_eligible), chunk_size):
+                        chunk = deep_eligible[i:i + chunk_size]
+                        print(f"    [Batch] Analyzing chunk {i//chunk_size + 1} ({len(chunk)} matches)...")
+                        
+                        chunk_results = await processor.run_batch(chunk, process_match_task, browser=browser)
+                        successful_in_chunk = sum(1 for r in chunk_results if r)
+                        total_deep += successful_in_chunk
+                        
+                        if successful_in_chunk > 0:
+                            print(f"\n    [Cloud Sync] {total_deep} matches processed. Triggering sync...")
+                            from Data.Access.sync_manager import run_full_sync
+                            await run_full_sync(session_name=f"Schedule Deep Logic {total_deep}")
+                
+                await _run_deep_batch_processing()
+                print(f"  [Deep] Completed: {total_deep} matches analyzed and predicted for {target_full}.")
 
                 # Return to Flashscore home for the next day's navigation
                 if day_offset < days - 1:
