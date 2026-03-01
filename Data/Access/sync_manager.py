@@ -116,8 +116,9 @@ class SyncManager:
         def normalize_ts(ts):
             if not ts or ts in ('None', 'nan', ''): return '1970-01-01T00:00:00'
             try:
-                # Ensure ISO format comparison works as string comparison
-                return pd.to_datetime(ts).isoformat()
+                # Truncate to second precision (remove microseconds + tz offset)
+                # for fair comparison between local CSV and Supabase timestamps
+                return pd.to_datetime(ts, utc=True).strftime('%Y-%m-%dT%H:%M:%S')
             except:
                 return '1970-01-01T00:00:00'
 

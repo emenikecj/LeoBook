@@ -408,46 +408,38 @@ async def get_final_score(page):
         if "finished" not in status_text.lower() and "aet" not in status_text.lower() and "pen" not in status_text.lower() and "fro" not in status_text.lower():
             return "NOT_FINISHED"
 
-        # Extract Score (With AIGO-style fallback)
+        # Extract Score — Tiered fallback (fastest selectors first)
+        
+        # Tier 1: data-testid + class selectors (most reliable on current DOM, 2s timeout)
+        try:
+            home_score_t = await page.locator('.detailScore__home, [data-testid="wcl-matchRowScore"][data-side="1"]').first.inner_text(timeout=2000)
+            away_score_t = await page.locator('.detailScore__away, [data-testid="wcl-matchRowScore"][data-side="2"]').first.inner_text(timeout=2000)
+            tier1_score = f"{home_score_t.strip()}-{away_score_t.strip()}"
+            if tier1_score.replace('-', '').isdigit():
+                return tier1_score
+        except Exception:
+            pass  # Fall through to Tier 2
+
+        # Tier 2: Legacy CSS selectors from SelectorManager (3s timeout)
         home_score_sel = SelectorManager.get_selector("fs_match_page", "header_score_home") or "div.detailScore__wrapper > span:nth-child(1)"
         away_score_sel = SelectorManager.get_selector("fs_match_page", "header_score_away") or "div.detailScore__wrapper > span:nth-child(3)"
-
         try:
-            # Use shorter timeout for score extraction to prevent hanging
-            SCORE_TIMEOUT = 5000  # 5 seconds
-            home_score = await page.locator(home_score_sel).first.inner_text(timeout=SCORE_TIMEOUT)
-            away_score = await page.locator(away_score_sel).first.inner_text(timeout=SCORE_TIMEOUT)
+            home_score = await page.locator(home_score_sel).first.inner_text(timeout=3000)
+            away_score = await page.locator(away_score_sel).first.inner_text(timeout=3000)
             final_score = f"{home_score.strip() if home_score else ''}-{away_score.strip() if away_score else ''}"
-            
             if '-' in final_score and final_score.replace('-', '').isdigit():
                 return final_score
-            else:
-                raise ValueError("Malformed score")
-                
         except Exception as sel_fail:
-            print(f"      [Selector Failure] {sel_fail}. Attempting AIGO healing fallback...")
-            # LOG FAILURE FOR HEALING
+            # Log failure for AIGO healing
             failed_key = "header_score_away" if "nth-child(3)" in str(sel_fail) or "away" in str(sel_fail).lower() else "header_score_home"
             log_selector_failure("fs_match_page", failed_key, str(sel_fail))
-            
-            # Tier 1.5: Universal data-testid selector (works on ALL Flashscore layouts)
-            try:
-                home_score_t = await page.locator('[data-testid="wcl-matchRowScore"][data-side="1"]').first.inner_text(timeout=3000)
-                away_score_t = await page.locator('[data-testid="wcl-matchRowScore"][data-side="2"]').first.inner_text(timeout=3000)
-                testid_score = f"{home_score_t.strip()}-{away_score_t.strip()}"
-                if testid_score.replace('-', '').isdigit():
-                    print(f"      [AIGO HEALED] Extracted score via data-testid: {testid_score}")
-                    return testid_score
-            except Exception:
-                pass  # Fall through to Tier 2
 
-            # Tier 2 Heuristic: Search for team containers and relative score spans
+        # Tier 3: JS heuristic — broad DOM scan
+        try:
             heuristic_score = await page.evaluate("""() => {
-                // Try detailScore spans first
                 const home = document.querySelector('.detailScore__home, [data-testid="wcl-matchRowScore"][data-side="1"]');
                 const away = document.querySelector('.detailScore__away, [data-testid="wcl-matchRowScore"][data-side="2"]');
                 if (home && away) return home.innerText.trim() + '-' + away.innerText.trim();
-                // Broad pattern scan
                 const spans = Array.from(document.querySelectorAll('span, div'));
                 const scorePattern = /^(\\d+)\\s*-\\s*(\\d+)$/;
                 for (const s of spans) {
@@ -455,10 +447,11 @@ async def get_final_score(page):
                 }
                 return null;
             }""")
-            
             if heuristic_score:
                 print(f"      [AIGO HEALED] Extracted score via heuristics: {heuristic_score}")
                 return heuristic_score
+        except Exception:
+            pass
                 
         return "Error"
 
@@ -525,17 +518,39 @@ async def run_review_process(p: Optional[Playwright] = None):
         
         # Fallback to Browser if requested and needed
         if needs_browser and p:
-            print(f"   [Info] Triggering Browser Fallback for {len(needs_browser)} unresolved reviews...")
-            browser = await p.chromium.launch(headless=True)
-            context = await browser.new_context()
-            page = await context.new_page()
-            
+            # Pre-filter: only fallback-visit matches whose kick-off is ≥2h in the past
+            from datetime import datetime as _dt, timedelta as _td
+            now = _dt.now()
+            eligible = []
             for m in needs_browser:
-                result = await process_review_task_browser(page, m)
-                if result:
-                    processed_matches.append(result)
+                try:
+                    d_str = m.get('date', '')
+                    t_str = m.get('match_time', '') or m.get('time', '')
+                    if '.' in d_str:
+                        parts = d_str.split('.')
+                        d_str = f"{parts[2]}-{parts[1]}-{parts[0]}"
+                    ko = _dt.strptime(f"{d_str} {t_str}", "%Y-%m-%d %H:%M")
+                    if now - ko >= _td(hours=2):
+                        eligible.append(m)
+                except Exception:
+                    eligible.append(m)  # Can't parse → include to be safe
             
-            await browser.close()
+            skipped = len(needs_browser) - len(eligible)
+            if skipped:
+                print(f"   [Info] Skipped {skipped} future/in-progress matches from browser fallback.")
+            
+            if eligible:
+                print(f"   [Info] Triggering Browser Fallback for {len(eligible)} unresolved reviews...")
+                browser = await p.chromium.launch(headless=True)
+                context = await browser.new_context()
+                page = await context.new_page()
+                
+                for m in eligible:
+                    result = await process_review_task_browser(page, m)
+                    if result:
+                        processed_matches.append(result)
+                
+                await browser.close()
         
         if processed_matches:
             print(f"\n   [SUCCESS] Reviewed {len(processed_matches)} match outcomes.")

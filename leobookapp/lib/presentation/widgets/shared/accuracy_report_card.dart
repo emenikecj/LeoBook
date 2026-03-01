@@ -183,13 +183,17 @@ class _AccuracyReportCardState extends State<AccuracyReportCard> {
       byLeague.putIfAbsent(shortName, () => []).add(m);
     }
 
-    // Sort by accuracy descending
+    // Sort: match count DESC → accuracy DESC (highest volume + accuracy first)
     final sorted = byLeague.entries.toList()
       ..sort((a, b) {
         final accA = a.value.where((m) => m.isPredictionAccurate).length /
             (a.value.isEmpty ? 1 : a.value.length);
         final accB = b.value.where((m) => m.isPredictionAccurate).length /
             (b.value.isEmpty ? 1 : b.value.length);
+        // Primary: match count descending
+        final countCmp = b.value.length.compareTo(a.value.length);
+        if (countCmp != 0) return countCmp;
+        // Secondary: accuracy descending
         return accB.compareTo(accA);
       });
 

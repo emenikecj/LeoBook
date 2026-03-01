@@ -111,12 +111,12 @@ async def run_flashscore_analysis(playwright: Playwright):
                 
                 # --- Cleaning & Sorting ---
                 for m in matches_data:
-                    original_time_str = m.get('time')
+                    original_time_str = m.get('match_time')
                     if original_time_str:
                         clean_time_str = original_time_str.split('\n')[0].strip()
-                        m['time'] = clean_time_str if clean_time_str and clean_time_str != 'N/A' else 'N/A'
+                        m['match_time'] = clean_time_str if clean_time_str and clean_time_str != 'N/A' else 'N/A'
 
-                matches_data.sort(key=lambda x: x.get('time', '23:59'))
+                matches_data.sort(key=lambda x: x.get('match_time', '23:59'))
 
                 # --- Load existing predictions for robust resume ---
                 from Data.Access.db_helpers import PREDICTIONS_CSV
@@ -190,8 +190,11 @@ async def run_flashscore_analysis(playwright: Playwright):
                                 if tid and tname and (not st or st == '[]' or not abbr or abbr == '[]'):
                                     unenriched_teams.append({'team_id': tid, 'team_name': tname})
                     if unenriched_teams:
-                        print(f"\n    [SearchDict Gate] Enriching {len(unenriched_teams)} unenriched teams before predictions...")
-                        await enrich_batch_teams_search_dict(unenriched_teams)
+                        # Cap to prevent gate from blocking on thousands of teams.
+                        # Per-match enrichment handles the rest incrementally.
+                        gate_cap = min(len(unenriched_teams), 100)
+                        print(f"\n    [SearchDict Gate] Enriching {gate_cap}/{len(unenriched_teams)} unenriched teams before predictions...")
+                        await enrich_batch_teams_search_dict(unenriched_teams[:gate_cap])
                         print(f"    [SearchDict Gate] ✓ Team enrichment complete.")
                     else:
                         print(f"    [SearchDict Gate] All teams already enriched.")

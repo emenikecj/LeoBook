@@ -157,14 +157,14 @@ class MatchModel {
   bool get isFinished {
     final s = status.toLowerCase();
     // Status-only check — recognizes regular finish, AET, and penalties
+    // IMPORTANT: avoid substring traps — 'pen' matches 'pending'/'suspended'
     if (s.contains('finish') ||
-        s.contains('ft') ||
-        s.contains('finished') ||
+        s == 'ft' ||
         s.contains('full time') ||
         s.contains('aet') ||
-        s.contains('pen') ||
-        s.contains('after pen') ||
         s.contains('after et') ||
+        s == 'penalties' ||
+        s.contains('after pen') ||
         s.contains('fro')) {
       return true;
     }
@@ -208,14 +208,15 @@ class MatchModel {
   String get displayStatus {
     final s = status.toLowerCase();
     if (isLive) return "LIVE";
-    if (s.contains('after pen') || s.contains('pen')) return "FT (Pen)";
-    if (s.contains('after et') || s.contains('aet')) return "FT (AET)";
-    if (s.contains('finish') || s.contains('ft') || s.contains('finished')) {
-      return "FINISHED";
-    }
     if (isPostponed) return "POSTPONED";
     if (isCancelled) return "CANCELLED";
     if (isFrozen) return "FRO";
+    // Check specific finished variants BEFORE generic 'finished'
+    if (s.contains('after pen') || s == 'penalties') return "FT (Pen)";
+    if (s.contains('after et') || s.contains('aet')) return "FT (AET)";
+    if (s.contains('finish') || s == 'ft' || s.contains('full time')) {
+      return "FINISHED";
+    }
     if (s.contains('sched') || s.contains('pending') || s.isEmpty) return "";
     return status.toUpperCase();
   }
@@ -285,6 +286,18 @@ class MatchModel {
       final team = p.replaceAll(' or draw', '').trim();
       if (teamIsHome(team)) return hs >= as_;
       if (teamIsAway(team)) return as_ >= hs;
+    }
+
+    // "Home or Away" with team names (e.g., "Arsenal or Liverpool")
+    final orRe = RegExp(r'^(.+?)\s+or\s+(.+?)$');
+    final orMatch = orRe.firstMatch(p);
+    if (orMatch != null && !p.contains('draw')) {
+      final t1 = orMatch.group(1)!.trim();
+      final t2 = orMatch.group(2)!.trim();
+      if ((teamIsHome(t1) && teamIsAway(t2)) ||
+          (teamIsAway(t1) && teamIsHome(t2))) {
+        return hs != as_;
+      }
     }
 
     // DNB

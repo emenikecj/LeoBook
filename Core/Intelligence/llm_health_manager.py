@@ -76,6 +76,8 @@ class LLMHealthManager:
             cls._instance._initialized = False
             # Per-model exhausted keys (model_name -> set of exhausted keys)
             cls._instance._model_exhausted_keys = {}
+            # Permanently dead keys (403) — persists across ping cycles
+            cls._instance._dead_keys = set()
         return cls._instance
 
     # ── Public API ──────────────────────────────────────────────
@@ -90,15 +92,21 @@ class LLMHealthManager:
 
     def get_ordered_providers(self) -> list:
         """Returns provider names ordered: active first, inactive last."""
+        grok_configured = bool(os.getenv("GROK_API_KEY", "").strip())
+
         if not self._initialized:
-            return ["Grok", "Gemini"]
+            providers = ["Gemini"]
+            if grok_configured:
+                providers.insert(0, "Grok")
+            return providers
 
         active = []
         inactive = []
-        if self._grok_active:
-            active.append("Grok")
-        else:
-            inactive.append("Grok")
+        if grok_configured:
+            if self._grok_active:
+                active.append("Grok")
+            else:
+                inactive.append("Grok")
         if self._gemini_active:
             active.append("Gemini")
         else:
@@ -171,6 +179,7 @@ class LLMHealthManager:
 
     def on_gemini_403(self, failed_key: str):
         """Called when a Gemini key hits 403. Permanently remove from ALL pools."""
+        self._dead_keys.add(failed_key)
         if failed_key in self._gemini_active:
             self._gemini_active.remove(failed_key)
         if failed_key in self._gemini_keys:
@@ -188,18 +197,21 @@ class LLMHealthManager:
         """Ping Grok + sample Gemini keys."""
         print("  [LLM Health] Pinging providers...")
 
-        # Parse Gemini keys
+        # Parse Gemini keys — exclude permanently dead keys (403)
         raw = os.getenv("GEMINI_API_KEY", "")
-        self._gemini_keys = [k.strip() for k in raw.split(",") if k.strip()]
+        self._gemini_keys = [k.strip() for k in raw.split(",") if k.strip() and k.strip() not in self._dead_keys]
 
-        # Reset per-model exhaustion on re-ping
+        # Reset per-model exhaustion on re-ping (rate limits reset)
         self._model_exhausted_keys.clear()
 
-        # Ping Grok
-        grok_key = os.getenv("GROK_API_KEY", "")
-        self._grok_active = await self._ping_key("Grok", self.GROK_API_URL, self.GROK_MODEL, grok_key) if grok_key else False
-        tag = "✓ Active" if self._grok_active else "✗ Inactive"
-        print(f"  [LLM Health] Grok: {tag}")
+        # Ping Grok (only if key is configured)
+        grok_key = os.getenv("GROK_API_KEY", "").strip()
+        if grok_key:
+            self._grok_active = await self._ping_key("Grok", self.GROK_API_URL, self.GROK_MODEL, grok_key)
+            tag = "✓ Active" if self._grok_active else "✗ Inactive"
+            print(f"  [LLM Health] Grok: {tag}")
+        else:
+            self._grok_active = False
 
         # Ping Gemini keys (sample 3 to avoid wasting quota)
         if self._gemini_keys:

@@ -93,6 +93,21 @@ def _touch_heartbeat():
         pass
 
 
+def _parse_match_start(date_val, time_val):
+    """Parse DD.MM.YYYY or YYYY-MM-DD date + HH:MM time into a datetime."""
+    import re
+    if not date_val or not time_val:
+        return None
+    # Convert DD.MM.YYYY → YYYY-MM-DD
+    m = re.match(r'^(\d{2})\.(\d{2})\.(\d{4})$', date_val)
+    if m:
+        date_val = f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
+    try:
+        return dt.fromisoformat(f"{date_val}T{time_val}:00")
+    except Exception:
+        return None
+
+
 def _propagate_status_updates(live_matches, resolved_matches, force_finished_ids=None):
     """
     Propagate live scores and resolved results into schedules.csv and predictions.csv.
@@ -111,6 +126,7 @@ def _propagate_status_updates(live_matches, resolved_matches, force_finished_ids
     sched_headers = files_and_headers.get(SCHEDULES_CSV, [])
     sched_rows = _read_csv(SCHEDULES_CSV)
     sched_changed = False
+    sched_dirty_ids = set()  # Track which fixture_ids actually changed
     for row in sched_rows:
         fid = row.get('fixture_id', '')
 
@@ -119,13 +135,16 @@ def _propagate_status_updates(live_matches, resolved_matches, force_finished_ids
             if row.get('status', '').lower() != 'live':
                 row['status'] = 'live'
                 sched_changed = True
-            if lm.get('home_score'):
+                sched_dirty_ids.add(fid)
+            if lm.get('home_score') and str(lm['home_score']) != str(row.get('home_score')):
                 row['home_score'] = lm['home_score']
                 row['away_score'] = lm['away_score']
                 sched_changed = True
-            if lm.get('minute'):
+                sched_dirty_ids.add(fid)
+            if lm.get('minute') and str(lm['minute']) != str(row.get('live_minute')):
                 row['live_minute'] = lm['minute']
                 sched_changed = True
+                sched_dirty_ids.add(fid)
 
         elif fid in resolved_ids:
             rm = resolved_map[fid]
@@ -141,29 +160,26 @@ def _propagate_status_updates(live_matches, resolved_matches, force_finished_ids
                 if rm.get('stage_detail'):
                     row['stage_detail'] = rm['stage_detail']
                 sched_changed = True
+                sched_dirty_ids.add(fid)
 
 
         # Safety Check: Enforce 2.5hr Rule (Gold Rule)
         # Any match marked 'live' that is > 2.5hr past its start time must be 'finished'
         if row.get('status', '').lower() == 'live':
-            try:
-                date_val = row.get('date', '2000-01-01')
-                time_val = row.get('match_time', '00:00')
-                match_start = dt.fromisoformat(f"{date_val}T{time_val}:00")
-                if now > match_start + timedelta(minutes=150):
-                    row['status'] = 'finished'
-                    sched_changed = True
-                    # If it was in live_ids, remove it so it's treated as resolved
-                    if fid in live_ids:
-                        live_ids.remove(fid)
-                        live_matches = [m for m in live_matches if m['fixture_id'] != fid]
-            except Exception:
-                pass
+            match_start = _parse_match_start(row.get('date', ''), row.get('match_time', ''))
+            if match_start and now > match_start + timedelta(minutes=150):
+                row['status'] = 'finished'
+                sched_changed = True
+                sched_dirty_ids.add(fid)
+                # If it was in live_ids, remove it so it's treated as resolved
+                if fid in live_ids:
+                    live_ids.remove(fid)
+                    live_matches = [m for m in live_matches if m['fixture_id'] != fid]
 
     sched_updates = []
     if sched_changed:
         _write_csv(SCHEDULES_CSV, sched_rows, sched_headers)
-        sched_updates = [r for r in sched_rows if r.get('fixture_id') in (live_ids | resolved_ids)]
+        sched_updates = [r for r in sched_rows if r.get('fixture_id') in sched_dirty_ids]
 
     pred_headers = files_and_headers.get(PREDICTIONS_CSV, [])
     pred_rows = _read_csv(PREDICTIONS_CSV)
@@ -232,26 +248,21 @@ def _propagate_status_updates(live_matches, resolved_matches, force_finished_ids
 
         # Safety Check: Enforce 2.5hr Rule (Gold Rule)
         if cur_status == 'live':
-            try:
-                date_val = row.get('date', '2000-01-01')
-                time_val = row.get('match_time', '00:00')
-                match_start = dt.fromisoformat(f"{date_val}T{time_val}:00")
-                if now > match_start + timedelta(minutes=150):
-                    row['status'] = 'finished'
-                    oc = evaluate_market_outcome(
-                        row.get('prediction', ''),
-                        row.get('home_score', ''),
-                        row.get('away_score', ''),
-                        row.get('home_team', ''),
-                        row.get('away_team', '')
-                    )
-                    if oc:
-                        row['outcome_correct'] = oc
-                    pred_changed = True
-                    if fid not in pred_updates:
-                        pred_updates.append(row)
-            except Exception:
-                pass
+            match_start = _parse_match_start(row.get('date', ''), row.get('match_time', ''))
+            if match_start and now > match_start + timedelta(minutes=150):
+                row['status'] = 'finished'
+                oc = evaluate_market_outcome(
+                    row.get('prediction', ''),
+                    row.get('home_score', ''),
+                    row.get('away_score', ''),
+                    row.get('home_team', ''),
+                    row.get('away_team', '')
+                )
+                if oc:
+                    row['outcome_correct'] = oc
+                pred_changed = True
+                if fid not in pred_updates:
+                    pred_updates.append(row)
     if pred_changed:
         _write_csv(PREDICTIONS_CSV, pred_rows, pred_headers)
         
