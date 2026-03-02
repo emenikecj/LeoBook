@@ -87,6 +87,7 @@ def setup_terminal_logging(args):
         elif args.assets: prefix = "leo_assets_session"
         elif args.logos: prefix = "leo_logos_session"
         elif args.scrape_leagues: prefix = "leo_scrape_leagues_session"
+        elif args.upgrade_crests: prefix = "leo_upgrade_crests_session"
 
     TERMINAL_LOG_DIR = LOG_DIR / "Terminal"
     TERMINAL_LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -205,6 +206,8 @@ Examples:
                        help='Scrape Flashscore league pages -> SQLite (New Pipeline)')
     parser.add_argument('--reset-leagues', action='store_true',
                        help='Reset all leagues to unprocessed (use with --scrape-leagues)')
+    parser.add_argument('--upgrade-crests', action='store_true',
+                       help='Upgrade team crests to high-quality logos from Modules/Assets/logos')
 
     # --- Rule Engine Management ---
     parser.add_argument('--rule-engine', action='store_true',

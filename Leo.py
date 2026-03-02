@@ -70,6 +70,7 @@ from Scripts.recommend_bets import get_recommendations
 from Modules.Assets.asset_manager import sync_team_assets, sync_league_assets, sync_region_flags
 from Scripts.football_logos import download_all_logos
 from Scripts.scrape_leagues import main as run_league_scraper
+from Scripts.upgrade_crests import upgrade_all_crests
 
 # Configuration
 CYCLE_WAIT_HOURS = int(os.getenv('LEO_CYCLE_WAIT_HOURS', 6))
@@ -394,6 +395,11 @@ async def run_utility(args):
         reset = getattr(args, 'reset_leagues', False) or getattr(args, 'reset', False)
         await run_league_scraper(limit=limit, reset=reset)
 
+    elif args.upgrade_crests:
+        print("\n  --- LEO: Upgrade Team Crests to HQ Logos ---")
+        limit = getattr(args, 'limit', None)
+        upgrade_all_crests(limit=limit)
+
 
 # ============================================================
 # DISPATCH — Routes CLI args to the appropriate functions
@@ -567,7 +573,7 @@ if __name__ == "__main__":
                       args.search_dict, args.review, args.backtest,
                       args.rule_engine, args.streamer, args.schedule,
                       args.enrich, args.enrich_leagues, args.assets,
-                      args.logos])
+                      args.logos, args.scrape_leagues, args.upgrade_crests])
     is_granular = args.prologue or args.chapter is not None
 
     try:
