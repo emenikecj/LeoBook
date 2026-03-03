@@ -51,7 +51,7 @@ TEAM_CRESTS_DIR = os.path.join(CRESTS_DIR, "teams")
 
 # ── Config ───────────────────────────────────────────────────────────────────
 MAX_CONCURRENCY = 3          # Parallel browser tabs
-MAX_SHOW_MORE = 50           # Exhaustive "Show more" clicks
+MAX_SHOW_MORE = 500           # Exhaustive "Show more" clicks
 DOWNLOAD_WORKERS = 8         # ThreadPool workers for image downloads
 REQUEST_TIMEOUT = 15         # Seconds for image download timeout
 
